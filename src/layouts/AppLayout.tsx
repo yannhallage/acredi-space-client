@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth, useWorkspace } from '../shared/context';
 import { useTheme } from '../shared/theme';
 import { AcrediLockup, Avatar, Icon, type IconName } from '../shared/ui';
@@ -24,11 +24,11 @@ interface NavItem {
 }
 
 export function AppLayout() {
-  const { user, logout } = useAuth();
+  const { user: authenticatedUser } = useAuth();
   const { counts, workspaces, activeWorkspace, setActiveWorkspaceId } = useWorkspace();
   const { dark, toggleTheme } = useTheme();
-  const navigate = useNavigate();
   const location = useLocation();
+  const user = authenticatedUser!;
 
   const navItems: NavItem[] = [
     { to: '/app/dashboard', icon: 'home', label: 'Accueil' },
@@ -42,6 +42,9 @@ export function AppLayout() {
 
   const metaKey = Object.keys(pageMeta).find((path) => location.pathname.startsWith(path)) ?? '/app/dashboard';
   const meta = pageMeta[metaKey];
+  const fullBleedContent = ['/app/chat', '/app/dm', '/app/files', '/app/meeting'].some((path) =>
+    location.pathname.startsWith(path)
+  );
 
   return (
     <div className="app-layout">
@@ -83,28 +86,6 @@ export function AppLayout() {
           ))}
         </div>
 
-        {user ? (
-          <div className="sidebar-user">
-            <NavLink className="user-link" to="/app/profile">
-              <Avatar name={user.name} size={32} presence={user.presence} />
-              <span>
-                <strong>{user.name}</strong>
-                <small>{activeWorkspace.name}</small>
-              </span>
-            </NavLink>
-            <button
-              className="icon-button"
-              type="button"
-              aria-label="Se deconnecter"
-              onClick={() => {
-                logout();
-                navigate('/login', { replace: true });
-              }}
-            >
-              <Icon name="logOut" size={16} />
-            </button>
-          </div>
-        ) : null}
       </aside>
 
       <div className="app-main">
@@ -113,20 +94,20 @@ export function AppLayout() {
             <span>{meta.crumb}</span>
             <strong>{meta.title}</strong>
           </div>
-          <label className="search-box">
+          {/* <label className="search-box">
             <Icon name="search" size={16} />
             <input placeholder="Rechercher fichier, message, personne..." />
             <kbd>Ctrl K</kbd>
-          </label>
+          </label> */}
           <div className="topbar-actions">
-            <NavLink className="button ghost" to="/preview">
+            {/* <NavLink className="button ghost" to="/preview">
               <Icon name="eye" size={15} />
               Preview
-            </NavLink>
-            <button className="button primary" type="button">
+            </NavLink> */}
+            {/* <button className="button primary" type="button">
               <Icon name="plus" size={15} />
               Nouveau
-            </button>
+            </button> */}
             <button className="icon-button" type="button" onClick={toggleTheme} aria-label="Changer le theme">
               <Icon name={dark ? 'sun' : 'moon'} size={18} />
             </button>
@@ -134,11 +115,11 @@ export function AppLayout() {
               <Icon name="bell" size={18} />
               {counts.notifications > 0 ? <span /> : null}
             </NavLink>
-            {user ? <Avatar name={user.name} size={32} presence={user.presence} /> : null}
+            <Avatar name={user.name} size={32} presence={user.presence} />
           </div>
         </header>
 
-        <main className="content">
+        <main className={fullBleedContent ? 'content content-full' : 'content'}>
           <Outlet />
         </main>
       </div>

@@ -42,6 +42,7 @@ a {
 
 .theme-root {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
 }
@@ -115,15 +116,13 @@ a {
   justify-content: center;
   gap: 8px;
   padding: 8px 14px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
   white-space: nowrap;
 }
 
 .button:hover,
-.icon-button:hover,
-.nav-link:hover,
-.workspace:hover {
+.icon-button:hover {
   transform: translateY(-1px);
 }
 
@@ -171,7 +170,7 @@ a {
 .mono-muted {
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -286,7 +285,7 @@ a {
   right: 44px;
   bottom: 44px;
   color: var(--muted-soft);
-  font-size: 18px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -309,7 +308,7 @@ a {
 
 .login-card h1 {
   margin: 8px 0;
-  font-size: 34px;
+  font-size: 32px;
   line-height: 1.05;
   letter-spacing: 0;
 }
@@ -327,7 +326,7 @@ a {
   display: grid;
   gap: 7px;
   color: var(--muted-soft);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 650;
 }
 
@@ -392,10 +391,13 @@ a {
 
 .app-layout {
   height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
   background: var(--bg);
   color: var(--text);
+  overflow: hidden;
 }
 
 .sidebar {
@@ -408,9 +410,7 @@ a {
   overflow: hidden;
 }
 
-.sidebar-brand,
-.sidebar-user,
-.user-link {
+.sidebar-brand {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -460,7 +460,7 @@ a {
 .nav-count {
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .nav-count-accent {
@@ -481,42 +481,12 @@ a {
   flex: none;
 }
 
-.sidebar-user {
-  margin-top: auto;
-  padding: 14px 8px 4px;
-  border-top: 1px solid var(--border);
-}
-
-.user-link {
-  flex: 1;
-  min-width: 0;
-}
-
-.user-link span {
-  display: grid;
-  min-width: 0;
-}
-
-.user-link strong,
-.user-link small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.user-link strong {
-  font-size: 13px;
-}
-
-.user-link small {
-  color: var(--muted);
-  font-size: 11px;
-}
-
 .app-main {
   display: flex;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .topbar {
@@ -538,12 +508,12 @@ a {
 .topbar-title span {
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.06em;
 }
 
 .topbar-title strong {
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .search-box {
@@ -559,7 +529,7 @@ a {
   padding: 1px 6px;
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .topbar-actions {
@@ -591,6 +561,11 @@ a {
   padding: 30px;
 }
 
+.content-full {
+  padding: 0;
+  overflow: hidden;
+}
+
 .page-stack {
   display: grid;
   gap: 20px;
@@ -609,7 +584,7 @@ a {
 
 .page-header h1 {
   margin: 0;
-  font-size: 30px;
+  font-size: 28px;
   line-height: 1.1;
   letter-spacing: 0;
 }
@@ -644,7 +619,7 @@ a {
 .metric-card > span {
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -656,7 +631,7 @@ a {
 }
 
 .metric-card strong {
-  font-size: 26px;
+  font-size: 14px;
 }
 
 .metric-card svg {
@@ -675,7 +650,7 @@ a {
   background: var(--surface-2);
   color: var(--muted-soft);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .chip-green {
@@ -695,7 +670,7 @@ a {
   margin: -4px 0 18px;
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .chart-legend span,
@@ -727,7 +702,7 @@ a {
   text-align: center;
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .bar-stack {
@@ -786,7 +761,7 @@ a {
 .meeting-list small,
 .people-list small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .people-list strong,
@@ -818,7 +793,7 @@ a {
 
 .file-row-list span {
   flex: 1;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .file-icon {
@@ -828,7 +803,7 @@ a {
   flex: none;
   border-radius: 6px;
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -836,9 +811,10 @@ a {
 
 .files-page {
   height: 100%;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  margin: -30px;
+  margin: 0;
 }
 
 .files-explorer {
@@ -853,7 +829,7 @@ a {
   gap: 8px;
   margin-bottom: 16px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .breadcrumb strong {
@@ -949,7 +925,7 @@ a {
 
 .folder-card small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .file-grid {
@@ -999,7 +975,7 @@ a {
   justify-content: space-between;
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .file-table {
@@ -1023,7 +999,7 @@ a {
   border-bottom: 1px solid var(--border);
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
   text-transform: uppercase;
 }
 
@@ -1049,7 +1025,7 @@ a {
 .file-table-row small {
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .file-preview {
@@ -1081,12 +1057,12 @@ a {
   background: var(--bg);
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .file-preview h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 14px;
   line-height: 1.25;
 }
 
@@ -1135,12 +1111,14 @@ a {
 .dm-page,
 .meeting-page {
   height: 100%;
+  min-height: 0;
   display: grid;
-  margin: -30px;
+  margin: 0;
+  overflow: hidden;
 }
 
 .chat-page {
-  grid-template-columns: 250px minmax(0, 1fr) 300px;
+  grid-template-columns: 280px minmax(0, 1fr) 300px;
 }
 
 .dm-page {
@@ -1152,9 +1130,14 @@ a {
 .details-panel,
 .meeting-side {
   min-width: 0;
+  min-height: 0;
   overflow: auto;
   padding: 18px;
   border-right: 1px solid var(--border);
+}
+
+.chat-sidebar {
+  padding: 18px 20px;
 }
 
 .details-panel,
@@ -1175,11 +1158,49 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 34px;
-  padding: 7px 10px;
+  min-height: 32px;
+  padding: 6px 10px;
   border-radius: 7px;
   color: var(--muted-soft);
   font-size: 13px;
+}
+
+.chat-sidebar .section-label {
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.channel-nav {
+  margin-bottom: 26px;
+}
+
+.dm-section-label {
+  padding-top: 2px;
+}
+
+.dm-nav a {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 8px;
+  gap: 8px;
+  align-items: center;
+}
+
+.dm-nav .avatar {
+  overflow: visible;
+}
+
+.dm-presence {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  justify-self: end;
+}
+
+.dm-nav a > span:nth-of-type(2) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chat-nav a.active,
@@ -1200,14 +1221,14 @@ a {
 
 .chat-nav small,
 .conversation-link b {
-  min-width: 20px;
-  padding: 1px 6px;
+  min-width: 18px;
+  padding: 1px 5px;
   border-radius: 999px;
   background: var(--accent);
   color: #fff;
   text-align: center;
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .chat-nav small.danger {
@@ -1230,13 +1251,13 @@ a {
   color: var(--muted);
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .conversation-link time {
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .thread-panel {
@@ -1244,6 +1265,7 @@ a {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .thread-header {
@@ -1272,21 +1294,21 @@ a {
 .thread-header small {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .message-list {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
-  padding: 22px;
+  overflow-y: auto;
+  padding: 14px 30px;
 }
 
 .date-separator {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 11px;
@@ -1301,8 +1323,8 @@ a {
 .message-bubble,
 .dm-message {
   display: flex;
-  gap: 12px;
-  padding: 7px 0;
+  gap: 10px;
+  padding: 5px 0;
 }
 
 .message-bubble > div,
@@ -1316,7 +1338,12 @@ a {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
+}
+
+.message-bubble header strong,
+.dm-message header strong {
+  font-size: 13px;
 }
 
 .message-bubble header small,
@@ -1334,22 +1361,22 @@ a {
 .message-bubble p,
 .dm-message p {
   display: inline-block;
-  max-width: 90%;
+  max-width: min(720px, 82%);
   margin: 0;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 8px;
   background: var(--surface);
-  line-height: 1.55;
-  font-size: 14px;
+  line-height: 1.45;
+  font-size: 13px;
 }
 
 .message-attachment {
-  max-width: 390px;
+  max-width: 350px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 8px;
-  padding: 10px 14px;
+  gap: 10px;
+  margin-top: 7px;
+  padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
@@ -1376,11 +1403,11 @@ a {
 .reaction-row {
   display: flex;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .reaction-row span {
-  padding: 3px 8px;
+  padding: 2px 7px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
@@ -1393,7 +1420,7 @@ a {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 14px 0 0;
+  padding: 10px 0 0;
   color: var(--muted);
   font-size: 12px;
   font-style: italic;
@@ -1407,15 +1434,18 @@ a {
 }
 
 .composer {
+  flex: none;
   display: grid;
-  gap: 10px;
-  padding: 12px 22px 20px;
+  gap: 8px;
+  padding: 12px 24px;
   border-top: 1px solid var(--border);
+  background: var(--bg);
 }
 
 .composer textarea {
   width: 100%;
-  min-height: 74px;
+  min-height: 46px;
+  max-height: 88px;
   resize: none;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -1423,6 +1453,7 @@ a {
   padding: 12px;
   background: var(--surface);
   color: var(--text);
+  font-size: 13px;
 }
 
 .composer div {
@@ -1439,19 +1470,88 @@ a {
   margin-right: 8px;
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .details-panel header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
+}
+
+.details-panel {
+  padding: 20px 22px;
+}
+
+.details-panel header strong {
+  font-size: 15px;
+}
+
+.details-panel .section-label {
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.details-panel .muted {
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .details-panel section,
 .meeting-side section {
-  margin-bottom: 24px;
+  margin-bottom: 22px;
+}
+
+.details-panel .people-list {
+  gap: 6px;
+}
+
+.details-panel .people-list li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 28px;
+  align-items: center;
+}
+
+.details-panel .people-list strong {
+  font-size: 13px;
+}
+
+.details-panel .people-list small {
+  font-size: 12px;
+}
+
+.details-panel .file-row-list {
+  gap: 7px;
+}
+
+.details-panel .file-row-list li {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 6px;
+  min-height: 28px;
+  align-items: center;
+}
+
+.details-panel .file-row-list span {
+  min-width: 0;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.details-panel .file-row-list small {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.details-panel .file-icon {
+  width: 34px !important;
+  height: 22px !important;
+  border-radius: 6px;
 }
 
 .compact {
@@ -1489,12 +1589,12 @@ a {
 .calendar-grid-head small {
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
   text-transform: uppercase;
 }
 
 .calendar-grid-head strong {
-  font-size: 22px;
+  font-size: 20px;
 }
 
 .calendar-day {
@@ -1526,7 +1626,7 @@ a {
 .calendar-event small,
 .calendar-event span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .meeting-page {
@@ -1539,6 +1639,7 @@ a {
   display: grid;
   grid-template-rows: auto 1fr auto;
   padding: 24px;
+  overflow: hidden;
 }
 
 .meeting-top {
@@ -1563,7 +1664,7 @@ a {
   background: var(--red-soft);
   color: var(--red);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .meeting-top b.neutral {
@@ -1622,7 +1723,7 @@ a {
   background: var(--surface);
   color: var(--muted-soft);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .control-button.active {
@@ -1684,7 +1785,7 @@ a {
 
 .profile-hero h1 {
   margin: 0;
-  font-size: 30px;
+  font-size: 28px;
 }
 
 .profile-hero p {
@@ -1718,7 +1819,7 @@ a {
 
 .admin-stats span {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .admin-table {
@@ -1740,7 +1841,7 @@ a {
   border-bottom: 1px solid var(--border);
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
   text-transform: uppercase;
 }
 
@@ -1828,7 +1929,7 @@ a {
 .notification-item time {
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .notification-side {
@@ -1897,7 +1998,7 @@ a {
   display: block;
   margin-bottom: 8px;
   color: rgba(37, 31, 24, 0.7);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -1929,7 +2030,7 @@ a {
 }
 
 .preview-tile strong {
-  font-size: 18px;
+  font-size: 14px;
 }
 
 .preview-tile small {
@@ -1993,7 +2094,6 @@ a {
   }
 
   .workspace-list,
-  .sidebar-user,
   .search-box,
   .topbar-title {
     display: none;
@@ -2014,6 +2114,10 @@ a {
   .meeting-stage,
   .meeting-side {
     padding: 18px;
+  }
+
+  .content-full {
+    padding: 0;
   }
 
   .files-page,

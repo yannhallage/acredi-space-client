@@ -13,7 +13,7 @@ function MessageBubble({ message }: { message: Message }) {
 
   return (
     <article className={mine ? 'message-bubble mine' : 'message-bubble'}>
-      <Avatar name={author.name} size={32} presence={author.presence} />
+      <Avatar name={author.name} size={28} presence={author.presence} />
       <div>
         <header>
           <strong>{author.name}</strong>
@@ -22,7 +22,7 @@ function MessageBubble({ message }: { message: Message }) {
         <p>{message.content}</p>
         {attachment ? (
           <div className="message-attachment">
-            <FileIcon ext={attachment.ext} color={attachment.color} size={34} />
+            <FileIcon ext={attachment.ext} color={attachment.color} size={30} />
             <span>
               <strong>{attachment.name}</strong>
               <small>{attachment.size}</small>
@@ -63,8 +63,8 @@ export function ChatPage() {
           <Icon name="search" size={14} />
           <input placeholder="Rechercher..." />
         </label>
-        <p className="section-label split"><span>Canaux</span><Icon name="plus" size={12} /></p>
-        <nav className="chat-nav">
+        <p className="section-label split"><span>Canaux</span><Icon name="plus"  className="cursor-pointer" size={12} /></p>
+        <nav className="chat-nav channel-nav">
           {channelData.map((channel) => (
             <NavLink key={channel.id} to={`/app/chat/${channel.id}`}>
               <Icon name="hash" size={14} />
@@ -74,15 +74,16 @@ export function ChatPage() {
           ))}
         </nav>
 
-        <p className="section-label split"><span>Messages directs</span><Icon name="plus" size={12} /></p>
-        <nav className="chat-nav">
+        <p className="section-label split dm-section-label"><span>Messages directs</span><Icon name="plus" className="cursor-pointer" size={12} /></p>
+        <nav className="chat-nav dm-nav">
           {(conversationData ?? []).map((conversation) => {
             const person = users.find((item) => item.id === conversation.userId) ?? users[0];
             return (
               <NavLink key={conversation.id} to={`/app/dm/${conversation.id}`}>
-                <Avatar name={person.name} size={22} presence={person.presence} />
+                <Avatar name={person.name} size={20} />
                 <span>{person.name}</span>
-                {conversation.unread > 0 ? <small>{conversation.unread}</small> : null}
+                <span className={`dm-presence presence-${person.presence}`} />
+                {/* {conversation.unread > 0 ? <small>{conversation.unread}</small> : null} */}
               </NavLink>
             );
           })}
@@ -136,7 +137,7 @@ export function ChatPage() {
           <ul className="people-list compact">
             {members.map((member) => member ? (
               <li key={member.id}>
-                <Avatar name={member.name} size={28} presence={member.presence} />
+                <Avatar name={member.name} size={24} presence={member.presence} />
                 <span><strong>{member.name}</strong><small>{member.team}</small></span>
               </li>
             ) : null)}
@@ -147,7 +148,7 @@ export function ChatPage() {
           <ul className="file-row-list compact">
             {recentFiles.map((file) => file ? (
               <li key={file.id}>
-                <FileIcon ext={file.ext} color={file.color} size={24} />
+                <FileIcon ext={file.ext} color={file.color} size={22} />
                 <span>{file.name}</span>
                 <small>{file.size}</small>
               </li>
