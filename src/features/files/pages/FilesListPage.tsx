@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { fileRows } from '../data/files.mock'
 import type { FileKind, FileStatus } from '../../../entities/file/file.types'
+import { useFilesQuery } from '../hooks/useFilesQuery'
 
 const fileIcons: Record<FileKind, typeof FileText> = {
   PDF: FileText,
@@ -32,6 +33,8 @@ const statusTheme: Record<FileStatus, 'gray' | 'blue' | 'green' | 'orange' | 're
 }
 
 export function FilesListPage() {
+  const { data = fileRows } = useFilesQuery()
+
   return (
     <section className="page-surface">
       <div className="filter-row">
@@ -79,7 +82,7 @@ export function FilesListPage() {
             </tr>
           </thead>
           <tbody>
-            {fileRows.map((file) => {
+            {data.map((file) => {
               const Icon = fileIcons[file.kind]
 
               return (

@@ -1,12 +1,29 @@
 import { Columns3, Filter, List, MoreHorizontal, Plus, RefreshCw, SlidersHorizontal } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
+
+const routeTitles: Array<[string, string]> = [
+  ['/admin', 'Administration'],
+  ['/app/dashboard', 'Dashboard'],
+  ['/app/files', 'Fichiers'],
+  ['/app/chat', 'Messages'],
+  ['/app/meetings', 'Reunions'],
+  ['/app/teams', 'Equipes'],
+  ['/app/notifications', 'Notifications'],
+  ['/app/profile', 'Profil'],
+  ['/app/settings', 'Parametres'],
+  ['/app/search', 'Recherche'],
+]
 
 export function TopBar() {
+  const location = useLocation()
+  const title = routeTitles.find(([path]) => location.pathname.startsWith(path))?.[1] ?? 'Espace'
+
   return (
     <header className="topbar">
       <div className="breadcrumb">
         <span>Espace</span>
         <span>/</span>
-        <strong>Fichiers</strong>
+        <strong>{title}</strong>
         <button className="view-switch" type="button">
           <List size={18} />
           Liste

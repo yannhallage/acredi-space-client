@@ -10,6 +10,9 @@ Frontend React de la plateforme collaborative interne Acredi Space.
 - Lucide React pour les icones
 - React Router
 - TanStack Query
+- Zustand
+- React Hook Form + Zod
+- STOMP WebSocket client
 
 ## Commandes
 
@@ -27,8 +30,24 @@ src/
   app/        Providers, router, layouts, configuration
   entities/   Types metier transverses
   features/   Modules fonctionnels par domaine
+  services/   Clients API REST, temps reel, upload/download, Jitsi
   shared/     Composants, hooks et utilitaires reutilisables
 ```
+
+## Modules scaffoldes
+
+- Authentification et session
+- Dashboard
+- Fichiers, dossiers, versions et permissions
+- Partage
+- Chat, canaux et messages directs
+- Reunions, calendrier, salle Jitsi et enregistrements
+- Equipes
+- Notifications et presence
+- Profil et parametres
+- Administration, utilisateurs, equipes, fichiers et audit
+
+Le routing est lazy-loade par page pour garder un bundle initial raisonnable.
 
 ## UI
 

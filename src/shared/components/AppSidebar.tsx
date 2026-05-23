@@ -4,15 +4,20 @@ import { Button } from '@rtcamp/frappe-ui-react'
 import { primaryNavigation, utilityNavigation } from '../../app/config/navigation'
 import { LogoMark } from './LogoMark'
 import { cn } from '../lib/cn'
+import { useAuth } from '../../app/providers/AuthProvider'
+import { canAccessAdmin } from '../../app/config/permissions'
 
 export function AppSidebar() {
+  const { logout, user } = useAuth()
+  const navigationItems = primaryNavigation.filter((item) => !item.adminOnly || (user && canAccessAdmin(user.role)))
+
   return (
     <aside className="app-sidebar">
       <div className="sidebar-brand">
         <LogoMark />
         <div className="brand-copy">
           <strong>Acredi Space</strong>
-          <span>yann hallage</span>
+          <span>{user ? `${user.firstName.toLowerCase()} ${user.lastName.toLowerCase()}` : 'invite'}</span>
         </div>
         <button className="icon-button ghost ml-auto" type="button" aria-label="Changer d'espace">
           <ChevronDown size={16} />
@@ -20,7 +25,7 @@ export function AppSidebar() {
       </div>
 
       <nav className="sidebar-nav" aria-label="Navigation principale">
-        {primaryNavigation.map((item) => (
+        {navigationItems.map((item) => (
           <NavLink
             className={({ isActive }) => cn('sidebar-link', isActive && 'active')}
             key={item.label}
@@ -59,7 +64,7 @@ export function AppSidebar() {
             <span>{item.label}</span>
           </NavLink>
         ))}
-        <button className="sidebar-link danger" type="button">
+        <button className="sidebar-link danger" type="button" onClick={logout}>
           <LogOut size={18} strokeWidth={1.8} />
           <span>Deconnexion</span>
         </button>

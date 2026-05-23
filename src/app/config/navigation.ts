@@ -16,6 +16,7 @@ export interface NavigationItem {
   label: string
   href: string
   icon: LucideIcon
+  adminOnly?: boolean
 }
 
 export const primaryNavigation: NavigationItem[] = [
@@ -26,8 +27,8 @@ export const primaryNavigation: NavigationItem[] = [
   { label: 'Reunions', href: '/app/meetings', icon: Video },
   { label: 'Calendrier', href: '/app/calendar', icon: CalendarDays },
   { label: 'Equipes', href: '/app/teams', icon: UsersRound },
-  { label: 'Audit', href: '/admin/audit-logs', icon: FileText },
-  { label: 'Administration', href: '/admin', icon: ShieldCheck },
+  { label: 'Audit', href: '/admin/audit-logs', icon: FileText, adminOnly: true },
+  { label: 'Administration', href: '/admin/dashboard', icon: ShieldCheck, adminOnly: true },
 ]
 
 export const utilityNavigation: NavigationItem[] = [
