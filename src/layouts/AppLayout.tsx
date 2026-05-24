@@ -67,7 +67,7 @@ export function AppLayout() {
     { to: "/app/admin", icon: "users", label: "Utilisateurs" },
     { to: "/app/admin", icon: "notes", label: "Notes" },
     // { to: '/app/notifications', icon: 'bell', label: 'Notifications', count: counts.notifications, accent: true },
-    // { to: "/app/admin", icon: "settings", label: "Parametres" },
+    { to: "", icon: "settings", label: "Parametres" },
   ];
 
   const metaKey =

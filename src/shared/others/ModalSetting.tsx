@@ -1,4 +1,6 @@
-import React from "react";
+// import React from "react";
+import { AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 const styles = {
   overlay: `
@@ -11,7 +13,7 @@ const styles = {
   modal: `
     flex
     h-[640px]
-    w-[1120px]
+    w-[1060px]
     overflow-hidden
     rounded-2xl
     bg-white
@@ -19,18 +21,17 @@ const styles = {
   `,
 
   sidebar: `
-    w-[260px]
+    w-[230px]
     border-r
     border-gray-100
-    bg-white
+    bg-[#f9f9f9]
   `,
 
   sidebarContent: `
     h-full
     overflow-y-auto
-    px-3
+    px-1
     py-4
-
     [&::-webkit-scrollbar]:w-[12px]
     [&::-webkit-scrollbar-track]:bg-[#f7f7f7]
     [&::-webkit-scrollbar-thumb]:bg-[#777]
@@ -53,14 +54,14 @@ const styles = {
 
   item: `
     flex
-    h-[36px]
+    h-[30px]
     w-full
     items-center
     gap-3
     rounded-lg
     px-3
     text-left
-    text-[1px]
+    text-[14px]
     text-gray-800
     transition
     hover:bg-gray-100
@@ -85,7 +86,7 @@ const styles = {
   `,
 
   title: `
-    text-[22px]
+    text-[19px]
     font-semibold
     leading-none
     text-gray-900
@@ -93,7 +94,7 @@ const styles = {
 
   subtitle: `
     mt-3
-    text-[15px]
+    text-[13px]
     text-gray-600
   `,
 
@@ -112,7 +113,7 @@ const styles = {
     justify-center
     rounded-full
     bg-gray-100
-    text-[18px]
+    text-[14px]
     text-gray-600
   `,
 
@@ -123,7 +124,7 @@ const styles = {
   `,
 
   profileName: `
-    text-[22px]
+    text-[17px]
     font-semibold
     text-gray-900
   `,
@@ -139,7 +140,7 @@ const styles = {
   `,
 
   sectionContentTitle: `
-    text-[16px]
+    text-[14px]
     font-semibold
     text-gray-950
   `,
@@ -152,7 +153,7 @@ const styles = {
   `,
 
   settingInfoTitle: `
-    text-[16px]
+    text-[14px]
     font-medium
     text-gray-900
   `,
@@ -167,10 +168,11 @@ const styles = {
 
   button: `
     rounded-lg
+    cursor-pointer
     bg-gray-100
     px-3
     py-1.5
-    text-[15px]
+    text-[1px]
     text-gray-700
     transition
     hover:bg-gray-200
@@ -179,32 +181,23 @@ const styles = {
 
 const ICON_PATHS = {
   user: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
-
   settings:
     "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82",
-
   grid: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
-
   mail: "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 6l-10 7L2 6",
-
   home: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2z",
-
   phone: "M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3.08 5.18",
 
   shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
-
   edit: "M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z",
-
   brand: "M12 2l2.2 6.8H21l-5.5 4 2.1 6.7L12 15.4 6.4 19.5l2.1-6.7L3 8.8h6.8z",
-
   template: "M4 4h16v16H4zM8 8h8M8 12h8M8 16h5",
-
   refresh: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16",
 } as const;
 
 type IconName = keyof typeof ICON_PATHS;
 
-function Icon({ name, size = 17 }: { name: IconName; size?: number }) {
+function Icon({ name, size = 14 }: { name: IconName; size?: number }) {
   return (
     <svg
       width={size}
@@ -240,13 +233,13 @@ const groups = [
     ],
   },
 
-  {
-    title: "User Management",
-    items: [
-      { label: "Users", icon: "user" },
-      { label: "Invite User", icon: "user" },
-    ],
-  },
+//   {
+//     title: "User Management",
+//     items: [
+//       { label: "Users", icon: "user" },
+//       { label: "Invite User", icon: "user" },
+//     ],
+//   },
 
   {
     title: "Email",
@@ -264,19 +257,19 @@ const groups = [
     ],
   },
 
-  {
-    title: "Customization",
-    items: [{ label: "Home Actions", icon: "home" }],
-  },
+//   {
+//     title: "Customization",
+//     items: [{ label: "Home Actions", icon: "home" }],
+//   },
 
-  {
-    title: "Integrations",
-    items: [
-      { label: "Telephony", icon: "phone" },
-      { label: "ERPNext", icon: "template" },
-      { label: "Lead Syncing", icon: "refresh" },
-    ],
-  },
+//   {
+//     title: "Integrations",
+//     items: [
+//       { label: "Telephony", icon: "phone" },
+//       { label: "ERPNext", icon: "template" },
+//       { label: "Lead Syncing", icon: "refresh" },
+//     ],
+//   },
 ] as const;
 
 type ModalSettingProps = {
@@ -284,8 +277,26 @@ type ModalSettingProps = {
 };
 export default function ModalSetting({ onClose }: ModalSettingProps) {
   return (
-    <div className={styles.overlay}>
-      <div className={styles.modal}>
+    <motion.div
+      className={styles.overlay}
+      onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+    >
+      {/* <div className={styles.modal} onClick={(e) => e.stopPropagation()}> */}
+      <motion.div
+        className={styles.modal}
+        onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 12 }}
+        transition={{
+          duration: 0.22,
+          ease: [0.16, 1, 0.3, 1],
+        }}
+      >
         <button
           type="button"
           onClick={onClose}
@@ -300,7 +311,7 @@ export default function ModalSetting({ onClose }: ModalSettingProps) {
               <div key={group.title} className={styles.section}>
                 <p className={styles.sectionTitle}>{group.title}</p>
 
-                <div className="space-y-1">
+                <div className="space-y-1 ">
                   {group.items.map((item) => (
                     <button
                       key={item.label}
@@ -312,7 +323,7 @@ export default function ModalSetting({ onClose }: ModalSettingProps) {
                         <Icon name={item.icon} />
                       </span>
 
-                      <span>{item.label}</span>
+                      <span className="text-[14px]">{item.label}</span>
                     </button>
                   ))}
                 </div>
@@ -374,7 +385,7 @@ export default function ModalSetting({ onClose }: ModalSettingProps) {
             </div>
           </section>
         </main>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
