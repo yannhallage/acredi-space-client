@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, useWorkspace } from '../shared/context';
 import { useTheme } from '../shared/theme';
 import { AcrediLockup, Avatar, Icon, type IconName } from '../shared/ui';
@@ -28,12 +28,19 @@ export function AppLayout() {
   const { counts, workspaces, activeWorkspace, setActiveWorkspaceId } = useWorkspace();
   const { dark, toggleTheme } = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
   const user = authenticatedUser!;
+  const workspaceChannel: Record<string, string> = {
+    direction: 'general',
+    product: 'sprint-18',
+    sales: 'incidents-prod',
+    design: 'design-acredi'
+  };
 
   const navItems: NavItem[] = [
     { to: '/app/dashboard', icon: 'home', label: 'Accueil' },
     { to: '/app/files', icon: 'folder', label: 'Fichiers', count: counts.files },
-    { to: '/app/chat/design-acredi', icon: 'message', label: 'Chat', count: counts.unreadMessages, accent: true },
+    { to: '/app/dm/dm-yann', icon: 'message', label: 'Chat', count: counts.unreadMessages, accent: true },
     { to: '/app/meeting/meet-daily', icon: 'video', label: 'Reunions', count: counts.liveMeetings, accent: true },
     { to: '/app/calendar', icon: 'calendar', label: 'Calendrier' },
     { to: '/app/notifications', icon: 'bell', label: 'Notifications', count: counts.notifications, accent: true },
@@ -78,7 +85,10 @@ export function AppLayout() {
               key={workspace.id}
               className={workspace.id === activeWorkspace.id ? 'workspace active' : 'workspace'}
               type="button"
-              onClick={() => setActiveWorkspaceId(workspace.id)}
+              onClick={() => {
+                setActiveWorkspaceId(workspace.id);
+                navigate(`/app/chat/${workspaceChannel[workspace.id] ?? 'general'}`);
+              }}
             >
               <span style={{ background: workspace.color }} />
               {workspace.name}

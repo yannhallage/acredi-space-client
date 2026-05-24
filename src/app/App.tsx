@@ -32,7 +32,7 @@ export default function App() {
                   <Route index element={<Navigate to="/app/dashboard" replace />} />
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="files" element={<FilesPage />} />
-                  <Route path="chat" element={<Navigate to="/app/chat/design-acredi" replace />} />
+                  <Route path="chat" element={<Navigate to="/app/chat/general" replace />} />
                   <Route path="chat/:channelId" element={<ChatPage />} />
                   <Route path="dm" element={<Navigate to="/app/dm/dm-yann" replace />} />
                   <Route path="dm/:conversationId" element={<DirectMessagesPage />} />

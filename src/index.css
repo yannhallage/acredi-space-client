@@ -1140,6 +1140,31 @@ a {
   padding: 18px 20px;
 }
 
+.dm-list {
+  padding: 18px 20px;
+  background: var(--bg);
+}
+
+.dm-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.dm-list-header h1 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.dm-list-header .icon-button {
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  color: #fff;
+}
+
 .details-panel,
 .meeting-side {
   border-right: 0;
@@ -1238,7 +1263,65 @@ a {
 .conversation-link {
   position: relative;
   align-items: flex-start;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
   padding: 10px;
+}
+
+.dm-list .mini-search {
+  margin-bottom: 12px;
+}
+
+.dm-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.dm-tabs button {
+  min-height: 26px;
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dm-tabs button.active {
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 650;
+}
+
+.dm-list .conversation-link {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  gap: 2px 10px;
+  align-items: center;
+  min-height: 58px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+}
+
+.dm-list .conversation-link .avatar {
+  grid-row: 1 / span 2;
+}
+
+.dm-list .conversation-link time {
+  align-self: start;
+  font-size: 11px;
+}
+
+.dm-list .conversation-link b {
+  grid-column: 3;
+  grid-row: 2;
+  align-self: end;
 }
 
 .conversation-link strong,
@@ -1246,18 +1329,22 @@ a {
   display: block;
 }
 
+.dm-list .conversation-link strong {
+  font-size: 13px;
+}
+
 .conversation-link small {
   overflow: hidden;
   color: var(--muted);
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .conversation-link time {
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 14px;
+  font-size: 11px;
 }
 
 .thread-panel {
@@ -1291,6 +1378,33 @@ a {
   white-space: nowrap;
 }
 
+.dm-thread-header {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.dm-thread-header > .avatar {
+  margin-right: 8px;
+}
+
+.dm-thread-header span {
+  flex: 1;
+}
+
+.dm-thread-header small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.dm-thread-header small i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--green);
+}
+
 .thread-header small {
   margin-top: 2px;
   color: var(--muted);
@@ -1302,6 +1416,11 @@ a {
   min-height: 0;
   overflow-y: auto;
   padding: 14px 30px;
+}
+
+.dm-message-list {
+  padding: 20px 44px;
+  background: color-mix(in srgb, var(--bg) 94%, var(--surface));
 }
 
 .date-separator {
@@ -1325,6 +1444,15 @@ a {
   display: flex;
   gap: 10px;
   padding: 5px 0;
+}
+
+.dm-message.mine {
+  justify-content: flex-end;
+}
+
+.dm-message.mine > div {
+  display: grid;
+  justify-items: end;
 }
 
 .message-bubble > div,
@@ -1368,6 +1496,60 @@ a {
   background: var(--surface);
   line-height: 1.45;
   font-size: 13px;
+}
+
+.dm-message p {
+  max-width: min(520px, 78%);
+  padding: 9px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.dm-message.mine p {
+  background: var(--accent);
+  color: #fff;
+}
+
+.dm-message-time {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+}
+
+.dm-attachment {
+  width: min(340px, 78%);
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.dm-attachment span {
+  min-width: 0;
+}
+
+.dm-attachment strong,
+.dm-attachment small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-attachment strong {
+  font-size: 12px;
+}
+
+.dm-attachment small {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .message-attachment {

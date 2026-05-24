@@ -229,10 +229,10 @@ export const channels: Channel[] = [
 ];
 
 export const conversations: Conversation[] = [
-  { id: 'dm-yann', userId: 'u-yann', unread: 2, lastMessage: 'Je depose les exports avant midi.', updatedAt: '09:42' },
-  { id: 'dm-issa', userId: 'u-issa', unread: 0, lastMessage: 'Le token accent est pret.', updatedAt: '09:18' },
-  { id: 'dm-yeo', userId: 'u-yeo', unread: 0, lastMessage: 'Je branche ca sur le repo.', updatedAt: 'hier' },
-  { id: 'dm-aicha', userId: 'u-aicha', unread: 1, lastMessage: 'J ai ajoute les etats vides.', updatedAt: 'hier' },
+  { id: 'dm-yann', userId: 'u-yann', unread: 2, lastMessage: "Je depose l'archive vers midi.", updatedAt: '09:24' },
+  { id: 'dm-issa', userId: 'u-issa', unread: 0, lastMessage: 'En train d ecrire...', updatedAt: '09:18' },
+  { id: 'dm-yeo', userId: 'u-yeo', unread: 0, lastMessage: 'Sprint #18 - review en fin d apres-midi ?', updatedAt: '09:12' },
+  { id: 'dm-aicha', userId: 'u-aicha', unread: 1, lastMessage: 'Tu as un retour sur le mock calendrier ?', updatedAt: '08:55' },
   { id: 'dm-kouadio', userId: 'u-kouadio', unread: 0, lastMessage: 'Retour client recu.', updatedAt: 'mar.' }
 ];
 
@@ -281,16 +281,59 @@ export const messages: Message[] = [
   {
     id: 'm-dm-1',
     conversationId: 'dm-yann',
-    authorId: 'u-yann',
-    when: '09:38',
-    content: 'Je te confirme que les exports SVG sont propres. Je joins le zip dans le canal design.'
+    authorId: 'u-mohamed',
+    when: '17:42',
+    content: "Salut Yann, j'ai vu ton retour sur la piste 3. On bloque dessus ?"
   },
   {
     id: 'm-dm-2',
     conversationId: 'dm-yann',
+    authorId: 'u-yann',
+    when: '17:51',
+    content: "Oui c'est valide de mon cote. Mlle Yeo est aussi convaincue. On lance la production des exports demain matin."
+  },
+  {
+    id: 'm-dm-3',
+    conversationId: 'dm-yann',
+    authorId: 'u-yann',
+    when: '17:52',
+    content: 'Faut juste valider la permutation des facettes pour la version mobile, sur petits ecrans le 5B6CFF a droite est un peu lourd.'
+  },
+  {
+    id: 'm-dm-4',
+    conversationId: 'dm-yann',
     authorId: 'u-mohamed',
-    when: '09:41',
-    content: 'Parfait. Apres ca on pourra figer le kit de marque pour le sprint.'
+    when: '17:55',
+    content: 'OK, on en reparle demain a 9:30. Je prepare une comparaison.'
+  },
+  {
+    id: 'm-dm-5',
+    conversationId: 'dm-yann',
+    authorId: 'u-yann',
+    when: '09:18',
+    content: "Hello, c'est bon pour 9:30 ? J'ai aussi 2-3 idees sur l'animation hover.",
+    attachmentId: 'f-wireframes'
+  },
+  {
+    id: 'm-dm-6',
+    conversationId: 'dm-yann',
+    authorId: 'u-mohamed',
+    when: '09:22',
+    content: 'Top, on se cale la-dessus. Je suis dans le bureau dans 10 min.'
+  },
+  {
+    id: 'm-dm-issa-1',
+    conversationId: 'dm-issa',
+    authorId: 'u-issa',
+    when: '09:18',
+    content: 'Le token accent est pret, je regarde maintenant les etats focus.'
+  },
+  {
+    id: 'm-dm-aicha-1',
+    conversationId: 'dm-aicha',
+    authorId: 'u-aicha',
+    when: '08:55',
+    content: 'Tu as un retour sur le mock calendrier ? Je peux ajuster la densite.'
   }
 ];
 
