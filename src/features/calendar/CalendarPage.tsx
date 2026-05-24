@@ -1,45 +1,22 @@
+import { useMemo, useState } from 'react';
+import { Calendar, dayjsLocalizer, type EventPropGetter, type View } from 'react-big-calendar';
+import dayjs from 'dayjs';
+import 'dayjs/locale/fr';
 import { mockApi, useMockQuery } from '../../shared/api';
 import { users } from '../../shared/api/mockData';
+import type { CalendarEvent as ApiCalendarEvent } from '../../shared/types';
 import { Avatar, Icon, LoadingState } from '../../shared/ui';
 
-const weekDays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+dayjs.locale('fr');
 
-const monthCells = [
-  { day: 27, muted: true },
-  { day: 28, muted: true },
-  { day: 29, muted: true },
-  { day: 30, muted: true },
-  { day: 1 },
-  { day: 2 },
-  { day: 3, events: [{ title: '10:00 Brief identite', color: '#8B7FFF', soft: '#8B7FFF22' }] },
-  { day: 4, events: [{ title: '09:00 Sprint #18 kickoff', color: '#22C55E', soft: '#22C55E22' }] },
-  { day: 5, events: [{ title: '10:30 Daily Direction', color: '#5B6CFF', soft: '#5B6CFF22' }, { title: '15:30 Sync clients ACME', color: '#22C55E', soft: '#22C55E22' }] },
-  { day: 6 },
-  { day: 7, events: [{ title: '14:00 Revue design', color: '#8B7FFF', soft: '#8B7FFF22' }] },
-  { day: 8 },
-  { day: 9 },
-  { day: 10 },
-  { day: 11, events: [{ title: '09:30 Soutenance v1', color: '#F59E0B', soft: '#F59E0B22' }] },
-  { day: 12, events: [{ title: '10:30 Daily Direction', color: '#5B6CFF', soft: '#5B6CFF22' }, { title: '11:00 1:1 Yann', color: '#8B7FFF', soft: '#8B7FFF22' }] },
-  { day: 13 },
-  { day: 14, events: [{ title: '14:00 Workshop logo', color: '#8B7FFF', soft: '#8B7FFF22' }] },
-  { day: 15 },
-  { day: 16 },
-  { day: 17 },
-  { day: 18, events: [{ title: '16:00 Comite direction', color: '#EF4444', soft: '#EF444422' }] },
-  { day: 19, events: [{ title: '10:30 Daily Direction', color: '#5B6CFF', soft: '#5B6CFF22' }] },
-  { day: 20, events: [{ title: '11:00 Revue design v2', color: '#8B7FFF', soft: '#8B7FFF22' }] },
-  { day: 21, today: true, events: [{ title: '10:30 Daily Direction', color: '#5B6CFF', soft: '#5B6CFF22' }, { title: '14:00 Revue design Acredi Space', color: '#8B7FFF', soft: '#8B7FFF22' }, { title: '16:30 Sync clients ACME', color: '#22C55E', soft: '#22C55E22' }] },
-  { day: 22, events: [{ title: '09:00 Atelier UX mobile', color: '#F59E0B', soft: '#F59E0B22' }] },
-  { day: 23 },
-  { day: 24 },
-  { day: 25, events: [{ title: '11:00 Pres. soutenance', color: '#F59E0B', soft: '#F59E0B22' }] },
-  { day: 26, events: [{ title: '10:30 Daily Direction', color: '#5B6CFF', soft: '#5B6CFF22' }] },
-  { day: 27 },
-  { day: 28, events: [{ title: '15:00 Demo client ACME', color: '#22C55E', soft: '#22C55E22' }] },
-  { day: 29 },
-  { day: 30 },
-  { day: 31 }
+const localizer = dayjsLocalizer(dayjs);
+const mockToday = new Date(2026, 4, 23);
+
+const calendarViews: Array<{ label: string; value: View }> = [
+  { label: 'Mois', value: 'month' },
+  { label: 'Semaine', value: 'week' },
+  { label: 'Jour', value: 'day' },
+  { label: 'Agenda', value: 'agenda' }
 ];
 
 const calendars = [
@@ -49,34 +26,90 @@ const calendars = [
   { name: 'Clients', color: '#F59E0B' }
 ];
 
+interface AcrediCalendarEvent extends ApiCalendarEvent {
+  start: Date;
+  end: Date;
+}
+
+function durationToMinutes(duration: string) {
+  const hours = duration.match(/(\d+)\s*h/);
+  const minutes = duration.match(/(\d+)\s*min/);
+
+  return (hours ? Number(hours[1]) * 60 : 0) + (minutes ? Number(minutes[1]) : 0) || 30;
+}
+
+function toCalendarEvent(event: ApiCalendarEvent): AcrediCalendarEvent {
+  const start = dayjs(`${event.date}T${event.time}`);
+
+  return {
+    ...event,
+    start: start.toDate(),
+    end: start.add(durationToMinutes(event.duration), 'minute').toDate()
+  };
+}
+
 export function CalendarPage() {
   const { data, loading } = useMockQuery(mockApi.getCalendarEvents, 'calendar');
+  const [calendarDate, setCalendarDate] = useState(mockToday);
+  const [view, setView] = useState<View>('month');
+
+  const calendarEvents = useMemo(() => (data ?? []).map(toCalendarEvent), [data]);
+  const agendaEvents = calendarEvents.filter((event) => dayjs(event.start).isSame(calendarDate, 'day'));
+
+  const eventPropGetter: EventPropGetter<AcrediCalendarEvent> = (event) => ({
+    style: {
+      backgroundColor: `${event.color}22`,
+      color: event.color,
+      borderLeft: `3px solid ${event.color}`
+    }
+  });
 
   if (loading || !data) {
     return <LoadingState label="Chargement du calendrier..." />;
   }
 
-  const todayEvents = data.slice(0, 3);
+  const agendaDate = dayjs(calendarDate);
+  const agendaTitle = agendaDate.isSame(mockToday, 'day') ? "Aujourd'hui" : 'Jour selectionne';
 
   return (
     <div className="calendar-page">
       <section className="calendar-main">
         <header className="calendar-toolbar">
           <div>
-            <h1>Mai 2026</h1>
-            <p>Semaines 21 - 38 evenements ce mois.</p>
+            <h1>{dayjs(calendarDate).format('MMMM YYYY')}</h1>
+            <p>Semaine 21 - {calendarEvents.length} evenements ce mois.</p>
           </div>
           <div className="calendar-controls">
-            <button className="icon-button bordered" type="button" aria-label="Mois precedent">
+            <button
+              className="icon-button bordered"
+              type="button"
+              aria-label="Periode precedente"
+              onClick={() => setCalendarDate(dayjs(calendarDate).subtract(1, view === 'month' ? 'month' : 'week').toDate())}
+            >
               <Icon name="arrowLeft" size={14} />
             </button>
-            <button className="button ghost" type="button">Aujourd'hui</button>
-            <button className="icon-button bordered" type="button" aria-label="Mois suivant">
+            <button className="button ghost" type="button" onClick={() => setCalendarDate(mockToday)}>
+              Aujourd'hui
+            </button>
+            <button
+              className="icon-button bordered"
+              type="button"
+              aria-label="Periode suivante"
+              onClick={() => setCalendarDate(dayjs(calendarDate).add(1, view === 'month' ? 'month' : 'week').toDate())}
+            >
               <Icon name="chevRight" size={14} />
             </button>
             <div className="calendar-view-switch">
-              {['Mois', 'Semaine', 'Jour', 'Agenda'].map((view, index) => (
-                <button key={view} className={index === 0 ? 'active' : ''} type="button">{view}</button>
+              {calendarViews.map((calendarView) => (
+                <button
+                  key={calendarView.value}
+                  className={view === calendarView.value ? 'active' : ''}
+                  type="button"
+                  aria-pressed={view === calendarView.value}
+                  onClick={() => setView(calendarView.value)}
+                >
+                  {calendarView.label}
+                </button>
               ))}
             </div>
             <button className="button primary" type="button">
@@ -86,47 +119,83 @@ export function CalendarPage() {
           </div>
         </header>
 
-        <div className="month-grid">
-          {weekDays.map((day) => (
-            <div key={day} className="month-weekday">{day}</div>
-          ))}
-          {monthCells.map((cell, index) => (
-            <article key={`${cell.day}-${index}`} className={cell.muted ? 'month-cell muted' : cell.today ? 'month-cell today' : 'month-cell'}>
-              <time>{cell.day}</time>
-              <div>
-                {(cell.events ?? []).map((event) => (
-                  <span key={`${cell.day}-${event.title}`} className="month-event" style={{ color: event.color, background: event.soft }}>
-                    {event.title}
-                  </span>
-                ))}
-              </div>
-            </article>
-          ))}
+        <div className="calendar-rbc">
+          <Calendar<AcrediCalendarEvent>
+            culture="fr"
+            localizer={localizer}
+            date={calendarDate}
+            events={calendarEvents}
+            view={view}
+            views={['month', 'week', 'day', 'agenda']}
+            toolbar={false}
+            popup
+            selectable
+            getNow={() => mockToday}
+            startAccessor="start"
+            endAccessor="end"
+            titleAccessor={(event) => `${dayjs(event.start).format('HH:mm')} ${event.title}`}
+            eventPropGetter={eventPropGetter}
+            dayPropGetter={(date) =>
+              dayjs(date).isSame(calendarDate, 'day') ? { className: 'calendar-selected-day' } : {}
+            }
+            onNavigate={setCalendarDate}
+            onView={setView}
+            onSelectEvent={(event) => setCalendarDate(event.start)}
+            onSelectSlot={(slot) => setCalendarDate(slot.start)}
+            messages={{
+              date: 'Date',
+              time: 'Heure',
+              event: 'Evenement',
+              allDay: 'Journee',
+              previous: 'Precedent',
+              next: 'Suivant',
+              today: "Aujourd'hui",
+              month: 'Mois',
+              week: 'Semaine',
+              day: 'Jour',
+              agenda: 'Agenda',
+              noEventsInRange: 'Aucun evenement sur cette periode.',
+              showMore: (total) => `+${total}`
+            }}
+          />
         </div>
       </section>
 
       <aside className="calendar-side">
-        <p className="eyebrow">Aujourd'hui - samedi 23 mai</p>
-        <h2>3 evenements</h2>
+        <p className="eyebrow">{agendaTitle} - {agendaDate.format('dddd D MMMM')}</p>
+        <h2>{agendaEvents.length} evenements</h2>
         <div className="today-agenda">
-          {todayEvents.map((event) => (
-            <article key={event.id} className={event.status === 'live' ? 'agenda-card live' : 'agenda-card'} style={{ borderColor: event.color }}>
-              <header>
-                <strong>{event.title}</strong>
-                {event.status === 'live' ? <span>Live</span> : null}
-              </header>
-              <small>{event.time} - {event.duration}</small>
-              <div className="avatar-stack">
-                {event.attendeeIds.slice(0, 3).map((id) => {
-                  const person = users.find((user) => user.id === id) ?? users[0];
-                  return <Avatar key={id} name={person.name} size={22} ring="var(--surface)" />;
-                })}
-              </div>
-              <button className={event.status === 'live' ? 'button primary' : 'button ghost'} type="button">
-                {event.status === 'live' ? 'Rejoindre la reunion' : 'Voir le detail'}
-              </button>
-            </article>
-          ))}
+          {agendaEvents.length > 0 ? (
+            agendaEvents.slice(0, 3).map((event) => (
+              <article
+                key={event.id}
+                className={event.status === 'live' ? 'agenda-card live' : 'agenda-card'}
+                style={{ borderColor: event.color }}
+              >
+                <header>
+                  <strong>{event.title}</strong>
+                  {event.status === 'live' ? <span>Live</span> : null}
+                </header>
+                <small>
+                  {event.time} - {event.duration} - {event.location}
+                </small>
+                <div className="avatar-stack">
+                  {event.attendeeIds.slice(0, 3).map((id) => {
+                    const person = users.find((user) => user.id === id) ?? users[0];
+                    return <Avatar key={id} name={person.name} size={22} ring="var(--surface)" />;
+                  })}
+                </div>
+                <button className={event.status === 'live' ? 'button primary' : 'button ghost'} type="button">
+                  {event.status === 'live' ? 'Rejoindre la reunion' : 'Voir le detail'}
+                </button>
+              </article>
+            ))
+          ) : (
+            <div className="calendar-empty">
+              <Icon name="calendar" size={22} />
+              <strong>Aucun evenement</strong>
+            </div>
+          )}
         </div>
 
         <div className="calendar-list">

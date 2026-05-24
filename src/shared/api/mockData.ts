@@ -381,6 +381,182 @@ export const calendarEvents: CalendarEvent[] = [
     attendeeIds: ['u-mohamed', 'u-issa', 'u-yeo', 'u-aicha'],
     status: 'upcoming',
     location: 'Visio'
+  },
+  {
+    id: 'ev-brief-identity',
+    title: 'Brief identite',
+    date: '2026-05-03',
+    time: '10:00',
+    duration: '45 min',
+    color: '#8B7FFF',
+    attendeeIds: ['u-yann', 'u-aicha'],
+    status: 'done',
+    location: 'Design Studio'
+  },
+  {
+    id: 'ev-sprint-kickoff',
+    title: 'Sprint #18 kickoff',
+    date: '2026-05-04',
+    time: '09:00',
+    duration: '1 h',
+    color: '#22C55E',
+    attendeeIds: ['u-mohamed', 'u-issa', 'u-yeo'],
+    status: 'done',
+    location: 'Salle Baobab'
+  },
+  {
+    id: 'ev-daily-05',
+    title: 'Daily Direction',
+    date: '2026-05-05',
+    time: '10:30',
+    duration: '30 min',
+    color: '#5B6CFF',
+    attendeeIds: ['u-mohamed', 'u-yann', 'u-issa'],
+    status: 'done',
+    location: 'Salle Nimba'
+  },
+  {
+    id: 'ev-sync-acme-05',
+    title: 'Sync clients ACME',
+    date: '2026-05-05',
+    time: '15:30',
+    duration: '45 min',
+    color: '#22C55E',
+    attendeeIds: ['u-mohamed', 'u-issa', 'u-kouadio'],
+    status: 'done',
+    location: 'Salle Baobab'
+  },
+  {
+    id: 'ev-revue-design-07',
+    title: 'Revue design',
+    date: '2026-05-07',
+    time: '14:00',
+    duration: '1 h',
+    color: '#8B7FFF',
+    attendeeIds: ['u-yann', 'u-aicha', 'u-yeo'],
+    status: 'done',
+    location: 'Design Studio'
+  },
+  {
+    id: 'ev-soutenance-11',
+    title: 'Soutenance v1',
+    date: '2026-05-11',
+    time: '09:30',
+    duration: '1 h',
+    color: '#F59E0B',
+    attendeeIds: ['u-mohamed', 'u-yann'],
+    status: 'done',
+    location: 'Visio'
+  },
+  {
+    id: 'ev-daily-12',
+    title: 'Daily Direction',
+    date: '2026-05-12',
+    time: '10:30',
+    duration: '30 min',
+    color: '#5B6CFF',
+    attendeeIds: ['u-mohamed', 'u-yann', 'u-issa'],
+    status: 'done',
+    location: 'Salle Nimba'
+  },
+  {
+    id: 'ev-one-to-one-yann',
+    title: '1:1 Yann',
+    date: '2026-05-12',
+    time: '11:00',
+    duration: '30 min',
+    color: '#8B7FFF',
+    attendeeIds: ['u-mohamed', 'u-yann'],
+    status: 'done',
+    location: 'Bureau produit'
+  },
+  {
+    id: 'ev-workshop-logo',
+    title: 'Workshop logo',
+    date: '2026-05-14',
+    time: '14:00',
+    duration: '1 h',
+    color: '#8B7FFF',
+    attendeeIds: ['u-yann', 'u-aicha', 'u-yeo'],
+    status: 'done',
+    location: 'Design Studio'
+  },
+  {
+    id: 'ev-comite-direction',
+    title: 'Comite direction',
+    date: '2026-05-18',
+    time: '16:00',
+    duration: '1 h',
+    color: '#EF4444',
+    attendeeIds: ['u-mohamed', 'u-yann', 'u-issa'],
+    status: 'done',
+    location: 'Salle Direction'
+  },
+  {
+    id: 'ev-daily-19',
+    title: 'Daily Direction',
+    date: '2026-05-19',
+    time: '10:30',
+    duration: '30 min',
+    color: '#5B6CFF',
+    attendeeIds: ['u-mohamed', 'u-yann', 'u-issa'],
+    status: 'done',
+    location: 'Salle Nimba'
+  },
+  {
+    id: 'ev-revue-design-v2',
+    title: 'Revue design v2',
+    date: '2026-05-20',
+    time: '11:00',
+    duration: '1 h',
+    color: '#8B7FFF',
+    attendeeIds: ['u-yann', 'u-aicha', 'u-yeo'],
+    status: 'done',
+    location: 'Design Studio'
+  },
+  {
+    id: 'ev-atelier-mobile',
+    title: 'Atelier UX mobile',
+    date: '2026-05-22',
+    time: '09:00',
+    duration: '1 h',
+    color: '#F59E0B',
+    attendeeIds: ['u-yann', 'u-aicha'],
+    status: 'upcoming',
+    location: 'Design Studio'
+  },
+  {
+    id: 'ev-pres-soutenance',
+    title: 'Pres. soutenance',
+    date: '2026-05-25',
+    time: '11:00',
+    duration: '1 h',
+    color: '#F59E0B',
+    attendeeIds: ['u-mohamed', 'u-yann'],
+    status: 'upcoming',
+    location: 'Visio'
+  },
+  {
+    id: 'ev-daily-26',
+    title: 'Daily Direction',
+    date: '2026-05-26',
+    time: '10:30',
+    duration: '30 min',
+    color: '#5B6CFF',
+    attendeeIds: ['u-mohamed', 'u-yann', 'u-issa'],
+    status: 'upcoming',
+    location: 'Salle Nimba'
+  },
+  {
+    id: 'ev-demo-acme',
+    title: 'Demo client ACME',
+    date: '2026-05-28',
+    time: '15:00',
+    duration: '45 min',
+    color: '#22C55E',
+    attendeeIds: ['u-mohamed', 'u-issa', 'u-kouadio'],
+    status: 'upcoming',
+    location: 'Salle Baobab'
   }
 ];
 

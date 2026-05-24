@@ -43,7 +43,9 @@ export function AppLayout() {
     { to: '/app/dm/dm-yann', icon: 'message', label: 'Chat', count: counts.unreadMessages, accent: true },
     { to: '/app/meeting/meet-daily', icon: 'video', label: 'Reunions', count: counts.liveMeetings, accent: true },
     { to: '/app/calendar', icon: 'calendar', label: 'Calendrier' },
-    { to: '/app/notifications', icon: 'bell', label: 'Notifications', count: counts.notifications, accent: true },
+    { to: '/app/admin', icon: 'users', label: 'Utilisateurs' },
+    { to: '/app/admin', icon: 'notes', label: 'Notes' },
+    // { to: '/app/notifications', icon: 'bell', label: 'Notifications', count: counts.notifications, accent: true },
     { to: '/app/admin', icon: 'settings', label: 'Parametres' }
   ];
 
