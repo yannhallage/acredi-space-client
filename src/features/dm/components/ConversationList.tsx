@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import type { Conversation } from '../../../shared/types';
 import { users } from '../../../shared/api/mockData';
 import { Avatar, Icon } from '../../../shared/ui';
+import { NewConversationModal } from './NewConversationModal';
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -9,11 +11,18 @@ interface ConversationListProps {
 }
 
 export function ConversationList({ conversations, activeConversationId, onSelectConversation }: ConversationListProps) {
+  const [isNewConversationOpen, setIsNewConversationOpen] = useState(false);
+
   return (
     <aside className="dm-list">
       <header className="dm-list-header">
         <h1>Messages</h1>
-        <button className="icon-button" type="button" aria-label="Nouvelle conversation">
+        <button
+          className="icon-button"
+          type="button"
+          aria-label="Nouvelle conversation"
+          onClick={() => setIsNewConversationOpen(true)}
+        >
           <Icon name="plus" size={14} />
         </button>
       </header>
@@ -50,6 +59,13 @@ export function ConversationList({ conversations, activeConversationId, onSelect
           </button>
         );
       })}
+
+      <NewConversationModal
+        isOpen={isNewConversationOpen}
+        conversations={conversations}
+        onClose={() => setIsNewConversationOpen(false)}
+        onSelectConversation={onSelectConversation}
+      />
     </aside>
   );
 }
