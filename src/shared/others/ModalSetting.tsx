@@ -22,6 +22,14 @@ const groups: SettingGroup[] = [
     ]
   },
   {
+    title: 'Equipe',
+    items: [
+      { label: 'Membres', icon: 'users' },
+      { label: 'Roles', icon: 'shield' },
+      { label: 'Invitations', icon: 'mail' }
+    ]
+  },
+  {
     title: 'Configuration systeme',
     items: [
       { label: 'General', icon: 'settings' },
