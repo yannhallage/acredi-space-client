@@ -7,9 +7,12 @@ import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { DirectMessagesPage } from '../features/dm/DirectMessagesPage';
 import { FilesPage } from '../features/files/FilesPage';
 import { MeetingPage } from '../features/meeting/MeetingPage';
+import { NotesPage } from '../features/notes/NotesPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { PreviewPage } from '../features/preview/PreviewPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
+import { UserDetailPage } from '../features/users/UserDetailPage';
+import { UsersPage } from '../features/users/UsersPage';
 import { AppLayout } from '../layouts/AppLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { AuthProvider, WorkspaceProvider } from '../shared/context';
@@ -41,6 +44,9 @@ export default function App() {
                   <Route path="meeting/:meetingId" element={<MeetingPage />} />
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="admin" element={<AdminPage />} />
+                  <Route path="users" element={<UsersPage />} />
+                  <Route path="users/:userId" element={<UserDetailPage />} />
+                  <Route path="notes" element={<NotesPage />} />
                   <Route path="notifications" element={<NotificationsPage />} />
                 </Route>
               </Route>

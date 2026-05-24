@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth, useWorkspace } from "../shared/context";
 import { useTheme } from "../shared/theme";
@@ -15,6 +15,8 @@ const pageMeta: Record<string, { title: string; crumb: string }> = {
   "/app/meeting": { title: "Salle de reunion", crumb: "VISIO" },
   "/app/profile": { title: "Mon profil", crumb: "PARAMETRES" },
   "/app/admin": { title: "Administration", crumb: "PARAMETRES" },
+  "/app/users": { title: "Users", crumb: "CRM" },
+  "/app/notes": { title: "Notes", crumb: "CRM" },
   "/app/notifications": { title: "Centre de notifications", crumb: "ACTIVITE" },
 };
 
@@ -27,13 +29,17 @@ interface NavItem {
 }
 
 export function AppLayout() {
-  const { user: authenticatedUser } = useAuth();
+  const { user: authenticatedUser, logout } = useAuth();
   const { counts, workspaces, activeWorkspace, setActiveWorkspaceId } =
     useWorkspace();
   const { dark, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [openSetting, setOpenSetting] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<
+    "notifications" | "account" | null
+  >(null);
+  const topbarActionsRef = useRef<HTMLDivElement | null>(null);
   const user = authenticatedUser!;
   const workspaceChannel: Record<string, string> = {
     direction: "general",
@@ -65,8 +71,8 @@ export function AppLayout() {
       accent: true,
     },
     { to: "/app/calendar", icon: "calendar", label: "Calendrier" },
-    { to: "/app/admin", icon: "users", label: "Utilisateurs" },
-    { to: "/app/admin", icon: "notes", label: "Notes" },
+    { to: "/app/users", icon: "users", label: "Utilisateurs" },
+    { to: "/app/notes", icon: "notes", label: "Notes" },
     // { to: '/app/notifications', icon: 'bell', label: 'Notifications', count: counts.notifications, accent: true },
   ];
 
@@ -81,6 +87,42 @@ export function AppLayout() {
     "/app/meeting",
     "/app/calendar",
   ].some((path) => location.pathname.startsWith(path));
+
+  useEffect(() => {
+    setOpenDropdown(null);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      if (
+        topbarActionsRef.current &&
+        !topbarActionsRef.current.contains(event.target as Node)
+      ) {
+        setOpenDropdown(null);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpenDropdown(null);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  function handleLogout() {
+    setOpenDropdown(null);
+    logout();
+    navigate("/login", { replace: true });
+  }
+
   return (
     <>
       <div className="app-layout">
@@ -169,7 +211,7 @@ export function AppLayout() {
             <input placeholder="Rechercher fichier, message, personne..." />
             <kbd>Ctrl K</kbd>
           </label> */}
-            <div className="topbar-actions">
+            <div className="topbar-actions" ref={topbarActionsRef}>
               {/* <NavLink className="button ghost" to="/preview">
               <Icon name="eye" size={15} />
               Preview
@@ -186,15 +228,187 @@ export function AppLayout() {
               >
                 <Icon name={dark ? "sun" : "moon"} size={18} />
               </button>
-              <NavLink
-                className="icon-button notification-button"
-                to="/app/notifications"
+              <button
+                className={
+                  openDropdown === "notifications"
+                    ? "icon-button notification-button active"
+                    : "icon-button notification-button"
+                }
+                type="button"
                 aria-label="Notifications"
+                aria-haspopup="dialog"
+                aria-expanded={openDropdown === "notifications"}
+                onClick={() =>
+                  setOpenDropdown((current) =>
+                    current === "notifications" ? null : "notifications",
+                  )
+                }
               >
                 <Icon name="bell" size={18} />
                 {counts.notifications > 0 ? <span /> : null}
-              </NavLink>
-              <Avatar name={user.name} size={32} presence={user.presence} />
+              </button>
+              <button
+                className={
+                  openDropdown === "account"
+                    ? "account-button active"
+                    : "account-button"
+                }
+                type="button"
+                aria-label="Menu du profil"
+                aria-haspopup="menu"
+                aria-expanded={openDropdown === "account"}
+                onClick={() =>
+                  setOpenDropdown((current) =>
+                    current === "account" ? null : "account",
+                  )
+                }
+              >
+                <Avatar name={user.name} size={32} presence={user.presence} />
+              </button>
+
+              <AnimatePresence>
+                {openDropdown === "notifications" ? (
+                  <motion.div
+                    key="notifications-popover"
+                    className="topbar-popover notifications-popover"
+                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                    transition={{ duration: 0.16, ease: "easeOut" }}
+                    role="dialog"
+                    aria-label="Notifications"
+                  >
+                    <div className="notifications-popover-header">
+                      <div className="notifications-tabs" role="tablist">
+                        <button className="active" type="button">
+                          Notifications
+                        </button>
+                        <button type="button">Events</button>
+                        <button type="button">What's New</button>
+                      </div>
+                      <div className="notifications-header-actions">
+                        <button type="button" aria-label="Parametres">
+                          <Icon name="settings" size={15} />
+                        </button>
+                        <button type="button" aria-label="Marquer comme lu">
+                          <Icon name="check" size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Fermer"
+                          onClick={() => setOpenDropdown(null)}
+                        >
+                          <Icon name="x" size={15} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="notification-preview unread">
+                      <span className="notification-unread-dot" />
+                      <span className="notification-avatar">yh</span>
+                      <p>
+                        <strong>yann hallage</strong> assigned a new task{" "}
+                        <b>CRM Task test</b> to you
+                        <small>yesterday</small>
+                      </p>
+                    </div>
+
+                    <button
+                      className="notifications-activity"
+                      type="button"
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        navigate("/app/notifications");
+                      }}
+                    >
+                      See all Activity
+                    </button>
+                  </motion.div>
+                ) : null}
+
+                {openDropdown === "account" ? (
+                  <motion.div
+                    key="account-popover"
+                    className="topbar-popover account-popover"
+                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                    transition={{ duration: 0.16, ease: "easeOut" }}
+                    role="menu"
+                    aria-label="Menu du profil"
+                  >
+                    <button
+                      className="account-menu-item"
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        navigate("/app/profile");
+                      }}
+                    >
+                      <Icon name="edit" size={16} />
+                      Edit Profile
+                    </button>
+                    <button
+                      className="account-menu-item"
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        toggleTheme();
+                        setOpenDropdown(null);
+                      }}
+                    >
+                      <Icon name="moon" size={16} />
+                      Toggle Theme
+                    </button>
+                    <button
+                      className="account-menu-item"
+                      type="button"
+                      role="menuitem"
+                      onClick={() => setOpenDropdown(null)}
+                    >
+                      <Icon name="alert" size={16} />
+                      About
+                    </button>
+                    <button
+                      className="account-menu-item"
+                      type="button"
+                      role="menuitem"
+                      onClick={() => setOpenDropdown(null)}
+                    >
+                      <Icon name="phoneOff" size={16} />
+                      Frappe Support
+                    </button>
+                    <button
+                      className="account-menu-item"
+                      type="button"
+                      role="menuitem"
+                      onClick={() => setOpenDropdown(null)}
+                    >
+                      <Icon name="refresh" size={16} />
+                      Reset Desktop Layout
+                    </button>
+                    <button
+                      className="account-menu-item"
+                      type="button"
+                      role="menuitem"
+                      onClick={handleLogout}
+                    >
+                      <Icon name="logOut" size={16} />
+                      Logout
+                    </button>
+                    <button
+                      className="account-menu-item"
+                      type="button"
+                      role="menuitem"
+                      onClick={() => setOpenDropdown(null)}
+                    >
+                      <Icon name="file" size={16} />
+                      Manage Billing
+                    </button>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </div>
           </header>
 
