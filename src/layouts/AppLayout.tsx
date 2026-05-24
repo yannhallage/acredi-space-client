@@ -1,8 +1,9 @@
+import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth, useWorkspace } from "../shared/context";
 import { useTheme } from "../shared/theme";
 import { AcrediLockup, Avatar, Icon, type IconName } from "../shared/ui";
-import { useState } from "react";
 import ModalSetting from "../shared/others/ModalSetting";
 
 const pageMeta: Record<string, { title: string; crumb: string }> = {
@@ -67,7 +68,6 @@ export function AppLayout() {
     { to: "/app/admin", icon: "users", label: "Utilisateurs" },
     { to: "/app/admin", icon: "notes", label: "Notes" },
     // { to: '/app/notifications', icon: 'bell', label: 'Notifications', count: counts.notifications, accent: true },
-    { to: "", icon: "settings", label: "Parametres" },
   ];
 
   const metaKey =
@@ -82,138 +82,140 @@ export function AppLayout() {
     "/app/calendar",
   ].some((path) => location.pathname.startsWith(path));
   return (
-    <div className="app-layout">
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <AcrediLockup size={22} fontSize={16} />
-          <button
-            className="icon-button"
-            type="button"
-            aria-label="Changer espace"
-          >
-            <Icon name="chevDown" size={14} />
-          </button>
-        </div>
-
-        <nav className="primary-nav" aria-label="Navigation principale">
-          {navItems.map((item) => (
-            // <NavLink key={item.to} className="nav-link" to={item.to}>
-            //   <Icon name={item.icon} size={18} />
-            //   <span>{item.label}</span>
-            //   {item.count !== undefined ? (
-            //     <small
-            //       className={
-            //         item.accent ? "nav-count nav-count-accent" : "nav-count"
-            //       }
-            //     >
-            //       {item.count}
-            //     </small>
-            //   ) : null}
-            // </NavLink>
-
-            <NavLink
-              key={item.to}
-              className="nav-link"
-              to={item.label === "Parametres" ? "#" : item.to}
-              onClick={(e) => {
-                if (item.label === "Parametres") {
-                  e.preventDefault();
-                  setOpenSetting(true);
-                }
-              }}
-            >
-              <Icon name={item.icon} size={18} />
-              <span>{item.label}</span>
-              {item.count !== undefined ? (
-                <small
-                  className={
-                    item.accent ? "nav-count nav-count-accent" : "nav-count"
-                  }
-                >
-                  {item.count}
-                </small>
-              ) : null}
-            </NavLink>
-          ))}
-
-          {openSetting && (
-            <ModalSetting onClose={() => setOpenSetting(false)} />
-          )}
-        </nav>
-
-        <div className="workspace-list">
-          <div className="eyebrow-row">
-            <span>Equipes</span>
-            {/* <span>Espaces</span> */}
-            <Icon name="plus" size={12} />
-          </div>
-          {workspaces.map((workspace) => (
+    <>
+      <div className="app-layout">
+        <aside className="sidebar">
+          <div className="sidebar-brand">
+            <AcrediLockup size={22} fontSize={16} />
             <button
-              key={workspace.id}
-              className={
-                workspace.id === activeWorkspace.id
-                  ? "workspace active"
-                  : "workspace"
-              }
+              className="icon-button"
               type="button"
-              onClick={() => {
-                setActiveWorkspaceId(workspace.id);
-                navigate(
-                  `/app/chat/${workspaceChannel[workspace.id] ?? "general"}`,
-                );
-              }}
+              aria-label="Changer espace"
             >
-              <span style={{ background: workspace.color }} />
-              {workspace.name}
+              <Icon name="chevDown" size={14} />
             </button>
-          ))}
-        </div>
-      </aside>
-
-      <div className="app-main">
-        <header className="topbar">
-          <div className="topbar-title">
-            <span>{meta.crumb}</span>
-            <strong>{meta.title}</strong>
           </div>
-          {/* <label className="search-box">
+
+          <nav className="primary-nav" aria-label="Navigation principale">
+            {navItems.map((item) => (
+              <NavLink
+                key={`${item.to}-${item.label}`}
+                className="nav-link"
+                to={item.to}
+              >
+                <Icon name={item.icon} size={18} />
+                <span>{item.label}</span>
+                {item.count !== undefined ? (
+                  <small
+                    className={
+                      item.accent ? "nav-count nav-count-accent" : "nav-count"
+                    }
+                  >
+                    {item.count}
+                  </small>
+                ) : null}
+              </NavLink>
+            ))}
+
+            <button
+              className={openSetting ? "nav-link active" : "nav-link"}
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={openSetting}
+              onClick={() => setOpenSetting(true)}
+            >
+              <Icon name="settings" size={18} />
+              <span>Parametres</span>
+            </button>
+          </nav>
+
+          <div className="workspace-list">
+            <div className="eyebrow-row">
+              <span>Equipes</span>
+              {/* <span>Espaces</span> */}
+              <Icon name="plus" size={12} />
+            </div>
+            {workspaces.map((workspace) => (
+              <button
+                key={workspace.id}
+                className={
+                  workspace.id === activeWorkspace.id
+                    ? "workspace active"
+                    : "workspace"
+                }
+                type="button"
+                onClick={() => {
+                  setActiveWorkspaceId(workspace.id);
+                  navigate(
+                    `/app/chat/${workspaceChannel[workspace.id] ?? "general"}`,
+                  );
+                }}
+              >
+                <span style={{ background: workspace.color }} />
+                {workspace.name}
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        <div className="app-main">
+          <header className="topbar">
+            <div className="topbar-title">
+              <span>{meta.crumb}</span>
+              <strong>{meta.title}</strong>
+            </div>
+            {/* <label className="search-box">
             <Icon name="search" size={16} />
             <input placeholder="Rechercher fichier, message, personne..." />
             <kbd>Ctrl K</kbd>
           </label> */}
-          <div className="topbar-actions">
-            {/* <NavLink className="button ghost" to="/preview">
+            <div className="topbar-actions">
+              {/* <NavLink className="button ghost" to="/preview">
               <Icon name="eye" size={15} />
               Preview
             </NavLink> */}
-            {/* <button className="button primary" type="button">
+              {/* <button className="button primary" type="button">
               <Icon name="plus" size={15} />
               Nouveau
             </button> */}
-            <button
-              className="icon-button"
-              type="button"
-              onClick={toggleTheme}
-              aria-label="Changer le theme"
-            >
-              <Icon name={dark ? "sun" : "moon"} size={18} />
-            </button>
-            <NavLink
-              className="icon-button notification-button"
-              to="/app/notifications"
-              aria-label="Notifications"
-            >
-              <Icon name="bell" size={18} />
-              {counts.notifications > 0 ? <span /> : null}
-            </NavLink>
-            <Avatar name={user.name} size={32} presence={user.presence} />
-          </div>
-        </header>
+              <button
+                className="icon-button"
+                type="button"
+                onClick={toggleTheme}
+                aria-label="Changer le theme"
+              >
+                <Icon name={dark ? "sun" : "moon"} size={18} />
+              </button>
+              <NavLink
+                className="icon-button notification-button"
+                to="/app/notifications"
+                aria-label="Notifications"
+              >
+                <Icon name="bell" size={18} />
+                {counts.notifications > 0 ? <span /> : null}
+              </NavLink>
+              <Avatar name={user.name} size={32} presence={user.presence} />
+            </div>
+          </header>
 
-        <main className={fullBleedContent ? "content content-full" : "content"}>
-          <Outlet />
-        </main>
+          <main
+            className={fullBleedContent ? "content content-full" : "content"}
+          >
+            <Outlet />
+          </main>
+        </div>
       </div>
-    </div>
+
+      <AnimatePresence>
+        {openSetting ? (
+          <ModalSetting
+            userName={user.name}
+            userEmail={user.email}
+            workspaceName={activeWorkspace.name}
+            onClose={() => setOpenSetting(false)}
+          />
+        ) : null}
+      </AnimatePresence>
+    </>
   );
 }
