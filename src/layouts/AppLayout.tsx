@@ -49,7 +49,7 @@ export function AppLayout() {
 
   const metaKey = Object.keys(pageMeta).find((path) => location.pathname.startsWith(path)) ?? '/app/dashboard';
   const meta = pageMeta[metaKey];
-  const fullBleedContent = ['/app/chat', '/app/dm', '/app/files', '/app/meeting'].some((path) =>
+  const fullBleedContent = ['/app/chat', '/app/dm', '/app/files', '/app/meeting', '/app/calendar'].some((path) =>
     location.pathname.startsWith(path)
   );
 
