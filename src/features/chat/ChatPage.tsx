@@ -1,6 +1,7 @@
 import { NavLink, useParams } from 'react-router-dom';
-import { mockApi, useMockQuery } from '../../shared/api';
+import { mockApi } from '../../shared/api/mockApi';
 import { files, users } from '../../shared/api/mockData';
+import { useMockQuery } from '../../shared/api/useMockQuery';
 import { useAuth } from '../../shared/context';
 import type { Message } from '../../shared/types';
 import { Avatar, EmptyState, FileIcon, Icon, LoadingState } from '../../shared/ui';

@@ -8,6 +8,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('mohamed@acredispace.local');
   const [password, setPassword] = useState('demo-acredi');
   const [submitting, setSubmitting] = useState(false);
+  const [Message, setMessage] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -17,14 +18,38 @@ export function LoginPage() {
     return <Navigate to={redirectTo} replace />;
   }
 
+  // async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  //   event.preventDefault();
+  //   setSubmitting(true);
+  //   const response = await login(email, password);
+  //    navigate('/verify-otp');
+  //   setSubmitting(false);
+  //   navigate(redirectTo, { replace: true });
+  // }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitting(true);
-    await login(email, password);
-    setSubmitting(false);
-    navigate(redirectTo, { replace: true });
-  }
 
+    try {
+      setSubmitting(true);
+
+      const response = await login(email, password);
+
+      // exemple :
+      // response.data.challengeId
+      // response.data.email
+
+      navigate("/verify-otp");
+    } catch (error: any) {
+      console.error(error);
+      setMessage(error?.message || "Connexion échouée");
+      // ici toast / notification
+      // toast.error(error?.response?.data?.message || "Connexion échouée");
+
+    } finally {
+      setSubmitting(false);
+    }
+  }
   return (
     <div className="login-card">
       <div className="login-mobile-brand">
@@ -58,6 +83,7 @@ export function LoginPage() {
           </label>
           <Link to="/login">Mot de passe oublie ?</Link>
         </div>
+        {Message && <p className="error text-red-700">{Message}</p>}
         <button className="button primary button-wide" type="submit" disabled={submitting || loading}>
           {submitting ? 'Connexion...' : 'Entrer dans Acredi Space'}
           <Icon name="arrowRight" size={16} />

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { mockApi, useMockQuery } from '../../shared/api';
+; import { mockApi } from '../../shared/api/mockApi';
+import { useMockQuery } from '../../shared/api/useMockQuery';
 import { users } from '../../shared/api/mockData';
 import type { AppNotification } from '../../shared/types';
 import { Avatar, Card, Icon, type IconName, LoadingState } from '../../shared/ui';
