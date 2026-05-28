@@ -1,6 +1,12 @@
 export type Presence = 'online' | 'busy' | 'dnd' | 'offline';
 
-export type AdminRole = 'owner' | 'admin' | 'member' | 'guest';
+export type AdminRole =
+  | 'admin'
+  | 'manager'
+  | 'collaborator'
+  | 'owner'
+  | 'member'
+  | 'guest';
 
 export interface User {
   id: string;

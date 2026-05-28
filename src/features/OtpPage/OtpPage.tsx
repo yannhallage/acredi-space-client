@@ -36,16 +36,16 @@ export function OtpPage() {
   };
 
   const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
+    event: React.KeyboardEvent<HTMLInputElement>,
     index: number
   ) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
+    if (event.key === "Backspace" && !otp[index] && index > 0) {
       inputsRef.current[index - 1]?.focus();
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
 
     try {
       setSubmitting(true);
@@ -61,9 +61,9 @@ export function OtpPage() {
       await verifyOtp(code);
 
       navigate("/app/dashboard", { replace: true });
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      setMessage(error?.message || "Code OTP invalide ou expiré.");
+      setMessage(error instanceof Error ? error.message : "Code OTP invalide ou expire.");
     } finally {
       setSubmitting(false);
     }
@@ -74,10 +74,10 @@ export function OtpPage() {
       <section className="auth-panel">
         <div className="login-card">
           <div>
-            <span className="eyebrow">Vérification</span>
+            <span className="eyebrow">Verification</span>
             <h1>Entrez le code OTP</h1>
             <p className="muted">
-              Un code à 6 chiffres a été envoyé à votre adresse email.
+              Un code a 6 chiffres a ete envoye a votre adresse email.
             </p>
           </div>
 
@@ -95,31 +95,31 @@ export function OtpPage() {
                   maxLength={1}
                   value={digit}
                   disabled={submitting || loading}
-                  onChange={(e) => handleChange(e.target.value, index)}
-                  onKeyDown={(e) => handleKeyDown(e, index)}
+                  onChange={(event) => handleChange(event.target.value, index)}
+                  onKeyDown={(event) => handleKeyDown(event, index)}
                 />
               ))}
             </div>
 
-            {message && <p className="auth-error">{message}</p>}
+            {message && <p className="auth-error text-red-500 text-sm">{message}</p>}
 
             <button
               className="button primary button-wide"
               type="submit"
               disabled={submitting || loading || otp.some((digit) => !digit)}
             >
-              {submitting || loading ? "Vérification..." : "Vérifier le code"}
+              {submitting || loading ? "Verification..." : "Verifier le code"}
             </button>
 
             <div className="login-row">
-              <span className="muted">Code non reçu ?</span>
+              <span className="muted">Code non recu ?</span>
               <button type="button" className="link-button">
                 Renvoyer le code
               </button>
             </div>
 
             <p className="login-footnote">
-              Pour votre sécurité, ce code expire après quelques minutes.
+              Pour votre securite, ce code expire apres quelques minutes.
             </p>
           </form>
         </div>

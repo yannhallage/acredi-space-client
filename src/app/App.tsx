@@ -11,6 +11,7 @@ import { NotesPage } from '../features/notes/NotesPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { PreviewPage } from '../features/preview/PreviewPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
+import { TeamsPage } from '../features/teams/TeamsPage';
 import { UserDetailPage } from '../features/users/UserDetailPage';
 import { UsersPage } from '../features/users/UsersPage';
 import { OtpPage } from '../features/OtpPage/OtpPage';
@@ -46,6 +47,7 @@ export default function App() {
                   <Route path="meeting/:meetingId" element={<MeetingPage />} />
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="admin" element={<AdminPage />} />
+                  <Route path="teams" element={<TeamsPage />} />
                   <Route path="users" element={<UsersPage />} />
                   <Route path="users/:userId" element={<UserDetailPage />} />
                   <Route path="notes" element={<NotesPage />} />
