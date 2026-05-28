@@ -59,7 +59,7 @@ export function DashboardPage() {
       <header className="page-header">
         <div>
           <p className="eyebrow">Samedi 23 mai - 09:42</p>
-          <h1>Bonjour {user?.name.split(' ')[0] ?? 'Mohamed'}.</h1>
+          <h1>Bonjour {user?.name?.split(' ')[0] ?? 'Mohamed'}.</h1>
           <p>Vous avez {data.upcomingMeetings.length} reunions et 8 nouveaux messages aujourd hui.</p>
         </div>
         <Link className="button ghost" to="/app/meeting/meet-daily">
@@ -96,16 +96,16 @@ export function DashboardPage() {
 
       <section className="dashboard-grid">
         <Card title="Activite recente">
-          <ul className="feed-list">
+          <ul className="feed-list dashboard-feed-list">
             {data.recentActivity.map((activity) => {
               const actor = users.find((item) => item.id === activity.actorId) ?? users[0];
               return (
                 <li key={activity.id}>
                   <Avatar name={actor.name} size={30} presence={actor.presence} />
-                  <span>
+                  <span className="dashboard-feed-copy">
                     <strong>{actor.name}</strong> {activity.verb} <b>{activity.target}</b>
                   </span>
-                  <small>{activity.when}</small>
+                  <small className="dashboard-row-meta">{activity.when}</small>
                 </li>
               );
             })}
@@ -137,24 +137,24 @@ export function DashboardPage() {
             </Link>
           }
         >
-          <ul className="file-row-list">
+          <ul className="file-row-list dashboard-file-list">
             {visibleFiles.map((file) => (
               <li key={file.id}>
                 <FileIcon ext={file.ext} color={file.color} size={30} />
-                <span>{file.name}</span>
-                <small>{file.size}</small>
-                <small>{file.modifiedLabel}</small>
+                <span className="dashboard-file-name">{file.name}</span>
+                <small className="dashboard-file-size">{file.size}</small>
+                <small className="dashboard-file-date">{file.modifiedLabel}</small>
               </li>
             ))}
           </ul>
         </Card>
 
         <Card title="Equipe en ligne" action={<span className="mono-muted">{onlineUsers.length} / {users.length}</span>}>
-          <ul className="people-list">
+          <ul className="people-list dashboard-people-list">
             {users.slice(1).map((person) => (
               <li key={person.id}>
                 <Avatar name={person.name} size={32} presence={person.presence} />
-                <span>
+                <span className="dashboard-person-copy">
                   <strong>{person.name}</strong>
                   <small>{person.status}</small>
                 </span>

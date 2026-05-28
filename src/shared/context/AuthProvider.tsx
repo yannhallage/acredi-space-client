@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -7,20 +8,45 @@ import {
   type ReactNode,
 } from "react";
 
-import { api } from "../api/api";
+import {
+  authService,
+  buildOtpSession,
+  clearAuthSession,
+  getLoginAuthResponse,
+  getOtpSession,
+  getStoredPermissions,
+  getStoredUser,
+  persistAuthSession,
+  persistOtpSession,
+  unwrapApiResponse,
+} from "../api/auth";
+import type {
+  AuthPermissions,
+  AuthResponse,
+  OtpSession,
+  PersistAuthSessionOptions,
+} from "../api/auth";
 import type { User } from "../types";
 
-interface OtpSession {
-  email: string;
-  challengeId?: string;
-}
+type LoginResult =
+  | { status: "authenticated"; user: User }
+  | { otpSession: OtpSession; status: "otp" };
 
 interface AuthContextValue {
   user: User | null;
+  permissions: AuthPermissions | null;
   loading: boolean;
   isAuthenticated: boolean;
 
-  login: (email: string, password: string) => Promise<OtpSession>;
+  completeAuthSession: (
+    response: AuthResponse,
+    options?: PersistAuthSessionOptions
+  ) => User;
+  login: (
+    email: string,
+    password: string,
+    options?: { trustDevice?: boolean }
+  ) => Promise<LoginResult>;
   verifyOtp: (code: string) => Promise<void>;
   logout: () => void;
 }
@@ -29,46 +55,76 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [permissions, setPermissions] = useState<AuthPermissions | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const session = localStorage.getItem("acredi-session");
+    const storedUser = getStoredUser();
 
-    if (session !== "active") {
+    if (session !== "active" || !storedUser) {
       setLoading(false);
       return;
     }
 
-    api
-      .getCurrentUser()
-      .then(setUser)
-      .catch(() => {
-        localStorage.removeItem("acredi-session");
-        localStorage.removeItem("otp-session");
-      })
-      .finally(() => setLoading(false));
+    try {
+      setUser(storedUser);
+      setPermissions(getStoredPermissions());
+    } catch {
+      clearAuthSession();
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const completeAuthSession = useCallback((
+    response: AuthResponse,
+    options?: PersistAuthSessionOptions
+  ) => {
+    const authenticatedUser = persistAuthSession(response, options);
+    setUser(authenticatedUser);
+    setPermissions(response.permissions ?? getStoredPermissions());
+
+    return authenticatedUser;
   }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
+      permissions,
       loading,
       isAuthenticated: Boolean(user),
+      completeAuthSession,
 
-      login: async (email: string, password: string) => {
+      login: async (email: string, password: string, options = {}) => {
         setLoading(true);
 
         try {
-          const response = await api.login(email, password);
+          const response = unwrapApiResponse(
+            await authService.login({
+              email,
+              password,
+              useTrustedDevice: options.trustDevice,
+            })
+          );
+          const authResponse = getLoginAuthResponse(response);
 
-          const otpSession: OtpSession = {
-            email,
-            challengeId: response.otpId,
+          if (authResponse) {
+            const authenticatedUser = completeAuthSession(authResponse, {
+              persistTrustedDevice: options.trustDevice,
+              trustedDeviceEmail: email,
+            });
+
+            return { status: "authenticated", user: authenticatedUser };
+          }
+
+          const otpSession = {
+            ...buildOtpSession(response, email),
+            trustDevice: options.trustDevice,
           };
+          persistOtpSession(otpSession);
 
-          localStorage.setItem("otp-session", JSON.stringify(otpSession));
-
-          return otpSession;
+          return { otpSession, status: "otp" };
         } finally {
           setLoading(false);
         }
@@ -78,37 +134,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(true);
 
         try {
-          const otpSessionRaw = localStorage.getItem("otp-session");
+          const otpSession = getOtpSession();
 
-          if (!otpSessionRaw) {
+          if (!otpSession) {
             throw new Error("Session OTP introuvable");
           }
 
-          const otpSession: OtpSession = JSON.parse(otpSessionRaw);
+          const response = unwrapApiResponse(
+            await authService.verifyOtp({
+              challengeId: otpSession.challengeId,
+              code,
+              email: otpSession.email,
+              otpId: otpSession.challengeId,
+            })
+          );
 
-          if (!otpSession.challengeId) {
-            throw new Error("Identifiant OTP introuvable");
-          }
-
-          const response = await api.verifyOtp(otpSession.challengeId, code);
-
-          localStorage.setItem("accessToken", response.accessToken);
-          localStorage.setItem("acredi-session", "active");
-          localStorage.removeItem("otp-session");
-
-          setUser(response.user);
+          completeAuthSession(response, {
+            persistTrustedDevice: otpSession.trustDevice,
+            trustedDeviceEmail: otpSession.email,
+          });
         } finally {
           setLoading(false);
         }
       },
 
       logout: () => {
-        localStorage.removeItem("acredi-session");
-        localStorage.removeItem("otp-session");
+        clearAuthSession();
         setUser(null);
+        setPermissions(null);
       },
     }),
-    [loading, user]
+    [completeAuthSession, loading, permissions, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

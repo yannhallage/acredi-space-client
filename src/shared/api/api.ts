@@ -1,71 +1,32 @@
-const API_URL = 'http://localhost:8080/api';
+import { authService, normalizeAuthUser, unwrapApiResponse } from "./auth";
+import type { AuthResponse, LoginResponse } from "./auth";
+import type { User } from "../types";
 
 export const api = {
+  async getCurrentUser(): Promise<User> {
+    const storedUser = localStorage.getItem("acredi-user");
 
-  async login(email: string, password: string) {
-
-    const response = await fetch(`${API_URL}/auth/login`, {
-
-      method: 'POST',
-
-      headers: {
-        'Content-Type': 'application/json'
-      },
-
-      body: JSON.stringify({
-        email,
-        password
-      })
-
-    });
-
-    if (!response.ok) {
-      throw new Error('Email ou mot de passe incorrect');
+    if (!storedUser) {
+      throw new Error("Session utilisateur introuvable");
     }
 
-    return response.json();
+    return normalizeAuthUser(JSON.parse(storedUser));
   },
 
-  async verifyOtp(otpId: string, code: string) {
-
-    const response = await fetch(`${API_URL}/auth/verify-otp`, {
-
-      method: 'POST',
-
-      headers: {
-        'Content-Type': 'application/json'
-      },
-
-      body: JSON.stringify({
-        otpId,
-        code
-      })
-
-    });
-
-    if (!response.ok) {
-      throw new Error('Code OTP invalide');
-    }
-
-    return response.json();
+  async login(email: string, password: string): Promise<LoginResponse> {
+    return unwrapApiResponse(await authService.login({ email, password }));
   },
 
-  async getCurrentUser() {
-
-    const token = localStorage.getItem('accessToken');
-
-    const response = await fetch(`${API_URL}/auth/me`, {
-
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-
-    });
-
-    if (!response.ok) {
-      throw new Error('Non authentifié');
-    }
-
-    return response.json();
-  }
+  async verifyOtp(challengeId: string, code: string): Promise<AuthResponse> {
+    return unwrapApiResponse(
+      await authService.verifyOtp({
+        challengeId,
+        code,
+        otpId: challengeId,
+      })
+    );
+  },
 };
+
+export * from "./auth";
+export * from "./http";

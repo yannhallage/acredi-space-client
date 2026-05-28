@@ -1,7 +1,7 @@
 import type { Presence } from '../types';
 
 interface AvatarProps {
-  name: string;
+  name?: string | null;
   size?: number;
   presence?: Presence;
   ring?: string;
@@ -18,8 +18,14 @@ const palette = [
   { bg: '#3F6B3F', fg: '#C7F0C7' }
 ];
 
-function initialsFor(name: string) {
-  return name
+function normalizeName(name: string | null | undefined) {
+  return name?.trim() || 'Utilisateur';
+}
+
+function initialsFor(name: string | null | undefined) {
+  const safeName = normalizeName(name);
+
+  return safeName
     .split(' ')
     .filter(Boolean)
     .map((part) => part[0])
@@ -28,10 +34,11 @@ function initialsFor(name: string) {
     .toUpperCase();
 }
 
-function colorFor(name: string) {
+function colorFor(name: string | null | undefined) {
+  const safeName = normalizeName(name);
   let hash = 0;
-  for (let i = 0; i < name.length; i += 1) {
-    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < safeName.length; i += 1) {
+    hash = (hash * 31 + safeName.charCodeAt(i)) >>> 0;
   }
   return palette[hash % palette.length];
 }

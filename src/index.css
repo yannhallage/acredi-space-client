@@ -1206,6 +1206,70 @@ a {
   font-size: 14px;
 }
 
+.dashboard-feed-list li,
+.dashboard-file-list li,
+.dashboard-people-list li {
+  display: grid;
+  align-items: center;
+  column-gap: 12px;
+}
+
+.dashboard-feed-list li {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.dashboard-file-list li {
+  grid-template-columns: auto minmax(0, 1fr) 64px 76px;
+}
+
+.dashboard-people-list li {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.dashboard-feed-list .avatar,
+.dashboard-people-list .avatar,
+.dashboard-file-list .file-icon {
+  flex: none;
+}
+
+.dashboard-file-list .file-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-feed-copy,
+.dashboard-file-name,
+.dashboard-person-copy {
+  min-width: 0;
+}
+
+.dashboard-feed-copy {
+  display: block;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.dashboard-file-name,
+.dashboard-person-copy strong,
+.dashboard-person-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-file-name {
+  font-size: 14px;
+}
+
+.dashboard-row-meta,
+.dashboard-file-size,
+.dashboard-file-date {
+  justify-self: end;
+  white-space: nowrap;
+}
+
 .file-icon {
   display: inline-flex;
   align-items: center;
