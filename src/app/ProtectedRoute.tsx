@@ -13,6 +13,13 @@ export function ProtectedRoute() {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
+  
 
+  console.log({
+  isAuthenticated,
+  loading,
+});
   return <Outlet />;
+
+  
 }

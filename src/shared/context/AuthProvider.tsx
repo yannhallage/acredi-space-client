@@ -12,7 +12,7 @@ import type { User } from "../types";
 
 interface OtpSession {
   email: string;
-  challengeId?: string;
+  otpId: string;
 }
 
 interface AuthContextValue {
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           const otpSession: OtpSession = {
             email,
-            challengeId: response.otpId,
+            otpId: response.otpId,
           };
 
           localStorage.setItem("otp-session", JSON.stringify(otpSession));
@@ -86,15 +86,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           const otpSession: OtpSession = JSON.parse(otpSessionRaw);
 
-          if (!otpSession.challengeId) {
+          if (!otpSession.otpId) {
             throw new Error("Identifiant OTP introuvable");
           }
 
-          const response = await api.verifyOtp(otpSession.challengeId, code);
+          const response = await api.verifyOtp(otpSession.otpId, code);
 
           localStorage.setItem("accessToken", response.accessToken);
           localStorage.setItem("acredi-session", "active");
           localStorage.removeItem("otp-session");
+          localStorage.setItem("acredi-session", "active");
 
           setUser(response.user);
         } finally {

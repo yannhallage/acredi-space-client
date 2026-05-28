@@ -34,6 +34,7 @@ export function LoginPage() {
       setSubmitting(true);
 
       const response = await login(email, password);
+      console.log(response);
 
       // exemple :
       // response.data.challengeId

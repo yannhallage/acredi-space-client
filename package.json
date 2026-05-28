@@ -13,6 +13,7 @@
     "date-fns": "^4.3.0",
     "dayjs": "^1.11.20",
     "framer-motion": "^12.40.0",
+    "lucide-react": "^1.17.0",
     "react": "^19.2.6",
     "react-big-calendar": "^1.19.4",
     "react-dom": "^19.2.6",

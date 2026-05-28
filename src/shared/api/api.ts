@@ -29,24 +29,25 @@ export const api = {
   async verifyOtp(otpId: string, code: string) {
 
     const response = await fetch(`${API_URL}/auth/verify-otp`, {
-
+      
       method: 'POST',
 
       headers: {
         'Content-Type': 'application/json'
       },
-
+      
       body: JSON.stringify({
         otpId,
         code
       })
+      
 
     });
 
     if (!response.ok) {
       throw new Error('Code OTP invalide');
     }
-
+    console.log("VERIFY OTP RESPONSE:", response);
     return response.json();
   },
 
@@ -67,5 +68,20 @@ export const api = {
     }
 
     return response.json();
+  },
+  async getUsers() {
+    const token = localStorage.getItem("accessToken");
+
+    const response = await fetch(`${API_URL}/users`, {
+      headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error("Impossible de charger les utilisateurs");
   }
+  return response.json();
+}
+
+
 };
