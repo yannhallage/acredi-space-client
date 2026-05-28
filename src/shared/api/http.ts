@@ -1,3 +1,5 @@
+import { clearAuthSession } from "./auth/session";
+
 const DEFAULT_API_BASE_URL = "http://localhost:8080/api";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -47,6 +49,18 @@ function resolveUrl(path: string) {
 
 function getStoredToken() {
   return localStorage.getItem("accessToken");
+}
+
+function shouldForceLogout(status: number) {
+  return status === 401 || status === 403;
+}
+
+function forceFrontendLogout() {
+  clearAuthSession();
+
+  if (window.location.pathname !== "/login") {
+    window.location.replace("/login");
+  }
 }
 
 function isRawBody(body: unknown): body is BodyInit {
@@ -143,6 +157,10 @@ async function request<T>(path: string, options: HttpRequestOptions = {}) {
   const payload = await parseResponse(response);
 
   if (!response.ok) {
+    if (auth && shouldForceLogout(response.status)) {
+      forceFrontendLogout();
+    }
+
     throw new HttpError(
       response.status,
       getErrorMessage(response.status, payload),
