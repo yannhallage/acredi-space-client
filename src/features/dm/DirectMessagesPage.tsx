@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { mockApi, useMockQuery } from '../../shared/api';
+// import { mockApi, useMockQuery } from '../../shared/api';
+import { mockApi } from '../../shared/api/mockApi';
+import { useMockQuery } from '../../shared/api/useMockQuery';
 import { messages, users } from '../../shared/api/mockData';
 import { LoadingState } from '../../shared/ui';
 import { ConversationList } from './components/ConversationList';

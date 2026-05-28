@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { mockApi, useMockQuery } from '../../shared/api';
+import { mockApi, }from '../../shared/api/mockApi';
+  import {useMockQuery } from '../../shared/api/useMockQuery';
 import { users } from '../../shared/api/mockData';
 import type { FileItem } from '../../shared/types';
 import { Avatar, EmptyState, FileIcon, Icon, LoadingState } from '../../shared/ui';

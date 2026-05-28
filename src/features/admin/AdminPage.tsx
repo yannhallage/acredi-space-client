@@ -1,9 +1,12 @@
-import { mockApi, useMockQuery } from '../../shared/api';
+import {useMockQuery } from '../../shared/api/useMockQuery';
+import { mockApi } from '../../shared/api/mockApi';
 import { Avatar, Card, Icon, LoadingState } from '../../shared/ui';
 
 const roleLabels = {
-  owner: 'Proprietaire',
   admin: 'Admin',
+  manager: 'Manager',
+  collaborator: 'Collaborateur',
+  owner: 'Proprietaire',
   member: 'Membre',
   guest: 'Invite'
 };

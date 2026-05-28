@@ -1,5 +1,7 @@
 import { useParams } from 'react-router-dom';
-import { mockApi, useMockQuery } from '../../shared/api';
+
+import { mockApi } from '../../shared/api/mockApi';
+import { useMockQuery } from '../../shared/api/useMockQuery';
 import { messages, users } from '../../shared/api/mockData';
 import { Avatar, Icon, LoadingState } from '../../shared/ui';
 
