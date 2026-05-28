@@ -19,6 +19,18 @@ function statusLabel(status: string) {
   return 'Disponible';
 }
 
+function userRoleLabel(user: User) {
+  if (user.adminRole === 'admin' || user.adminRole === 'owner') {
+    return 'Admin';
+  }
+
+  if (user.adminRole === 'manager') {
+    return 'Manager';
+  }
+
+  return 'Collaborateur';
+}
+
 export function UserDetailPage() {
   const { userId } = useParams();
   const location = useLocation();
@@ -120,7 +132,7 @@ export function UserDetailPage() {
                 <strong>{team.name}</strong>
                 <small>{index === 0 ? '4 membres' : '8 membres'}</small>
               </div>
-              <b>{user.adminRole === 'admin' || user.adminRole === 'owner' ? 'Admin' : 'Membre'}</b>
+              <b>{userRoleLabel(user)}</b>
             </div>
           ))}
         </article>

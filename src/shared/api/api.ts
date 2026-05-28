@@ -30,3 +30,4 @@ export const api = {
 
 export * from "./auth";
 export * from "./http";
+export * from "./users";

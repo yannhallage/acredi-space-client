@@ -4,6 +4,7 @@ import type {
   AuthPermissions,
   AuthResponse,
   LoginRequest,
+  LoginResponse,
   OtpLoginResponse,
 } from "./types";
 

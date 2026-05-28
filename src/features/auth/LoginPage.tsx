@@ -12,8 +12,8 @@ import { AcrediLockup, Icon } from '../../shared/ui';
 export function LoginPage() {
   const { completeAuthSession, isAuthenticated, loading } = useAuth();
   const loginMutation = useLoginMutation();
-  const [email, setEmail] = useState('mohamed@acredispace.local');
-  const [password, setPassword] = useState('demo-acredi');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [trustDevice, setTrustDevice] = useState(true);
   const [message, setMessage] = useState('');
   const navigate = useNavigate();

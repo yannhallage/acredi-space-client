@@ -2,7 +2,14 @@ import type { AdminRole, Presence, User } from "../../types";
 import type { AuthUserPayload } from "./types";
 
 const presenceValues: Presence[] = ["online", "busy", "dnd", "offline"];
-const adminRoleValues: AdminRole[] = ["owner", "admin", "member", "guest"];
+const adminRoleValues: AdminRole[] = [
+  "admin",
+  "manager",
+  "collaborator",
+  "owner",
+  "member",
+  "guest",
+];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
@@ -25,9 +32,25 @@ function readPresence(value: unknown): Presence {
 }
 
 function readAdminRole(value: unknown): AdminRole {
-  return adminRoleValues.includes(value as AdminRole)
-    ? (value as AdminRole)
-    : "member";
+  const role = readString(value)?.toLowerCase();
+
+  if (!role) {
+    return "collaborator";
+  }
+
+  const exactMatch = adminRoleValues.find((item) => item === role);
+
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  if (role.includes("owner")) return "owner";
+  if (role.includes("admin")) return "admin";
+  if (role.includes("manager")) return "manager";
+  if (role.includes("collaborator")) return "collaborator";
+  if (role.includes("guest")) return "guest";
+
+  return "collaborator";
 }
 
 function buildName(payload: AuthUserPayload) {
@@ -58,6 +81,6 @@ export function normalizeAuthUser(value: unknown): User {
     team: readString(payload.team) ?? "Acredi Space",
     presence: readPresence(payload.presence),
     status: readString(payload.status) ?? "Disponible",
-    adminRole: readAdminRole(payload.adminRole),
+    adminRole: readAdminRole(payload.adminRole ?? payload.role),
   };
 }

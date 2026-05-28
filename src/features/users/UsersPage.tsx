@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { users as mockUsers } from '../../shared/api/mockData';
-import type { AdminRole, Presence, User } from '../../shared/types';
+import { useInviteUserMutation, useUsersQuery } from '../../shared/api/users';
+import { useAuth } from '../../shared/context';
+import type { AdminRole, User } from '../../shared/types';
 import { Icon, type IconName } from '../../shared/ui';
+import { NotUsers } from './components/NotUsers';
 
 const roleOptions: Array<{ value: AdminRole; label: string }> = [
-  { value: 'member', label: 'Sales User' },
   { value: 'admin', label: 'Admin' },
-  { value: 'guest', label: 'Guest' },
-  { value: 'owner', label: 'Owner' }
+  { value: 'manager', label: 'Manager' },
+  { value: 'collaborator', label: 'Collaborator' }
 ];
 const userSkeletons = ['user-skeleton-1', 'user-skeleton-2', 'user-skeleton-3', 'user-skeleton-4', 'user-skeleton-5'];
 
@@ -18,11 +19,11 @@ function roleLabel(user: User) {
     return 'Admin';
   }
 
-  if (user.team === 'Commercial') {
-    return 'Sales User';
+  if (user.adminRole === 'manager') {
+    return 'Manager';
   }
 
-  return user.adminRole === 'guest' ? 'Guest' : 'User';
+  return 'Collaborator';
 }
 
 function roleIcon(user: User): IconName {
@@ -39,14 +40,6 @@ function initialsFor(name: string) {
     .toUpperCase();
 }
 
-function presenceFor(role: AdminRole): Presence {
-  if (role === 'guest') {
-    return 'offline';
-  }
-
-  return 'online';
-}
-
 function UserRowSkeleton() {
   return (
     <article className="users-row users-row-skeleton" aria-hidden="true">
@@ -61,21 +54,56 @@ function UserRowSkeleton() {
   );
 }
 
+function hasPermission(
+  permissions: ReturnType<typeof useAuth>['permissions'],
+  codes: string[]
+) {
+  if (!permissions) {
+    return false;
+  }
+
+  const normalizedRole = (permissions.role ?? '').toUpperCase();
+
+  if (normalizedRole === 'ADMIN' || normalizedRole === 'OWNER') {
+    return true;
+  }
+
+  return (permissions.features ?? []).some((feature) =>
+    codes.includes(feature.code) || codes.includes(feature.name)
+  );
+}
+
+function hasAdminAccess(user: User | null) {
+  const role = (user?.role ?? '').toUpperCase();
+
+  return (
+    user?.adminRole === 'admin' ||
+    user?.adminRole === 'owner' ||
+    role === 'ADMIN' ||
+    role === 'OWNER'
+  );
+}
+
 export function UsersPage() {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [loading, setLoading] = useState(true);
+  const { loading: authLoading, permissions, user: currentUser } = useAuth();
+  const canViewUsers = hasAdminAccess(currentUser) || hasPermission(permissions, ['users.view_all', 'VIEW_ALL_USERS', 'users.manage_accounts', 'MANAGE_ACCOUNTS']);
+  const canInviteUsers = hasAdminAccess(currentUser) || hasPermission(permissions, ['users.invite_collaborators', 'INVITE_COLLABORATORS', 'users.create', 'CREATE_USERS', 'users.manage_accounts', 'MANAGE_ACCOUNTS']);
+  const usersQuery = useUsersQuery({ enabled: !authLoading && canViewUsers });
+  const inviteMutation = useInviteUserMutation();
   const [nameFilter, setNameFilter] = useState('');
   const [emailFilter, setEmailFilter] = useState('');
   const [sortAsc, setSortAsc] = useState(true);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<AdminRole>('member');
+  const [role, setRole] = useState<AdminRole>('collaborator');
+  const loading = authLoading || usersQuery.loading;
 
   const visibleUsers = useMemo(() => {
     const nameQuery = nameFilter.trim().toLowerCase();
     const emailQuery = emailFilter.trim().toLowerCase();
+    const users = usersQuery.data ?? [];
 
     return users
       .filter((user) => {
@@ -85,21 +113,19 @@ export function UsersPage() {
       })
       .slice()
       .sort((a, b) => (sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
-  }, [emailFilter, nameFilter, sortAsc, users]);
+  }, [emailFilter, nameFilter, sortAsc, usersQuery.data]);
 
-  useEffect(() => {
-    const timeout = window.setTimeout(() => setLoading(false), 520);
-    return () => window.clearTimeout(timeout);
-  }, []);
+  const hasFilters = nameFilter.trim().length > 0 || emailFilter.trim().length > 0;
 
   function closeInvite() {
     setIsInviteOpen(false);
+    inviteMutation.reset();
     setName('');
     setEmail('');
-    setRole('member');
+    setRole('collaborator');
   }
 
-  function inviteUser() {
+  async function inviteUser() {
     const nextName = name.trim();
     const nextEmail = email.trim();
 
@@ -107,19 +133,16 @@ export function UsersPage() {
       return;
     }
 
-    setUsers((current) => [
-      {
-        id: `u-invite-${Date.now()}`,
-        name: nextName,
-        email: nextEmail,
-        role: roleOptions.find((item) => item.value === role)?.label ?? 'User',
-        team: role === 'member' ? 'Commercial' : 'Direction',
-        presence: presenceFor(role),
-        status: 'Invitation envoyee',
-        adminRole: role
-      },
-      ...current
-    ]);
+    const [firstName, ...lastNameParts] = nextName.split(/\s+/);
+
+    await inviteMutation.mutateAsync({
+      email: nextEmail,
+      firstName,
+      lastName: lastNameParts.join(' '),
+      name: nextName,
+      role: role.toUpperCase()
+    });
+    await usersQuery.refetch();
     closeInvite();
   }
 
@@ -132,7 +155,19 @@ export function UsersPage() {
           <strong>Users View</strong>
           <Icon name="chevDown" size={14} />
         </div>
-        <button className="button primary notes-create-button" type="button" onClick={() => setIsInviteOpen(true)}>
+        <button
+          className="button primary notes-create-button"
+          type="button"
+          disabled={authLoading || !canInviteUsers}
+          onClick={() => {
+            if (!canInviteUsers) {
+              return;
+            }
+
+            inviteMutation.reset();
+            setIsInviteOpen(true);
+          }}
+        >
           <Icon name="plus" size={12} />
           Create
         </button>
@@ -154,11 +189,11 @@ export function UsersPage() {
             className="icon-button bordered"
             type="button"
             aria-label="Refresh users"
+            disabled={authLoading || !canViewUsers}
             onClick={() => {
               setNameFilter('');
               setEmailFilter('');
-              setLoading(true);
-              window.setTimeout(() => setLoading(false), 420);
+              usersQuery.refetch().catch(() => undefined);
             }}
           >
             <Icon name="refresh" size={14} />
@@ -177,7 +212,14 @@ export function UsersPage() {
         </div>
       </section>
 
-      <section className="users-list" aria-label="Users list">
+      <section
+        className={
+          !loading && visibleUsers.length === 0
+            ? 'users-list users-list-empty'
+            : 'users-list'
+        }
+        aria-label="Users list"
+      >
         {loading ? userSkeletons.map((item) => <UserRowSkeleton key={item} />) : visibleUsers.map((user) => (
           <motion.article
             className="users-row"
@@ -204,7 +246,6 @@ export function UsersPage() {
             <button className="users-role" type="button" onClick={(event) => event.stopPropagation()}>
               <Icon name={roleIcon(user)} size={15} />
               {roleLabel(user)}
-              {roleLabel(user) === 'Sales User' ? <Icon name="chevDown" size={13} /> : null}
             </button>
             <button
               className="icon-button users-more"
@@ -217,11 +258,14 @@ export function UsersPage() {
           </motion.article>
         ))}
         {!loading && visibleUsers.length === 0 ? (
-          <div className="notes-empty users-empty">
-            <Icon name="users" size={14} />
-            <strong>No users found</strong>
-            <span>Try another name or email filter.</span>
-          </div>
+          <NotUsers
+            hasFilters={hasFilters}
+            message={
+              canViewUsers
+                ? usersQuery.error?.message
+                : "Vous n'avez pas les droits necessaires pour afficher les utilisateurs."
+            }
+          />
         ) : null}
       </section>
 
@@ -246,7 +290,7 @@ export function UsersPage() {
             onMouseDown={(event) => event.stopPropagation()}
             onSubmit={(event) => {
               event.preventDefault();
-              inviteUser();
+              inviteUser().catch(() => undefined);
             }}
           >
             <header>
@@ -279,12 +323,20 @@ export function UsersPage() {
               </select>
             </label>
 
+            {inviteMutation.error ? (
+              <p className="auth-error text-red-500 text-sm">{inviteMutation.error.message}</p>
+            ) : null}
+
             <footer>
               <button className="button ghost" type="button" onClick={closeInvite}>
                 Cancel
               </button>
-              <button className="button primary notes-submit" type="submit" disabled={!name.trim() || !email.trim()}>
-                Invite
+              <button
+                className="button primary notes-submit"
+                type="submit"
+                disabled={!name.trim() || !email.trim() || inviteMutation.isPending}
+              >
+                {inviteMutation.isPending ? 'Invitation...' : 'Invite'}
               </button>
             </footer>
             </motion.form>

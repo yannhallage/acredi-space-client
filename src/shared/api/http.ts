@@ -83,9 +83,15 @@ function getErrorMessage(status: number, payload: unknown) {
     }
   }
 
-  return status === 401
-    ? "Session expiree. Veuillez vous reconnecter."
-    : "Une erreur est survenue pendant la requete.";
+  if (status === 401) {
+    return "Session expiree. Veuillez vous reconnecter.";
+  }
+
+  if (status === 403) {
+    return "Vous n'avez pas les droits necessaires pour cette action.";
+  }
+
+  return "Une erreur est survenue pendant la requete.";
 }
 
 async function parseResponse(response: Response) {
