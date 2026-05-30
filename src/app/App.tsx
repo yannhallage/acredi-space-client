@@ -20,6 +20,8 @@ import { AuthLayout } from '../layouts/AuthLayout';
 import { AuthProvider, WorkspaceProvider } from '../shared/context';
 import { ThemeProvider } from '../shared/theme';
 import { ProtectedRoute } from './ProtectedRoute';
+import { CreateTeamPage } from "../features/teams/CreateTeamPage";
+// import { InviteSetupPage } from './features/users/InviteSetupPage';
 
 export default function App() {
   return (
@@ -52,6 +54,7 @@ export default function App() {
                   <Route path="users/:userId" element={<UserDetailPage />} />
                   <Route path="notes" element={<NotesPage />} />
                   <Route path="notifications" element={<NotificationsPage />} />
+                  <Route path="/app/teams/create" element={<CreateTeamPage />} />
                 </Route>
               </Route>
               <Route path="/preview" element={<PreviewPage />} />

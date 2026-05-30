@@ -148,28 +148,29 @@ export function UsersPage() {
 
   return (
     <div className="page-stack users-page">
-      <div className="page-header compact">
-        <div>
-          <span className="eyebrow">Administration</span>
-          <h1>Utilisateurs</h1>
-          <p>Gérez les comptes, rôles et accès de votre application.</p>
-        </div>
-        <button
-          className="button primary notes-create-button"
-          type="button"
-          disabled={authLoading || !canInviteUsers}
-          onClick={() => {
-            if (!canInviteUsers) {
-              return;
-            }
+      <section className="notes-toolbar">
+        {/* <div className="page-header compact"> */}
+          <div className="notes-titlebar">
+            <span className="eyebrow">Administration</span>
+            <h1>Utilisateurs</h1>
+            <p>Gérez les comptes, rôles et accès de votre application.</p>
+          </div>
+          <button
+            className="button primary notes-create-button"
+            type="button"
+            disabled={authLoading || !canInviteUsers}
+            onClick={() => {
+              if (!canInviteUsers) {
+                return;
+              }
 
-            inviteMutation.reset();
-            setIsInviteOpen(true);
-          }}
-        >
-          <Icon name="plus" size={12} />
-          Create
-        </button>
+              inviteMutation.reset();
+              setIsInviteOpen(true);
+            }}
+          >
+            <Icon name="plus" size={12} />
+            Create
+          </button>
       </section>
 
       <section className="notes-filters" aria-label="Users filters">
@@ -280,64 +281,64 @@ export function UsersPage() {
             onMouseDown={closeInvite}
           >
             <motion.form
-            className="note-modal users-note-modal"
-            aria-label="Invite user"
-            initial={{ opacity: 0, y: 14, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            onMouseDown={(event) => event.stopPropagation()}
-            onSubmit={(event) => {
-              event.preventDefault();
-              inviteUser().catch(() => undefined);
-            }}
-          >
-            <header>
-              <h2>Invite user</h2>
-              <div>
-                <button className="icon-button" type="button" aria-label="Close invite user" onClick={closeInvite}>
-                  <Icon name="x" size={16} />
+              className="note-modal users-note-modal"
+              aria-label="Invite user"
+              initial={{ opacity: 0, y: 14, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              onMouseDown={(event) => event.stopPropagation()}
+              onSubmit={(event) => {
+                event.preventDefault();
+                inviteUser().catch(() => undefined);
+              }}
+            >
+              <header>
+                <h2>Invite user</h2>
+                <div>
+                  <button className="icon-button" type="button" aria-label="Close invite user" onClick={closeInvite}>
+                    <Icon name="x" size={16} />
+                  </button>
+                </div>
+              </header>
+
+              <label className="note-field">
+                <span>Name</span>
+                <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Full name" autoFocus />
+              </label>
+
+              <label className="note-field">
+                <span>Email</span>
+                <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@company.com" type="email" />
+              </label>
+
+              <label className="note-field">
+                <span>Role</span>
+                <select value={role} onChange={(event) => setRole(event.target.value as AdminRole)}>
+                  {roleOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {inviteMutation.error ? (
+                <p className="auth-error text-red-500 text-sm">{inviteMutation.error.message}</p>
+              ) : null}
+
+              <footer>
+                <button className="button ghost" type="button" onClick={closeInvite}>
+                  Cancel
                 </button>
-              </div>
-            ))}
-
-            <label className="note-field">
-              <span>Name</span>
-              <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Full name" autoFocus />
-            </label>
-
-            <label className="note-field">
-              <span>Email</span>
-              <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@company.com" type="email" />
-            </label>
-
-            <label className="note-field">
-              <span>Role</span>
-              <select value={role} onChange={(event) => setRole(event.target.value as AdminRole)}>
-                {roleOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {inviteMutation.error ? (
-              <p className="auth-error text-red-500 text-sm">{inviteMutation.error.message}</p>
-            ) : null}
-
-            <footer>
-              <button className="button ghost" type="button" onClick={closeInvite}>
-                Cancel
-              </button>
-              <button
-                className="button primary notes-submit"
-                type="submit"
-                disabled={!name.trim() || !email.trim() || inviteMutation.isPending}
-              >
-                {inviteMutation.isPending ? 'Invitation...' : 'Invite'}
-              </button>
-            </footer>
+                <button
+                  className="button primary notes-submit"
+                  type="submit"
+                  disabled={!name.trim() || !email.trim() || inviteMutation.isPending}
+                >
+                  {inviteMutation.isPending ? 'Invitation...' : 'Invite'}
+                </button>
+              </footer>
             </motion.form>
           </motion.div>
         ) : null}

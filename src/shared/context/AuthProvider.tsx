@@ -28,16 +28,9 @@ import type {
 } from "../api/auth";
 import type { User } from "../types";
 
-<<<<<<< HEAD
-interface OtpSession {
-  email: string;
-  otpId: string;
-}
-=======
 type LoginResult =
   | { status: "authenticated"; user: User }
   | { otpSession: OtpSession; status: "otp" };
->>>>>>> origin/feature/ready
 
 interface AuthContextValue {
   user: User | null;
@@ -116,11 +109,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           );
           const authResponse = getLoginAuthResponse(response);
 
-<<<<<<< HEAD
-          const otpSession: OtpSession = {
-            email,
-            otpId: response.otpId,
-=======
           if (authResponse) {
             const authenticatedUser = completeAuthSession(authResponse, {
               persistTrustedDevice: options.trustDevice,
@@ -133,7 +121,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const otpSession = {
             ...buildOtpSession(response, email),
             trustDevice: options.trustDevice,
->>>>>>> origin/feature/ready
           };
           persistOtpSession(otpSession);
 
@@ -162,25 +149,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             })
           );
 
-<<<<<<< HEAD
-          if (!otpSession.otpId) {
-            throw new Error("Identifiant OTP introuvable");
-          }
-
-          const response = await api.verifyOtp(otpSession.otpId, code);
-
-          localStorage.setItem("accessToken", response.accessToken);
-          localStorage.setItem("acredi-session", "active");
-          localStorage.removeItem("otp-session");
-          localStorage.setItem("acredi-session", "active");
-
-          setUser(response.user);
-=======
           completeAuthSession(response, {
             persistTrustedDevice: otpSession.trustDevice,
             trustedDeviceEmail: otpSession.email,
           });
->>>>>>> origin/feature/ready
         } finally {
           setLoading(false);
         }

@@ -1,11 +1,9 @@
-export type UserRole = "ADMIN" | "MANAGER" | "USER";
-export type UserStatus = "ACTIVE" | "INACTIVE";
+export type RoleName = "ADMIN" | "MANAGER" | "USER";
 
-export interface AppUser {
-  id: string;
+export interface InviteUserRequest {
   firstName: string;
   lastName: string;
   email: string;
-  role: UserRole;
-  status: UserStatus;
+  roleName: RoleName;
+  profileId?: string;
 }

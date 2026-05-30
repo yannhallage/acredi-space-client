@@ -38,10 +38,6 @@ export function LoginPage() {
       const loginData = response.data;
       const authData = getLoginAuthResponse(loginData);
 
-<<<<<<< HEAD
-      const response = await login(email, password);
-      console.log(response);
-=======
       if (authData) {
         completeAuthSession(authData, {
           persistTrustedDevice: trustDevice,
@@ -50,7 +46,6 @@ export function LoginPage() {
         navigate(redirectTo, { replace: true });
         return;
       }
->>>>>>> origin/feature/ready
 
       const otpSession = { ...buildOtpSession(loginData, email), trustDevice };
       persistOtpSession(otpSession);
