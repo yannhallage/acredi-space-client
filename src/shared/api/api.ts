@@ -2,6 +2,14 @@ import { authService, normalizeAuthUser, unwrapApiResponse } from "./auth";
 import type { AuthResponse, LoginResponse } from "./auth";
 import type { User } from "../types";
 
+export type ApiResponse<TData = unknown> = {
+  data: TData;
+  message?: string;
+  status?: string;
+  success?: boolean;
+  timestamp?: string;
+};
+
 export const api = {
   async getCurrentUser(): Promise<User> {
     const storedUser = localStorage.getItem("acredi-user");
@@ -30,5 +38,3 @@ export const api = {
 
 export * from "./auth";
 export * from "./http";
-export * from "./teams";
-// export * from "./users";
