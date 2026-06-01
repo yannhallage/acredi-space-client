@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Icon } from "../../shared/ui";
 
 type CreateCalendarEventForm = {
-  endsAt: string;
-  startsAt: string;
   title: string;
+  startsAt: string;
+  endsAt: string;
 };
 
 type CreateCalendarEventModalProps = {
@@ -14,9 +15,9 @@ type CreateCalendarEventModalProps = {
 };
 
 const initialForm: CreateCalendarEventForm = {
-  endsAt: "",
-  startsAt: "",
   title: "",
+  startsAt: "",
+  endsAt: "",
 };
 
 export function CreateCalendarEventModal({
@@ -26,8 +27,6 @@ export function CreateCalendarEventModal({
 }: CreateCalendarEventModalProps) {
   const [form, setForm] = useState<CreateCalendarEventForm>(initialForm);
 
-  if (!open) return null;
-
   const canSubmit =
     form.title.trim().length >= 2 &&
     Boolean(form.startsAt) &&
@@ -36,7 +35,7 @@ export function CreateCalendarEventModal({
 
   function updateField<K extends keyof CreateCalendarEventForm>(
     key: K,
-    value: CreateCalendarEventForm[K]
+    value: CreateCalendarEventForm[K],
   ) {
     setForm((current) => ({
       ...current,
@@ -55,79 +54,106 @@ export function CreateCalendarEventModal({
     if (!canSubmit) return;
 
     onCreate({
-      endsAt: form.endsAt,
-      startsAt: form.startsAt,
       title: form.title.trim(),
+      startsAt: form.startsAt,
+      endsAt: form.endsAt,
     });
 
     setForm(initialForm);
+    onClose();
   }
 
   return (
-    <div className="note-modal-overlay" onClick={handleClose}>
-      <section
-        className="note-modal calendar-note-modal"
-        role="dialog"
-        aria-modal="true"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <header>
-          <div>
-            <h2>Creer un evenement</h2>
-            <span>Calendrier</span>
-          </div>
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className="note-modal-overlay"
+          role="presentation"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.16 }}
+          onMouseDown={handleClose}
+        >
+          <section
+            className="note-modal calendar-note-modal"
+            role="dialog"
+            aria-modal="true"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header>
+              <div>
+                <h2>Créer un événement</h2>
+                <span>Calendrier</span>
+              </div>
 
-          <button className="icon-button" type="button" onClick={handleClose}>
-            <Icon name="x" size={16} />
-          </button>
-        </header>
+              <button
+                className="icon-button"
+                type="button"
+                onClick={handleClose}
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </header>
 
-        <form className="calendar-event-form" onSubmit={handleSubmit}>
-          <label className="calendar-field">
-            <span>Titre</span>
-            <input
-              value={form.title}
-              onChange={(event) => updateField("title", event.target.value)}
-              placeholder="Ex: Reunion produit"
-              maxLength={180}
-              autoFocus
-            />
-          </label>
+            <form className="calendar-event-form" onSubmit={handleSubmit}>
+              <label className="calendar-field">
+                <span>Titre</span>
+                <input
+                  value={form.title}
+                  onChange={(event) => updateField("title", event.target.value)}
+                  placeholder="Ex: Réunion produit"
+                  maxLength={180}
+                  autoFocus
+                />
+              </label>
 
-          <div className="calendar-form-grid">
-            <label className="calendar-field">
-              <span>Debut</span>
-              <input
-                type="datetime-local"
-                value={form.startsAt}
-                onChange={(event) =>
-                  updateField("startsAt", event.target.value)
-                }
-              />
-            </label>
+              <div className="calendar-form-grid">
+                <label className="calendar-field">
+                  <span>Début</span>
+                  <input
+                    type="datetime-local"
+                    value={form.startsAt}
+                    onChange={(event) =>
+                      updateField("startsAt", event.target.value)
+                    }
+                  />
+                </label>
 
-            <label className="calendar-field">
-              <span>Fin</span>
-              <input
-                type="datetime-local"
-                value={form.endsAt}
-                onChange={(event) => updateField("endsAt", event.target.value)}
-              />
-            </label>
-          </div>
+                <label className="calendar-field">
+                  <span>Fin</span>
+                  <input
+                    type="datetime-local"
+                    value={form.endsAt}
+                    onChange={(event) =>
+                      updateField("endsAt", event.target.value)
+                    }
+                  />
+                </label>
+              </div>
 
-          <footer className="calendar-event-modal-actions">
-            <button className="button ghost" type="button" onClick={handleClose}>
-              Annuler
-            </button>
+              <footer className="calendar-event-modal-actions">
+                <button
+                  className="button ghost"
+                  type="button"
+                  onClick={handleClose}
+                >
+                  Annuler
+                </button>
 
-            <button className="button primary notes-submit" type="submit" disabled={!canSubmit}>
-              <Icon name="plus" size={14} />
-              Creer
-            </button>
-          </footer>
-        </form>
-      </section>
-    </div>
+                <button
+                  className="button primary notes-submit"
+                  type="submit"
+                  disabled={!canSubmit}
+                >
+                  <Icon name="plus" size={14} />
+                  Créer
+                </button>
+              </footer>
+            </form>
+          </section>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }

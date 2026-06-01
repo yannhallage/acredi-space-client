@@ -18,6 +18,7 @@ import { useUsersQuery } from "../../shared/api/users";
 import type { User } from "../../shared/types";
 import { Avatar, Icon, LoadingState } from "../../shared/ui";
 import { CreateCalendarEventModal } from "./CreateCalendarEventModal";
+import { AnimatePresence, motion } from "framer-motion";
 
 dayjs.locale("fr");
 
@@ -67,7 +68,7 @@ export function CalendarPage() {
   const eventsQuery = useCalendarEvents();
   const createEventMutation = useCreateCalendarEvent();
   const updateEventMutation = useUpdateCalendarEvent();
-
+  
   const [calendarDate, setCalendarDate] = useState(today);
   const [view, setView] = useState<View>("month");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -409,7 +410,7 @@ function CalendarParticipantsModal({
   const users = useMemo(() => usersQuery.data ?? [], [usersQuery.data]);
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>(() =>
-    event.participants.map((participant) => participant.id)
+    event.participants.map((participant) => participant.id),
   );
 
   useEffect(() => {
@@ -424,7 +425,7 @@ function CalendarParticipantsModal({
 
     return users.filter((user) => {
       const searchable = normalizeSearch(
-        [user.name, user.email, user.role, user.team, user.status].join(" ")
+        [user.name, user.email, user.role, user.team, user.status].join(" "),
       );
 
       return searchable.includes(value);
@@ -438,9 +439,7 @@ function CalendarParticipantsModal({
       .map((id) => {
         const user = usersById.get(id);
 
-        if (user) {
-          return user;
-        }
+        if (user) return user;
 
         const participant = event.participants.find((item) => item.id === id);
 
@@ -464,8 +463,13 @@ function CalendarParticipantsModal({
     setSelectedIds((current) =>
       current.includes(userId)
         ? current.filter((id) => id !== userId)
-        : [...current, userId]
+        : [...current, userId],
     );
+  }
+
+  function handleClose() {
+    if (isSaving) return;
+    onClose();
   }
 
   function handleSubmit(formEvent: FormEvent<HTMLFormElement>) {
@@ -474,120 +478,147 @@ function CalendarParticipantsModal({
   }
 
   return (
-    <div className="note-modal-overlay" onClick={onClose}>
-      <section
-        className="note-modal calendar-note-modal calendar-participants-modal"
-        role="dialog"
-        aria-modal="true"
-        onClick={(clickEvent) => clickEvent.stopPropagation()}
+    <AnimatePresence>
+      <motion.div
+        className="note-modal-overlay"
+        role="presentation"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.16 }}
+        onMouseDown={handleClose}
       >
-        <header>
-          <div>
-            <h2>Ajouter participant</h2>
-            <span>{event.title}</span>
-          </div>
-
-          <button
-            className="icon-button"
-            type="button"
-            disabled={isSaving}
-            onClick={onClose}
-          >
-            <Icon name="x" size={16} />
-          </button>
-        </header>
-
-        <form className="calendar-event-form" onSubmit={handleSubmit}>
-          <div className="calendar-field">
-            <span>Participants</span>
-
-            <div className="calendar-participant-search">
-              <Icon name="search" size={15} />
-              <input
-                value={query}
-                onChange={(inputEvent) => setQuery(inputEvent.target.value)}
-                placeholder="Rechercher un utilisateur"
-              />
+        <motion.section
+          className="note-modal calendar-note-modal calendar-participants-modal"
+          role="dialog"
+          aria-modal="true"
+          initial={{ opacity: 0, y: 18, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 12, scale: 0.98 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <header>
+            <div>
+              <h2>Ajouter participant</h2>
+              <span>{event.title}</span>
             </div>
 
-            {selectedUsers.length > 0 ? (
-              <div className="calendar-selected-participants">
-                {selectedUsers.map((user) => (
-                  <button
-                    key={user.id}
-                    type="button"
-                    className="calendar-selected-participant"
-                    onClick={() => toggleParticipant(user.id)}
-                  >
-                    <Avatar name={user.name} size={24} presence={user.presence} />
-                    <span>{user.name}</span>
-                    <Icon name="x" size={12} />
-                  </button>
-                ))}
+            <button
+              className="icon-button"
+              type="button"
+              disabled={isSaving}
+              onClick={handleClose}
+            >
+              <Icon name="x" size={16} />
+            </button>
+          </header>
+
+          <form className="calendar-event-form" onSubmit={handleSubmit}>
+            <div className="calendar-field">
+              <span>Participants</span>
+
+              <div className="calendar-participant-search">
+                <Icon name="search" size={15} />
+                <input
+                  value={query}
+                  onChange={(inputEvent) => setQuery(inputEvent.target.value)}
+                  placeholder="Rechercher un utilisateur"
+                  disabled={isSaving}
+                />
               </div>
-            ) : null}
 
-            <div className="calendar-participant-list">
-              {usersQuery.loading ? (
-                <div className="calendar-participant-empty">
-                  Chargement des utilisateurs...
-                </div>
-              ) : filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => {
-                  const selected = selectedIds.includes(user.id);
-
-                  return (
+              {selectedUsers.length > 0 ? (
+                <div className="calendar-selected-participants">
+                  {selectedUsers.map((user) => (
                     <button
                       key={user.id}
                       type="button"
-                      className={
-                        selected
-                          ? "calendar-participant selected"
-                          : "calendar-participant"
-                      }
+                      className="calendar-selected-participant"
+                      disabled={isSaving}
                       onClick={() => toggleParticipant(user.id)}
                     >
-                      <Avatar name={user.name} size={32} presence={user.presence} />
-
-                      <span>
-                        <strong>{user.name}</strong>
-                        <small>{user.email}</small>
-                      </span>
-
-                      <Icon name={selected ? "check" : "plus"} size={15} />
+                      <Avatar
+                        name={user.name}
+                        size={24}
+                        presence={user.presence}
+                      />
+                      <span>{user.name}</span>
+                      <Icon name="x" size={12} />
                     </button>
-                  );
-                })
-              ) : (
-                <div className="calendar-participant-empty">
-                  Aucun utilisateur trouve
+                  ))}
                 </div>
-              )}
+              ) : null}
+
+              <div className="calendar-participant-list">
+                {usersQuery.loading ? (
+                  <div className="calendar-participant-empty">
+                    Chargement des utilisateurs...
+                  </div>
+                ) : filteredUsers.length > 0 ? (
+                  filteredUsers.map((user) => {
+                    const selected = selectedIds.includes(user.id);
+
+                    return (
+                      <button
+                        key={user.id}
+                        type="button"
+                        disabled={isSaving}
+                        className={
+                          selected
+                            ? "calendar-participant selected"
+                            : "calendar-participant"
+                        }
+                        onClick={() => toggleParticipant(user.id)}
+                      >
+                        <Avatar
+                          name={user.name}
+                          size={32}
+                          presence={user.presence}
+                        />
+
+                        <span>
+                          <strong>{user.name}</strong>
+                          <small>{user.email}</small>
+                        </span>
+
+                        <Icon name={selected ? "check" : "plus"} size={15} />
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="calendar-participant-empty">
+                    Aucun utilisateur trouvé
+                  </div>
+                )}
+              </div>
+
+              {error ? (
+                <p className="calendar-form-error">{error.message}</p>
+              ) : null}
             </div>
 
-            {error ? <p className="calendar-form-error">{error.message}</p> : null}
-          </div>
+            <footer className="calendar-event-modal-actions">
+              <button
+                className="button ghost"
+                type="button"
+                disabled={isSaving}
+                onClick={handleClose}
+              >
+                Annuler
+              </button>
 
-          <footer className="calendar-event-modal-actions">
-            <button
-              className="button ghost"
-              type="button"
-              disabled={isSaving}
-              onClick={onClose}
-            >
-              Annuler
-            </button>
-
-            <button
-              className="button primary notes-submit"
-              type="submit"
-              disabled={isSaving}
-            >
-              {isSaving ? "Enregistrement..." : "Enregistrer"}
-            </button>
-          </footer>
-        </form>
-      </section>
-    </div>
+              <button
+                className="button primary notes-submit"
+                type="submit"
+                disabled={isSaving}
+              >
+                {isSaving ? "Enregistrement..." : "Enregistrer"}
+              </button>
+            </footer>
+          </form>
+        </motion.section>
+      </motion.div>
+    </AnimatePresence>
   );
 }
