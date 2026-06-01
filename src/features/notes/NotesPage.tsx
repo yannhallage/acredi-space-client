@@ -34,7 +34,7 @@ function computeUpdatedMeta(dateStr?: string | null) {
 }
 
 function getTextColor(background: string | null | undefined) {
-  if (!background) return "inherit";
+  if (!background) return "var(--text)";
 
   const hex = background.replace("#", "");
   const r = parseInt(hex.slice(0, 2), 16);
@@ -63,30 +63,10 @@ const editorTools = [
   "<>",
 ];
 const noteSkeletons = ["note-skeleton-1", "note-skeleton-2"];
-const noteColors = [
-  "#FFFFFF",
-  "#F3F4F6",
-  "#DBEAFE",
-  "#CFFAFE",
-  "#D1FAE5",
-  "#FEF3C7",
-  "#FEE2E2",
-  "#FCE7F3",
-  "#DDD6FE",
-  "#F3E8FF",
-];
-  // "#6B21A8",
-  // "#6366F1",
-  // "#06B6D4",
-  // "#10B981",
-  // "#F59E0B",
-  // "#EF4444",
-  // "#EC4899",
-// ];
 
 function NoteCard({ note, onDelete }: { note: Note; onDelete: (id: string) => void }) {
   const textColor = getTextColor(note.color);
-  const mutedTextColor = textColor === "#111" ? "rgba(0,0,0,0.72)" : "rgba(255,255,255,0.85)";
+  const mutedTextColor = textColor === "#111" ? "rgba(17,17,17,0.68)" : "rgba(255,255,255,0.85)";
   const borderColor = note.color
     ? textColor === "#111"
       ? "rgba(0,0,0,0.14)"
@@ -104,7 +84,7 @@ function NoteCard({ note, onDelete }: { note: Note; onDelete: (id: string) => vo
     >
       <header>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span
+          {/* <span
             aria-hidden
             style={{
               width: 12,
@@ -116,7 +96,7 @@ function NoteCard({ note, onDelete }: { note: Note; onDelete: (id: string) => vo
                 ? "1px solid rgba(0,0,0,0.12)"
                 : "1px solid rgba(255,255,255,0.06)",
             }}
-          />
+          /> */}
           <h2 style={{ color: textColor }}>{note.title}</h2>
         </div>
         <button
@@ -249,7 +229,7 @@ export function NotesPage() {
         });
 
         setNotes(mapped.length ? mapped : initialNotes);
-      } catch (err) {
+      } catch {
         setNotes(initialNotes);
       } finally {
         if (mounted) setLoading(false);
@@ -434,7 +414,7 @@ export function NotesPage() {
       });
 
       setNotes(mapped.length ? mapped : initialNotes);
-    } catch (err) {
+    } catch {
       setToast({
         show: true,
         intent: "error",
@@ -637,41 +617,6 @@ export function NotesPage() {
                   />
                 </div>
               </label>
-
-              <label className="note-field">
-                <span>Color</span>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 10,
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  {noteColors.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      aria-label={`Select color ${c}`}
-                      onClick={() => setDraftColor(c === "#FFFFFF" ? null : c)}
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 14,
-                        border:
-                          draftColor === c ||
-                          (draftColor === null && c === "#FFFFFF")
-                            ? "2px solid #fff"
-                            : "1px solid rgba(255,255,255,0.12)",
-                        backgroundColor: c,
-                        padding: 0,
-                        boxSizing: "border-box",
-                      }}
-                    />
-                  ))}
-                </div>
-              </label>
-
               <footer>
                 <button
                   className="button primary notes-submit"

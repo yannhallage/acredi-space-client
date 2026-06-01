@@ -94,6 +94,26 @@ function hasAdminAccess(user: User | null) {
   );
 }
 
+function getInviteErrorMessage(error: unknown) {
+  if (error && typeof error === "object") {
+    const maybeError = error as {
+      message?: unknown;
+      response?: { data?: { message?: unknown } };
+    };
+    const responseMessage = maybeError.response?.data?.message;
+
+    if (typeof responseMessage === "string" && responseMessage.trim()) {
+      return responseMessage;
+    }
+
+    if (typeof maybeError.message === "string" && maybeError.message.trim()) {
+      return maybeError.message;
+    }
+  }
+
+  return "Failed to invite user";
+}
+
 export function UsersPage() {
   const navigate = useNavigate();
   const { loading: authLoading, permissions, user: currentUser } = useAuth();
@@ -208,14 +228,11 @@ export function UsersPage() {
           show: false,
         }));
       }, 4000);
-    } catch (error: any) {
+    } catch (error) {
       setToast({
         show: true,
         intent: "error",
-        message:
-          error?.response?.data?.message ||
-          error?.message ||
-          "Failed to invite user",
+        message: getInviteErrorMessage(error),
       });
 
       setTimeout(() => {
