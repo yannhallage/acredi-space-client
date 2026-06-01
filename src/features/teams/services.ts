@@ -1,11 +1,12 @@
 import { http } from "../../shared/api/http";
 import { teamEndpoints } from "./endpoints";
-import { normalizeTeam, normalizeTeams } from "./normalizers";
+import { normalizeTeam, normalizeTeamMembers, normalizeTeams } from "./normalizers";
 
 import type {
   AddTeamMemberRequest,
   ApiResponse,
   CreateTeamRequest,
+  TeamMemberResponse,
   TeamResponse,
   UpdateTeamRequest,
 } from "./types";
@@ -39,6 +40,14 @@ export const teamService = {
     );
 
     return normalizeTeam(unwrapApiResponse(response));
+  },
+
+  async findMembers(teamId: string) {
+    const response = await http.get<ApiResponse<TeamMemberResponse[]>>(
+      teamEndpoints.members(teamId)
+    );
+
+    return normalizeTeamMembers(unwrapApiResponse(response));
   },
 
   async addMember(teamId: string, request: AddTeamMemberRequest) {

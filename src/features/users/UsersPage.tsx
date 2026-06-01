@@ -248,27 +248,33 @@ export function UsersPage() {
 
       <section className="notes-toolbar">
         {/* <div className="page-header compact"> */}
-          <div className="notes-titlebar">
+        {/* <div className="notes-titlebar">
             <span className="eyebrow">Administration</span>
             <h1>Utilisateurs</h1>
             <p>Gérez les comptes, rôles et accès de votre application.</p>
-          </div>
-          <button
-            className="button primary notes-create-button"
-            type="button"
-            disabled={authLoading || !canInviteUsers}
-            onClick={() => {
-              if (!canInviteUsers) {
-                return;
-              }
+          </div> */}
+        <div className="notes-titlebar">
+          <span>Utilisateurs</span>
+          <Icon name="list" size={14} />
+          {/* <strong>Notes View</strong> */}
+          <Icon name="chevDown" size={14} />
+        </div>
+        <button
+          className="button primary notes-create-button"
+          type="button"
+          disabled={authLoading || !canInviteUsers}
+          onClick={() => {
+            if (!canInviteUsers) {
+              return;
+            }
 
-              inviteMutation.reset();
-              setIsInviteOpen(true);
-            }}
-          >
-            <Icon name="plus" size={12} />
-            Create
-          </button>
+            inviteMutation.reset();
+            setIsInviteOpen(true);
+          }}
+        >
+          <Icon name="plus" size={12} />
+          Create
+        </button>
       </section>
 
       <section className="notes-filters" aria-label="Users filters">
@@ -418,7 +424,12 @@ export function UsersPage() {
               <header>
                 <h2>Invite user</h2>
                 <div>
-                  <button className="icon-button" type="button" aria-label="Close invite user" onClick={closeInvite}>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    aria-label="Close invite user"
+                    onClick={closeInvite}
+                  >
                     <Icon name="x" size={16} />
                   </button>
                 </div>
@@ -426,17 +437,30 @@ export function UsersPage() {
 
               <label className="note-field">
                 <span>Name</span>
-                <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Full name" autoFocus />
+                <input
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Full name"
+                  autoFocus
+                />
               </label>
 
               <label className="note-field">
                 <span>Email</span>
-                <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@company.com" type="email" />
+                <input
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="name@company.com"
+                  type="email"
+                />
               </label>
 
               <label className="note-field">
                 <span>Role</span>
-                <select value={role} onChange={(event) => setRole(event.target.value as AdminRole)}>
+                <select
+                  value={role}
+                  onChange={(event) => setRole(event.target.value as AdminRole)}
+                >
                   {roleOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -446,19 +470,27 @@ export function UsersPage() {
               </label>
 
               {inviteMutation.error ? (
-                <p className="auth-error text-red-500 text-sm">{inviteMutation.error.message}</p>
+                <p className="auth-error text-red-500 text-sm">
+                  {inviteMutation.error.message}
+                </p>
               ) : null}
 
               <footer>
-                <button className="button ghost" type="button" onClick={closeInvite}>
+                <button
+                  className="button ghost"
+                  type="button"
+                  onClick={closeInvite}
+                >
                   Cancel
                 </button>
                 <button
                   className="button primary notes-submit"
                   type="submit"
-                  disabled={!name.trim() || !email.trim() || inviteMutation.isPending}
+                  disabled={
+                    !name.trim() || !email.trim() || inviteMutation.isPending
+                  }
                 >
-                  {inviteMutation.isPending ? 'Invitation...' : 'Invite'}
+                  {inviteMutation.isPending ? "Invitation..." : "Invite"}
                 </button>
               </footer>
             </motion.form>

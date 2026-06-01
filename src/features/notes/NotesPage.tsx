@@ -28,7 +28,12 @@ interface NoteCard {
   color: string | null;
 }
 
-const initialNotes: NoteCard[] = [];
+const noteSkeletons = [
+  "note-skeleton-1",
+  "note-skeleton-2",
+  "note-skeleton-3",
+  "note-skeleton-4",
+];
 
 const editorTools = [
   "H1",
@@ -46,13 +51,6 @@ const editorTools = [
   "Link",
   "Quote",
   "<>",
-];
-
-const noteSkeletons = [
-  "note-skeleton-1",
-  "note-skeleton-2",
-  "note-skeleton-3",
-  "note-skeleton-4",
 ];
 
 const noteColors = [
@@ -267,7 +265,7 @@ export function NotesPage() {
   });
 
   const notes = useMemo(
-    () => (apiNotes ? apiNotes.map(mapApiNoteToCard) : initialNotes),
+    () => (apiNotes ? apiNotes.map(mapApiNoteToCard) : []),
     [apiNotes]
   );
   const isNotesLoading = isLoading || (isFetching && !apiNotes);
@@ -301,9 +299,7 @@ export function NotesPage() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !createNoteMutation.isPending) {
         setIsCreateOpen(false);
-        setDraftTitle("");
-        setDraftContent("");
-        setDraftColor(noteColors[0]);
+        resetDraft();
       }
     };
 

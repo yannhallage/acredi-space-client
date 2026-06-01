@@ -1,4 +1,6 @@
 import type { ApiResponse } from "../../shared/api/api";
+import type { UserResponse } from "../../shared/api/users/types";
+import type { User } from "../../shared/types";
 
 export type TeamMemberRole = "COLLABORATOR" | "MANAGER" | "ADMIN";
 
@@ -34,6 +36,19 @@ export type TeamResponse = {
   membersCount?: number;
 };
 
+export type TeamMemberResponse = {
+  id: string;
+  teamId?: string;
+  team_id?: string;
+  userId?: string;
+  user_id?: string;
+  roleName?: TeamMemberRole;
+  role_name?: TeamMemberRole;
+  joinedAt?: string;
+  joined_at?: string;
+  user?: UserResponse | null;
+};
+
 export type Team = {
   id: string;
   name: string;
@@ -45,6 +60,15 @@ export type Team = {
   membersCount: number;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type TeamMember = {
+  id: string;
+  teamId: string;
+  userId: string;
+  roleName: TeamMemberRole;
+  joinedAt: Date;
+  user: User | null;
 };
 
 export type { ApiResponse };
