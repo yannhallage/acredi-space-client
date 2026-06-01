@@ -65,6 +65,26 @@ const noteColors = [
   "#db2777",
 ];
 
+function isUuidLike(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
+function getOwnerDisplayName(note: ApiNote) {
+  const ownerName = note.ownerName?.trim();
+
+  if (ownerName) return ownerName;
+
+  const ownerId = note.ownerId?.trim();
+
+  if (!ownerId || isUuidLike(ownerId) || ownerId.length > 28) {
+    return "Auteur";
+  }
+
+  return ownerId;
+}
+
 function computeUpdatedMeta(dateValue?: Date | string | null) {
   if (!dateValue) return { label: "unknown", minutes: 0 };
 
@@ -124,7 +144,7 @@ function mapApiNoteToCard(note: ApiNote): NoteCard {
     id: note.id,
     title: note.title,
     content: note.content || "No content yet.",
-    ownerName: note.ownerId || "You",
+    ownerName: getOwnerDisplayName(note),
     updatedLabel: meta.label,
     updatedMinutes: meta.minutes,
     color: note.color ?? null,
@@ -250,6 +270,7 @@ export function NotesPage() {
     () => (apiNotes ? apiNotes.map(mapApiNoteToCard) : initialNotes),
     [apiNotes]
   );
+  const isNotesLoading = isLoading || (isFetching && !apiNotes);
 
   const visibleNotes = useMemo(() => {
     const titleQuery = titleFilter.trim().toLowerCase();
@@ -471,8 +492,14 @@ export function NotesPage() {
         </div>
       </section>
 
-      <section className="notes-grid" aria-label="Notes list">
-        {isLoading
+      <section
+        className={
+          isNotesLoading ? "notes-grid notes-grid-loading" : "notes-grid"
+        }
+        aria-label="Notes list"
+        aria-busy={isNotesLoading}
+      >
+        {isNotesLoading
           ? noteSkeletons.map((item) => <NoteCardSkeleton key={item} />)
           : visibleNotes.map((note) =>
               deletingIds.has(note.id) ? (
@@ -489,7 +516,7 @@ export function NotesPage() {
               )
             )}
 
-        {isError && !isLoading && visibleNotes.length === 0 ? (
+        {isError && !isNotesLoading && visibleNotes.length === 0 ? (
           <div className="notes-empty">
             <Icon name="notes" size={14} />
             <strong>Unable to load notes</strong>
@@ -497,7 +524,7 @@ export function NotesPage() {
           </div>
         ) : null}
 
-        {!isError && !isLoading && visibleNotes.length === 0 ? (
+        {!isError && !isNotesLoading && visibleNotes.length === 0 ? (
           <div className="notes-empty">
             <Icon name="notes" size={14} />
             <strong>No notes found</strong>

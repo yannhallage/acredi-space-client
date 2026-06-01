@@ -3801,8 +3801,9 @@ a {
 .notes-page {
   min-height: 100%;
   display: grid;
-  grid-template-rows: auto auto minmax(260px, 1fr) auto;
-  gap: 24px;
+  grid-template-rows: auto auto minmax(240px, 1fr);
+  gap: 20px;
+  font-size: 14px;
 }
 
 .notes-toolbar,
@@ -3827,9 +3828,19 @@ a {
 
 .notes-titlebar {
   min-width: 0;
-  gap: 10px;
+  gap: 8px;
   color: var(--muted);
-  font-size: 20px;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.notes-titlebar > span {
+  overflow: hidden;
+  color: var(--muted-soft);
+  font-size: 14px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .notes-titlebar strong {
@@ -3850,10 +3861,10 @@ a {
 }
 
 .notes-create-button {
-  min-height: 38px;
-  border-radius: 10px;
+  min-height: 36px;
+  border-radius: 8px;
   padding-inline: 14px;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .notes-filters {
@@ -3869,7 +3880,8 @@ a {
 
 .notes-filter-inputs label {
   position: relative;
-  width: min(255px, 40vw);
+  width: min(320px, 40vw);
+  max-width: 100%;
 }
 
 .notes-filter-inputs span {
@@ -3889,6 +3901,7 @@ a {
   padding: 0 12px;
   background: var(--surface-2);
   color: var(--text);
+  font-size: 14px;
 }
 
 .notes-filter-inputs input::placeholder {
@@ -3908,22 +3921,28 @@ a {
 
 .notes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 308px);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
   align-content: start;
   justify-content: start;
-  gap: 15px;
+  gap: 14px;
+}
+
+.notes-grid-loading {
+  pointer-events: none;
 }
 
 .note-card {
-  width: 308px;
-  height: 224px;
+  width: 100%;
+  min-height: 220px;
+  height: 220px;
   max-width: 100%;
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 12px;
-  padding: 19px 19px 16px;
+  overflow: hidden;
+  padding: 18px;
   border: 1px solid var(--border);
-  border-radius: 11px;
+  border-radius: 8px;
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow);
@@ -3931,6 +3950,7 @@ a {
 
 .note-card header,
 .note-card footer {
+  min-width: 0;
   justify-content: space-between;
   gap: 12px;
 }
@@ -3942,15 +3962,18 @@ a {
 .note-card .icon-button {
   width: 28px;
   height: 28px;
+  flex: none;
+  margin: -6px -6px 0 0;
   color: var(--text);
 }
 
 .note-card h2 {
+  flex: 1;
   min-width: 0;
   margin: 0;
   overflow: hidden;
   color: var(--text);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.25;
   letter-spacing: 0;
@@ -3965,10 +3988,11 @@ a {
   overflow: hidden;
   color: var(--muted-soft);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
   white-space: pre-line;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 7;
+  -webkit-line-clamp: 5;
 }
 
 .note-card footer {
@@ -3977,8 +4001,9 @@ a {
 }
 
 .note-card footer span {
+  flex: 1;
   min-width: 0;
-  gap: 10px;
+  gap: 8px;
 }
 
 .note-card footer i {
@@ -3996,6 +4021,7 @@ a {
 }
 
 .note-card footer strong {
+  display: block;
   min-width: 0;
   overflow: hidden;
   font-weight: 400;
@@ -4005,8 +4031,18 @@ a {
 
 .note-card time {
   flex: none;
+  margin-left: auto;
   color: var(--muted-soft);
   font-size: 12px;
+}
+
+.note-card-skeleton {
+  box-shadow: none;
+}
+
+.note-card-skeleton .skeleton-dot {
+  width: 28px;
+  height: 28px;
 }
 
 .note-card-skeleton .skeleton-avatar {
@@ -4806,7 +4842,8 @@ a {
 
   .note-card {
     width: 100%;
-    min-height: 260px;
+    height: auto;
+    min-height: 220px;
   }
 
   .user-profile-hero {
@@ -4870,11 +4907,6 @@ a {
 
   .dm-new-conversation-status {
     display: none;
-  }
-
-  .notes-titlebar,
-  .notes-titlebar strong {
-    font-size: 17px;
   }
 
   .notes-filter-actions .button {

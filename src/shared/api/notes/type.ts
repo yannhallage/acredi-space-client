@@ -57,6 +57,7 @@ export interface NoteResponse {
   color: string | null;
 
   ownerId: string;
+  ownerName?: string | null;
   teamId: string | null;
   folderId: string | null;
   lastEditedById: string | null;
@@ -97,6 +98,7 @@ export interface Note {
   color: string | null;
 
   ownerId: string;
+  ownerName: string | null;
 
   teamId: string | null;
   folderId: string | null;
