@@ -1,6 +1,8 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { AdminPage } from '../features/admin/AdminPage';
 import { LoginPage } from '../features/auth/LoginPage';
+import { PasswordChangePage } from '../features/auth/PasswordChangePage';
+import { ProfileCompletionPage } from '../features/auth/ProfileCompletionPage';
 import { CalendarPage } from '../features/calendar/CalendarPage';
 import { ChatPage } from '../features/chat/ChatPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
@@ -18,8 +20,18 @@ import { OtpPage } from '../features/OtpPage/OtpPage';
 import { AppLayout } from '../layouts/AppLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { AuthProvider, WorkspaceProvider } from '../shared/context';
+import { getDefaultAllowedAppPath, usePermissions } from '../shared/permissions';
 import { ThemeProvider } from '../shared/theme';
 import { ProtectedRoute } from './ProtectedRoute';
+import { CreateTeamPage } from "../features/teams/CreateTeamPage";
+// import { InviteSetupPage } from './features/users/InviteSetupPage';
+
+function DefaultAppRoute() {
+  const { permissionCodes } = usePermissions();
+  const defaultAllowedPath = getDefaultAllowedAppPath(permissionCodes);
+
+  return <Navigate to={defaultAllowedPath ?? '/app/dashboard'} replace />;
+}
 
 export default function App() {
   return (
@@ -32,10 +44,14 @@ export default function App() {
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/verify-otp" element={<OtpPage />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/onboarding/password-change" element={<PasswordChangePage />} />
+                  <Route path="/onboarding/profile-completion" element={<ProfileCompletionPage />} />
+                </Route>
               </Route>
               <Route element={<ProtectedRoute />}>
                 <Route path="/app" element={<AppLayout />}>
-                  <Route index element={<Navigate to="/app/dashboard" replace />} />
+                  <Route index element={<DefaultAppRoute />} />
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="files" element={<FilesPage />} />
                   <Route path="chat" element={<Navigate to="/app/chat/general" replace />} />
@@ -52,6 +68,7 @@ export default function App() {
                   <Route path="users/:userId" element={<UserDetailPage />} />
                   <Route path="notes" element={<NotesPage />} />
                   <Route path="notifications" element={<NotificationsPage />} />
+                  <Route path="/app/teams/create" element={<CreateTeamPage />} />
                 </Route>
               </Route>
               <Route path="/preview" element={<PreviewPage />} />

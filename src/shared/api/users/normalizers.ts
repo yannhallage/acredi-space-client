@@ -86,15 +86,47 @@ function buildTeam(payload: UserResponse) {
   return (
     readString(payload.team) ??
     readString(payload.teamName) ??
-    readString(payload.profile?.team) ??
-    readString(payload.profile?.teamName) ??
+    (isRecord(payload.profile) ? readString(payload.profile.team) : undefined) ??
+    (isRecord(payload.profile) ? readString(payload.profile.teamName) : undefined) ??
     "Acredi Space"
   );
 }
 
+function buildProfile(payload: UserResponse) {
+  if (typeof payload.profile === "string") {
+    return readString(payload.profile);
+  }
+
+  if (isRecord(payload.profile)) {
+    const profileName =
+      readString(payload.profile.name) ??
+      readString(payload.profile.role) ??
+      readString(payload.profile.team);
+
+    if (profileName) {
+      return {
+        ...payload.profile,
+        role: readString(payload.profile.role) ?? profileName,
+      };
+    }
+  }
+
+  return undefined;
+}
+
+function buildRole(payload: UserResponse) {
+  return (
+    readString(payload.role) ??
+    (isRecord(payload.profile) ? readString(payload.profile.role) : undefined) ??
+    "Utilisateur"
+  );
+}
+
 function buildStatus(payload: UserResponse) {
-  if (readString(payload.status)) {
-    return payload.status;
+  const status = readString(payload.status);
+
+  if (status) {
+    return status;
   }
 
   if (payload.enabled === false) {
@@ -123,10 +155,17 @@ export function normalizeUser(
     id: readId(payload.id) ?? readId(payload.userId) ?? readId(payload.uuid) ?? email,
     name: buildName(payload),
     email,
-    role: readString(payload.role) ?? readString(payload.profile?.role) ?? "Utilisateur",
+    role: buildRole(payload),
     team: buildTeam(payload),
     presence: normalizePresence(payload, options.fallbackPresence),
     status: buildStatus(payload),
+    appThemePreference: readString(payload.appThemePreference),
+    avatarUrl: readString(payload.avatarUrl),
+    enabled: payload.enabled ?? true,
+    invitationStatus: readString(payload.invitationStatus),
+    onboardingStatus: readString(payload.onboardingStatus),
+    phoneNumber: readString(payload.phoneNumber),
+    profile: buildProfile(payload),
     adminRole,
   };
 }

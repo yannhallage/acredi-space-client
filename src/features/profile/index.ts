@@ -1,2 +1,2 @@
-export { mockApi } from './mockApi';
-export { useMockQuery } from './useMockQuery';
+export { mockApi } from '../../shared/api/mockApi';
+export { useMockQuery } from '../../shared/api/useMockQuery';

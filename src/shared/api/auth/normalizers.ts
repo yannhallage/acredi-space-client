@@ -68,6 +68,28 @@ function buildName(payload: AuthUserPayload) {
   );
 }
 
+function buildProfile(payload: AuthUserPayload) {
+  if (typeof payload.profile === "string") {
+    return readString(payload.profile);
+  }
+
+  if (isRecord(payload.profile)) {
+    const profileName =
+      readString(payload.profile.name) ??
+      readString(payload.profile.role) ??
+      readString(payload.profile.team);
+
+    if (profileName) {
+      return {
+        ...payload.profile,
+        role: readString(payload.profile.role) ?? profileName,
+      };
+    }
+  }
+
+  return undefined;
+}
+
 export function normalizeAuthUser(value: unknown): User {
   const payload = isRecord(value) ? (value as AuthUserPayload) : {};
   const email = readString(payload.email) ?? "";
@@ -81,6 +103,13 @@ export function normalizeAuthUser(value: unknown): User {
     team: readString(payload.team) ?? "Acredi Space",
     presence: readPresence(payload.presence),
     status: readString(payload.status) ?? "Disponible",
+    enabled: payload.enabled !== false,
+    onboardingStatus: readString(payload.onboardingStatus),
+    invitationStatus: readString(payload.invitationStatus),
+    avatarUrl: readString(payload.avatarUrl),
+    phoneNumber: readString(payload.phoneNumber),
+    appThemePreference: readString(payload.appThemePreference),
+    profile: buildProfile(payload),
     adminRole: readAdminRole(payload.adminRole ?? payload.role),
   };
 }

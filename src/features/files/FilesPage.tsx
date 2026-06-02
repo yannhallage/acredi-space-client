@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { mockApi, }from '../../shared/api/mockApi';
   import {useMockQuery } from '../../shared/api/useMockQuery';
 import { users } from '../../shared/api/mockData';
+import { PERMISSIONS, PermissionGate } from '../../shared/permissions';
 import type { FileItem } from '../../shared/types';
 import { Avatar, EmptyState, FileIcon, Icon, LoadingState } from '../../shared/ui';
 
@@ -43,14 +44,18 @@ export function FilesPage() {
             <p>{data.files.length} fichiers - {data.folders.length} dossiers - partage avec 8 personnes</p>
           </div>
           <div className="button-row">
-            <button className="button ghost" type="button">
-              <Icon name="users" size={14} />
-              Inviter
-            </button>
-            <button className="button primary" type="button">
-              <Icon name="plus" size={14} />
-              Importer
-            </button>
+            <PermissionGate permission={PERMISSIONS.SHARE_FILES}>
+              <button className="button ghost" type="button">
+                <Icon name="users" size={14} />
+                Inviter
+              </button>
+            </PermissionGate>
+            <PermissionGate permission={PERMISSIONS.UPLOAD_OWN_FILES}>
+              <button className="button primary" type="button">
+                <Icon name="plus" size={14} />
+                Importer
+              </button>
+            </PermissionGate>
           </div>
         </header>
 
@@ -157,7 +162,9 @@ export function FilesPage() {
             <div className="button-row">
               <button className="button primary" type="button">Ouvrir</button>
               <button className="icon-button bordered" type="button" aria-label="Telecharger"><Icon name="download" size={14} /></button>
-              <button className="icon-button bordered" type="button" aria-label="Partager"><Icon name="users" size={14} /></button>
+              <PermissionGate permission={PERMISSIONS.SHARE_FILES}>
+                <button className="icon-button bordered" type="button" aria-label="Partager"><Icon name="users" size={14} /></button>
+              </PermissionGate>
               <button className="icon-button bordered" type="button" aria-label="Plus"><Icon name="moreH" size={14} /></button>
             </div>
             <dl className="details-list">

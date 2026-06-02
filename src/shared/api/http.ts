@@ -3,6 +3,7 @@ import { clearAuthSession } from "./auth/session";
 const DEFAULT_API_BASE_URL = "http://localhost:8080/api";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+type QueryParamValue = boolean | number | string | null | undefined;
 
 export interface HttpRequestOptions
   extends Omit<RequestInit, "body" | "headers" | "method"> {
@@ -10,6 +11,7 @@ export interface HttpRequestOptions
   body?: unknown;
   headers?: HeadersInit;
   method?: HttpMethod;
+  params?: Record<string, QueryParamValue>;
 }
 
 export interface ApiErrorPayload {
@@ -39,12 +41,37 @@ function normalizeBaseUrl(url: string) {
   return url.replace(/\/+$/, "");
 }
 
-function resolveUrl(path: string) {
-  if (/^https?:\/\//i.test(path)) {
-    return path;
+function appendSearchParams(
+  url: string,
+  params?: Record<string, QueryParamValue>
+) {
+  if (!params) {
+    return url;
   }
 
-  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      searchParams.set(key, String(value));
+    }
+  });
+
+  const query = searchParams.toString();
+
+  if (!query) {
+    return url;
+  }
+
+  return `${url}${url.includes("?") ? "&" : "?"}${query}`;
+}
+
+function resolveUrl(path: string, params?: Record<string, QueryParamValue>) {
+  const url = /^https?:\/\//i.test(path)
+    ? path
+    : `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+
+  return appendSearchParams(url, params);
 }
 
 function getStoredToken() {
@@ -127,7 +154,14 @@ async function parseResponse(response: Response) {
 }
 
 async function request<T>(path: string, options: HttpRequestOptions = {}) {
-  const { auth = true, body, headers, method = "GET", ...rest } = options;
+  const {
+    auth = true,
+    body,
+    headers,
+    method = "GET",
+    params,
+    ...rest
+  } = options;
   const requestHeaders = new Headers(headers);
   const serializedBody = serializeBody(body);
 
@@ -135,7 +169,11 @@ async function request<T>(path: string, options: HttpRequestOptions = {}) {
     requestHeaders.set("Accept", "application/json");
   }
 
-  if (body !== undefined && !isRawBody(body) && !requestHeaders.has("Content-Type")) {
+  if (
+    body !== undefined &&
+    !isRawBody(body) &&
+    !requestHeaders.has("Content-Type")
+  ) {
     requestHeaders.set("Content-Type", "application/json");
   }
 
@@ -147,7 +185,7 @@ async function request<T>(path: string, options: HttpRequestOptions = {}) {
     }
   }
 
-  const response = await fetch(resolveUrl(path), {
+  const response = await fetch(resolveUrl(path, params), {
     ...rest,
     body: serializedBody,
     headers: requestHeaders,

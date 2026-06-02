@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { resolveAuthenticatedRedirect } from "../../shared/auth/onboarding";
 import { useAuth } from "../../shared/context";
 
 export function OtpPage() {
@@ -9,7 +10,7 @@ export function OtpPage() {
 
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
-  const { isAuthenticated, verifyOtp, loading } = useAuth();
+  const { isAuthenticated, verifyOtp, loading, user } = useAuth();
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ export function OtpPage() {
     "/app/dashboard";
 
   if (isAuthenticated) {
-    return <Navigate to={redirectTo} replace />;
+    return <Navigate to={resolveAuthenticatedRedirect(user, redirectTo)} replace />;
   }
 
   const handleChange = (value: string, index: number) => {
@@ -58,9 +59,9 @@ export function OtpPage() {
         return;
       }
 
-      await verifyOtp(code);
+      const authenticatedUser = await verifyOtp(code);
 
-      navigate("/app/dashboard", { replace: true });
+      navigate(resolveAuthenticatedRedirect(authenticatedUser, redirectTo), { replace: true });
     } catch (error) {
       console.error(error);
       setMessage(error instanceof Error ? error.message : "Code OTP invalide ou expire.");

@@ -91,7 +91,7 @@ export function withTrustedDevice(request: LoginRequest): LoginRequest {
 
 export function isAuthResponse(response: unknown): response is AuthResponse {
   return (
-    Boolean(response) &&
+    response !== null &&
     typeof response === "object" &&
     ("accessToken" in response || "token" in response)
   );
