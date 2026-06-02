@@ -47,7 +47,7 @@ interface AuthContextValue {
     password: string,
     options?: { trustDevice?: boolean }
   ) => Promise<LoginResult>;
-  verifyOtp: (code: string) => Promise<void>;
+  verifyOtp: (code: string) => Promise<User>;
   updateUser: (patch: Partial<User>) => User | null;
   logout: () => void;
 }
@@ -169,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             })
           );
 
-          completeAuthSession(response, {
+          return completeAuthSession(response, {
             persistTrustedDevice: otpSession.trustDevice,
             trustedDeviceEmail: otpSession.email,
           });

@@ -2,8 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth, useWorkspace } from "../shared/context";
+import {
+  FEATURE_PERMISSION_REQUIREMENTS,
+  getRoutePermissionRule,
+  PermissionGate,
+  usePermissions,
+  type PermissionCode,
+} from "../shared/permissions";
 import { useTheme } from "../shared/theme";
-import { AcrediLockup, Avatar, Icon, type IconName } from "../shared/ui";
+import { AccessDeniedState, AcrediLockup, Avatar, Icon, type IconName } from "../shared/ui";
 import ModalSetting from "../shared/others/ModalSetting";
 
 const pageMeta: Record<string, { title: string; crumb: string }> = {
@@ -22,15 +29,17 @@ const pageMeta: Record<string, { title: string; crumb: string }> = {
 };
 
 interface NavItem {
-  to: string;
-  icon: IconName;
-  label: string;
   count?: number;
   accent?: boolean;
+  icon: IconName;
+  label: string;
+  permissions: readonly PermissionCode[];
+  to: string;
 }
 
 export function AppLayout() {
   const { user: authenticatedUser, logout } = useAuth();
+  const { hasAnyPermission } = usePermissions();
   const { counts, workspaces, activeWorkspace, setActiveWorkspaceId } =
     useWorkspace();
   const { dark, toggleTheme } = useTheme();
@@ -50,12 +59,18 @@ export function AppLayout() {
   };
 
   const navItems: NavItem[] = [
-    { to: "/app/dashboard", icon: "home", label: "Accueil" },
+    {
+      to: "/app/dashboard",
+      icon: "home",
+      label: "Accueil",
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.dashboard,
+    },
     {
       to: "/app/files",
       icon: "folder",
       label: "Fichiers",
       count: counts.files,
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.files,
     },
     {
       to: "/app/dm/dm-yann",
@@ -63,6 +78,7 @@ export function AppLayout() {
       label: "Chat",
       count: counts.unreadMessages,
       accent: true,
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.chat,
     },
     {
       to: "/app/meeting/meet-daily",
@@ -70,13 +86,44 @@ export function AppLayout() {
       label: "Reunions",
       count: counts.liveMeetings,
       accent: true,
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.meetings,
     },
-    { to: "/app/calendar", icon: "calendar", label: "Calendrier" },
-    { to: "/app/teams", icon: "building", label: "Teams" },
-    { to: "/app/users", icon: "users", label: "Utilisateurs" },
-    { to: "/app/notes", icon: "notes", label: "Notes" },
+    {
+      to: "/app/calendar",
+      icon: "calendar",
+      label: "Calendrier",
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.calendar,
+    },
+    {
+      to: "/app/teams",
+      icon: "building",
+      label: "Teams",
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.teams,
+    },
+    {
+      to: "/app/users",
+      icon: "users",
+      label: "Utilisateurs",
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.users,
+    },
+    {
+      to: "/app/notes",
+      icon: "notes",
+      label: "Notes",
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.notes,
+    },
     // { to: '/app/notifications', icon: 'bell', label: 'Notifications', count: counts.notifications, accent: true },
   ];
+  const visibleNavItems = navItems.filter((item) =>
+    hasAnyPermission(item.permissions)
+  );
+  const canUseChat = hasAnyPermission(FEATURE_PERMISSION_REQUIREMENTS.chat);
+  const canUseSettings = hasAnyPermission(
+    FEATURE_PERMISSION_REQUIREMENTS.settings
+  );
+  const routePermissionRule = getRoutePermissionRule(location.pathname);
+  const canAccessCurrentRoute =
+    !routePermissionRule || hasAnyPermission(routePermissionRule.permissions);
 
   const metaKey =
     Object.keys(pageMeta).find((path) => location.pathname.startsWith(path)) ??
@@ -141,7 +188,7 @@ export function AppLayout() {
           </div>
 
           <nav className="primary-nav" aria-label="Navigation principale">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <NavLink
                 key={`${item.to}-${item.label}`}
                 className="nav-link"
@@ -161,45 +208,49 @@ export function AppLayout() {
               </NavLink>
             ))}
 
-            <button
-              className={openSetting ? "nav-link active" : "nav-link"}
-              type="button"
-              aria-haspopup="dialog"
-              aria-expanded={openSetting}
-              onClick={() => setOpenSetting(true)}
-            >
-              <Icon name="settings" size={18} />
-              <span>Parametres</span>
-            </button>
+            {canUseSettings ? (
+              <button
+                className={openSetting ? "nav-link active" : "nav-link"}
+                type="button"
+                aria-haspopup="dialog"
+                aria-expanded={openSetting}
+                onClick={() => setOpenSetting(true)}
+              >
+                <Icon name="settings" size={18} />
+                <span>Parametres</span>
+              </button>
+            ) : null}
           </nav>
 
-          <div className="workspace-list">
-            <div className="eyebrow-row">
-              <span>Equipes</span>
-              {/* <span>Espaces</span> */}
-              <Icon name="plus" size={12} />
+          {canUseChat ? (
+            <div className="workspace-list">
+              <div className="eyebrow-row">
+                <span>Equipes</span>
+                {/* <span>Espaces</span> */}
+                <Icon name="plus" size={12} />
+              </div>
+              {workspaces.map((workspace) => (
+                <button
+                  key={workspace.id}
+                  className={
+                    workspace.id === activeWorkspace.id
+                      ? "workspace active"
+                      : "workspace"
+                  }
+                  type="button"
+                  onClick={() => {
+                    setActiveWorkspaceId(workspace.id);
+                    navigate(
+                      `/app/chat/${workspaceChannel[workspace.id] ?? "general"}`,
+                    );
+                  }}
+                >
+                  <span style={{ background: workspace.color }} />
+                  {workspace.name}
+                </button>
+              ))}
             </div>
-            {workspaces.map((workspace) => (
-              <button
-                key={workspace.id}
-                className={
-                  workspace.id === activeWorkspace.id
-                    ? "workspace active"
-                    : "workspace"
-                }
-                type="button"
-                onClick={() => {
-                  setActiveWorkspaceId(workspace.id);
-                  navigate(
-                    `/app/chat/${workspaceChannel[workspace.id] ?? "general"}`,
-                  );
-                }}
-              >
-                <span style={{ background: workspace.color }} />
-                {workspace.name}
-              </button>
-            ))}
-          </div>
+          ) : null}
         </aside>
 
         <div className="app-main">
@@ -230,25 +281,29 @@ export function AppLayout() {
               >
                 <Icon name={dark ? "sun" : "moon"} size={18} />
               </button>
-              <button
-                className={
-                  openDropdown === "notifications"
-                    ? "icon-button notification-button active"
-                    : "icon-button notification-button"
-                }
-                type="button"
-                aria-label="Notifications"
-                aria-haspopup="dialog"
-                aria-expanded={openDropdown === "notifications"}
-                onClick={() =>
-                  setOpenDropdown((current) =>
-                    current === "notifications" ? null : "notifications",
-                  )
-                }
+              <PermissionGate
+                permissions={FEATURE_PERMISSION_REQUIREMENTS.notifications}
               >
-                <Icon name="bell" size={18} />
-                {counts.notifications > 0 ? <span /> : null}
-              </button>
+                <button
+                  className={
+                    openDropdown === "notifications"
+                      ? "icon-button notification-button active"
+                      : "icon-button notification-button"
+                  }
+                  type="button"
+                  aria-label="Notifications"
+                  aria-haspopup="dialog"
+                  aria-expanded={openDropdown === "notifications"}
+                  onClick={() =>
+                    setOpenDropdown((current) =>
+                      current === "notifications" ? null : "notifications",
+                    )
+                  }
+                >
+                  <Icon name="bell" size={18} />
+                  {counts.notifications > 0 ? <span /> : null}
+                </button>
+              </PermissionGate>
               <button
                 className={
                   openDropdown === "account"
@@ -351,7 +406,7 @@ export function AppLayout() {
                       <Icon name="edit" size={16} />
                       Edit Profile
                     </button>
-                    <button
+                    {/* <button
                       className="account-menu-item"
                       type="button"
                       role="menuitem"
@@ -362,8 +417,8 @@ export function AppLayout() {
                     >
                       <Icon name="moon" size={16} />
                       Toggle Theme
-                    </button>
-                    <button
+                    </button> */}
+                    {/* <button
                       className="account-menu-item"
                       type="button"
                       role="menuitem"
@@ -371,8 +426,8 @@ export function AppLayout() {
                     >
                       <Icon name="alert" size={16} />
                       About
-                    </button>
-                    <button
+                    </button> */}
+                    {/* <button
                       className="account-menu-item"
                       type="button"
                       role="menuitem"
@@ -380,8 +435,8 @@ export function AppLayout() {
                     >
                       <Icon name="phoneOff" size={16} />
                       Frappe Support
-                    </button>
-                    <button
+                    </button> */}
+                    {/* <button
                       className="account-menu-item"
                       type="button"
                       role="menuitem"
@@ -389,7 +444,7 @@ export function AppLayout() {
                     >
                       <Icon name="refresh" size={16} />
                       Reset Desktop Layout
-                    </button>
+                    </button> */}
                     <button
                       className="account-menu-item"
                       type="button"
@@ -399,7 +454,7 @@ export function AppLayout() {
                       <Icon name="logOut" size={16} />
                       Logout
                     </button>
-                    <button
+                    {/* <button
                       className="account-menu-item"
                       type="button"
                       role="menuitem"
@@ -407,7 +462,7 @@ export function AppLayout() {
                     >
                       <Icon name="file" size={16} />
                       Manage Billing
-                    </button>
+                    </button> */}
                   </motion.div>
                 ) : null}
               </AnimatePresence>
@@ -417,7 +472,11 @@ export function AppLayout() {
           <main
             className={fullBleedContent ? "content content-full" : "content"}
           >
-            <Outlet />
+            {canAccessCurrentRoute ? (
+              <Outlet />
+            ) : (
+              <AccessDeniedState />
+            )}
           </main>
         </div>
       </div>

@@ -1,5 +1,8 @@
 import type { AdminRole, Presence, User } from "../../types";
 
+export type AppThemePreference = "LIGHT" | "DARK";
+export type RoleName = "ADMIN" | "MANAGER" | "USER";
+
 export interface ApiResponse<TData = unknown> {
   data: TData;
   message: string;
@@ -19,7 +22,10 @@ export interface UserResponse extends Partial<User> {
   lastName?: string;
   onboardingStatus?: string;
   phoneNumber?: string | null;
-  profile?: {
+  profile?: string | {
+    id?: string;
+    name?: string;
+    description?: string | null;
     role?: string;
     team?: string;
     teamName?: string;
@@ -62,22 +68,24 @@ export interface InviteUserRequest {
 }
 
 export interface UpdateUserRequest {
+  appThemePreference?: AppThemePreference;
+  avatarUrl?: string | null;
   email?: string;
   enabled?: boolean;
   firstName?: string;
   lastName?: string;
-  name?: string;
-  role?: string;
-  [key: string]: unknown;
+  phoneNumber?: string | null;
+  profileId?: string;
+  roleName?: RoleName;
 }
 
 export interface UpdateProfileRequest {
-  appThemePreference?: string;
+  appThemePreference?: AppThemePreference;
   avatarUrl?: string | null;
   firstName?: string;
   lastName?: string;
   phoneNumber?: string | null;
-  [key: string]: unknown;
+  profileId?: string;
 }
 
 export interface ChangePasswordRequest {

@@ -6,11 +6,12 @@ import {
   persistOtpSession,
   useLoginMutation,
 } from '../../shared/api/auth';
+import { resolveAuthenticatedRedirect } from '../../shared/auth/onboarding';
 import { useAuth } from '../../shared/context';
 import { AcrediLockup, Icon } from '../../shared/ui';
 
 export function LoginPage() {
-  const { completeAuthSession, isAuthenticated, loading } = useAuth();
+  const { completeAuthSession, isAuthenticated, loading, user } = useAuth();
   const loginMutation = useLoginMutation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +23,7 @@ export function LoginPage() {
   const redirectTo = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/app/dashboard';
 
   if (isAuthenticated) {
-    return <Navigate to={redirectTo} replace />;
+    return <Navigate to={resolveAuthenticatedRedirect(user, redirectTo)} replace />;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -40,7 +41,6 @@ export function LoginPage() {
 
       if (authData) {
         const userStatus = authData.user?.enabled === false ? 'disabled' : 'active';
-        const onboardingStatus = authData.user?.onboardingStatus?.toUpperCase();
 
         if (userStatus === 'disabled') {
           setMessage(
@@ -49,22 +49,12 @@ export function LoginPage() {
           return;
         }
 
-        completeAuthSession(authData, {
+        const authenticatedUser = completeAuthSession(authData, {
           persistTrustedDevice: trustDevice,
           trustedDeviceEmail: email,
         });
 
-        if (onboardingStatus === 'PASSWORD_REQUIRED_CHANGE') {
-          navigate('/onboarding/password-change', { replace: true });
-          return;
-        }
-
-        if (onboardingStatus === 'PROFILE_COMPLETION_REQUIRED') {
-          navigate('/onboarding/profile-completion', { replace: true });
-          return;
-        }
-
-        navigate(redirectTo, { replace: true });
+        navigate(resolveAuthenticatedRedirect(authenticatedUser, redirectTo), { replace: true });
         return;
       }
 

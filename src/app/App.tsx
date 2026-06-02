@@ -20,10 +20,18 @@ import { OtpPage } from '../features/OtpPage/OtpPage';
 import { AppLayout } from '../layouts/AppLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { AuthProvider, WorkspaceProvider } from '../shared/context';
+import { getDefaultAllowedAppPath, usePermissions } from '../shared/permissions';
 import { ThemeProvider } from '../shared/theme';
 import { ProtectedRoute } from './ProtectedRoute';
 import { CreateTeamPage } from "../features/teams/CreateTeamPage";
 // import { InviteSetupPage } from './features/users/InviteSetupPage';
+
+function DefaultAppRoute() {
+  const { permissionCodes } = usePermissions();
+  const defaultAllowedPath = getDefaultAllowedAppPath(permissionCodes);
+
+  return <Navigate to={defaultAllowedPath ?? '/app/dashboard'} replace />;
+}
 
 export default function App() {
   return (
@@ -43,7 +51,7 @@ export default function App() {
               </Route>
               <Route element={<ProtectedRoute />}>
                 <Route path="/app" element={<AppLayout />}>
-                  <Route index element={<Navigate to="/app/dashboard" replace />} />
+                  <Route index element={<DefaultAppRoute />} />
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="files" element={<FilesPage />} />
                   <Route path="chat" element={<Navigate to="/app/chat/general" replace />} />

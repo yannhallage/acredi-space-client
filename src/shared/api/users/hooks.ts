@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import type { User } from "../../types";
 import { userService } from "./service";
-import type { InviteUserRequest } from "./types";
+import type {
+  ChangePasswordRequest,
+  InviteUserRequest,
+  UpdateProfileRequest,
+  UpdateUserRequest,
+} from "./types";
 
 interface QueryState<TData> {
   data: TData | null;
@@ -100,6 +105,111 @@ export function useInviteUserMutation() {
 
     try {
       const data = await userService.invite(request);
+      setState({ data, error: null, isPending: false });
+      return data;
+    } catch (error) {
+      const normalizedError = toError(error);
+      setState({ data: null, error: normalizedError, isPending: false });
+      throw normalizedError;
+    }
+  }, []);
+
+  return {
+    ...state,
+    loading: state.isPending,
+    mutate: mutateAsync,
+    mutateAsync,
+    reset,
+  };
+}
+
+export function useUpdateUserMutation() {
+  const [state, setState] = useState<MutationState<User>>({
+    data: null,
+    error: null,
+    isPending: false,
+  });
+
+  const reset = useCallback(() => {
+    setState({ data: null, error: null, isPending: false });
+  }, []);
+
+  const mutateAsync = useCallback(
+    async (id: string, request: UpdateUserRequest) => {
+      setState({ data: null, error: null, isPending: true });
+
+      try {
+        const data = await userService.update(id, request);
+        setState({ data, error: null, isPending: false });
+        return data;
+      } catch (error) {
+        const normalizedError = toError(error);
+        setState({ data: null, error: normalizedError, isPending: false });
+        throw normalizedError;
+      }
+    },
+    []
+  );
+
+  return {
+    ...state,
+    loading: state.isPending,
+    mutate: mutateAsync,
+    mutateAsync,
+    reset,
+  };
+}
+
+export function useUpdateProfileMutation() {
+  const [state, setState] = useState<MutationState<User>>({
+    data: null,
+    error: null,
+    isPending: false,
+  });
+
+  const reset = useCallback(() => {
+    setState({ data: null, error: null, isPending: false });
+  }, []);
+
+  const mutateAsync = useCallback(async (request: UpdateProfileRequest) => {
+    setState({ data: null, error: null, isPending: true });
+
+    try {
+      const data = await userService.updateProfile(request);
+      setState({ data, error: null, isPending: false });
+      return data;
+    } catch (error) {
+      const normalizedError = toError(error);
+      setState({ data: null, error: normalizedError, isPending: false });
+      throw normalizedError;
+    }
+  }, []);
+
+  return {
+    ...state,
+    loading: state.isPending,
+    mutate: mutateAsync,
+    mutateAsync,
+    reset,
+  };
+}
+
+export function useChangeMyPasswordMutation() {
+  const [state, setState] = useState<MutationState<User>>({
+    data: null,
+    error: null,
+    isPending: false,
+  });
+
+  const reset = useCallback(() => {
+    setState({ data: null, error: null, isPending: false });
+  }, []);
+
+  const mutateAsync = useCallback(async (request: ChangePasswordRequest) => {
+    setState({ data: null, error: null, isPending: true });
+
+    try {
+      const data = await userService.changeMyPassword(request);
       setState({ data, error: null, isPending: false });
       return data;
     } catch (error) {

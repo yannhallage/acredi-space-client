@@ -15,6 +15,7 @@ import {
 } from "../../shared/api/callendar";
 import type { CalendarEvent } from "../../shared/api/callendar/types";
 import { useUsersQuery } from "../../shared/api/users";
+import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
 import type { User } from "../../shared/types";
 import { Avatar, Icon, LoadingState } from "../../shared/ui";
 import { CreateCalendarEventModal } from "./CreateCalendarEventModal";
@@ -225,14 +226,16 @@ export function CalendarPage() {
               ))}
             </div>
 
-            <button
-              className="button primary"
-              type="button"
-              onClick={() => setIsCreateOpen(true)}
-            >
-              <Icon name="plus" size={14} />
-              Creer
-            </button>
+            <PermissionGate permission={PERMISSIONS.USE_CALENDAR_PLANNING}>
+              <button
+                className="button primary"
+                type="button"
+                onClick={() => setIsCreateOpen(true)}
+              >
+                <Icon name="plus" size={14} />
+                Creer
+              </button>
+            </PermissionGate>
           </div>
         </header>
 

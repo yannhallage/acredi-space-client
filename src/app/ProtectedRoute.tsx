@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { getOnboardingRedirectPath, isOnboardingPath } from '../shared/auth/onboarding';
 import { useAuth } from '../shared/context';
 import { LoadingState } from '../shared/ui';
 
@@ -25,20 +26,17 @@ export function ProtectedRoute() {
     );
   }
 
-  const onboardingStatus = user?.onboardingStatus?.toUpperCase();
+  const onboardingRedirectPath = getOnboardingRedirectPath(user?.onboardingStatus);
 
   if (
-    onboardingStatus === 'PASSWORD_REQUIRED_CHANGE' &&
-    !location.pathname.startsWith('/onboarding/password-change')
+    onboardingRedirectPath &&
+    !location.pathname.startsWith(onboardingRedirectPath)
   ) {
-    return <Navigate to="/onboarding/password-change" replace />;
+    return <Navigate to={onboardingRedirectPath} replace />;
   }
 
-  if (
-    onboardingStatus === 'PROFILE_COMPLETION_REQUIRED' &&
-    !location.pathname.startsWith('/onboarding/profile-completion')
-  ) {
-    return <Navigate to="/onboarding/profile-completion" replace />;
+  if (!onboardingRedirectPath && isOnboardingPath(location.pathname)) {
+    return <Navigate to="/app/dashboard" replace />;
   }
 
   return <Outlet />;

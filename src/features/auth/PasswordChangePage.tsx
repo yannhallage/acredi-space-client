@@ -1,11 +1,14 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useChangeMyPasswordMutation } from '../../shared/api/users';
+import { resolveAuthenticatedRedirect } from '../../shared/auth/onboarding';
 import { useAuth } from '../../shared/context';
 import { AcrediLockup, Icon } from '../../shared/ui';
 
 export function PasswordChangePage() {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
+  const changePasswordMutation = useChangeMyPasswordMutation();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -15,11 +18,11 @@ export function PasswordChangePage() {
     return null;
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
+    if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
       setMessage({ type: 'error', text: 'Merci de remplir tous les champs.' });
       return;
     }
@@ -30,17 +33,40 @@ export function PasswordChangePage() {
     }
 
     if (newPassword.length < 8) {
-      setMessage({ type: 'error', text: 'Le nouveau mot de passe doit contenir au moins 8 caractères.' });
+      setMessage({ type: 'error', text: 'Le nouveau mot de passe doit contenir au moins 8 caracteres.' });
       return;
     }
 
-    updateUser?.({ onboardingStatus: 'COMPLETED' });
-    setMessage({ type: 'success', text: 'Mot de passe mis à jour. Redirection en cours…' });
+    try {
+      const updatedUser = await changePasswordMutation.mutateAsync({
+        currentPassword,
+        newPassword,
+      });
+      const onboardingStatus = updatedUser.onboardingStatus ?? 'COMPLETED';
+      const authenticatedUser =
+        updateUser({ ...updatedUser, onboardingStatus }) ?? {
+          ...user,
+          ...updatedUser,
+          onboardingStatus,
+        };
 
-    setTimeout(() => {
-      navigate('/app/dashboard', { replace: true });
-    }, 800);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setMessage({ type: 'success', text: 'Mot de passe mis a jour. Redirection en cours...' });
+
+      setTimeout(() => {
+        navigate(resolveAuthenticatedRedirect(authenticatedUser, '/app/dashboard'), { replace: true });
+      }, 800);
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Le changement de mot de passe a echoue.',
+      });
+    }
   }
+
+  const isSubmitting = changePasswordMutation.isPending;
 
   return (
     <div className="login-card">
@@ -65,6 +91,7 @@ export function PasswordChangePage() {
               type="password"
               value={currentPassword}
               onChange={(event) => setCurrentPassword(event.target.value)}
+              disabled={isSubmitting}
               required
             />
           </span>
@@ -78,6 +105,8 @@ export function PasswordChangePage() {
               type="password"
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
+              disabled={isSubmitting}
+              minLength={8}
               required
             />
           </span>
@@ -91,6 +120,8 @@ export function PasswordChangePage() {
               type="password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
+              disabled={isSubmitting}
+              minLength={8}
               required
             />
           </span>
@@ -102,8 +133,8 @@ export function PasswordChangePage() {
           </p>
         ) : null}
 
-        <button className="button primary button-wide" type="submit">
-          Valider
+        <button className="button primary button-wide" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Validation...' : 'Valider'}
         </button>
       </form>
     </div>

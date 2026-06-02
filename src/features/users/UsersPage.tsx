@@ -2,7 +2,12 @@ import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useInviteUserMutation, useUsersQuery } from "../../shared/api/users";
-import { useAuth } from "../../shared/context";
+import {
+  PermissionGate,
+  USERS_INVITE_PERMISSIONS,
+  USERS_VIEW_PERMISSIONS,
+  usePermissions,
+} from "../../shared/permissions";
 import type { AdminRole, User } from "../../shared/types";
 import { Icon, type IconName } from "../../shared/ui";
 import { NotUsers } from "./components/NotUsers";
@@ -65,36 +70,6 @@ function UserRowSkeleton() {
   );
 }
 
-function hasPermission(
-  permissions: ReturnType<typeof useAuth>["permissions"],
-  codes: string[],
-) {
-  if (!permissions) {
-    return false;
-  }
-
-  const normalizedRole = (permissions.role ?? "").toUpperCase();
-
-  if (normalizedRole === "ADMIN" || normalizedRole === "OWNER") {
-    return true;
-  }
-
-  return (permissions.features ?? []).some(
-    (feature) => codes.includes(feature.code) || codes.includes(feature.name),
-  );
-}
-
-function hasAdminAccess(user: User | null) {
-  const role = (user?.role ?? "").toUpperCase();
-
-  return (
-    user?.adminRole === "admin" ||
-    user?.adminRole === "owner" ||
-    role === "ADMIN" ||
-    role === "OWNER"
-  );
-}
-
 function getInviteErrorMessage(error: unknown) {
   if (error && typeof error === "object") {
     const maybeError = error as {
@@ -117,25 +92,9 @@ function getInviteErrorMessage(error: unknown) {
 
 export function UsersPage() {
   const navigate = useNavigate();
-  const { loading: authLoading, permissions, user: currentUser } = useAuth();
-  const canViewUsers =
-    hasAdminAccess(currentUser) ||
-    hasPermission(permissions, [
-      "users.view_all",
-      "VIEW_ALL_USERS",
-      "users.manage_accounts",
-      "MANAGE_ACCOUNTS",
-    ]);
-  const canInviteUsers =
-    hasAdminAccess(currentUser) ||
-    hasPermission(permissions, [
-      "users.invite_collaborators",
-      "INVITE_COLLABORATORS",
-      "users.create",
-      "CREATE_USERS",
-      "users.manage_accounts",
-      "MANAGE_ACCOUNTS",
-    ]);
+  const { hasAnyPermission, loading: authLoading } = usePermissions();
+  const canViewUsers = hasAnyPermission(USERS_VIEW_PERMISSIONS);
+  const canInviteUsers = hasAnyPermission(USERS_INVITE_PERMISSIONS);
   const usersQuery = useUsersQuery({ enabled: !authLoading && canViewUsers });
   const inviteMutation = useInviteUserMutation();
   const [nameFilter, setNameFilter] = useState("");
@@ -189,6 +148,16 @@ export function UsersPage() {
   }
 
   async function inviteUser() {
+    if (!canInviteUsers) {
+      setToast({
+        show: true,
+        intent: "error",
+        message: "Vous n'avez pas les droits necessaires pour inviter un utilisateur.",
+      });
+
+      return;
+    }
+
     const nextName = name.trim();
     const nextEmail = email.trim();
 
@@ -261,22 +230,20 @@ export function UsersPage() {
           {/* <strong>Notes View</strong> */}
           <Icon name="chevDown" size={14} />
         </div>
-        <button
-          className="button primary notes-create-button"
-          type="button"
-          disabled={authLoading || !canInviteUsers}
-          onClick={() => {
-            if (!canInviteUsers) {
-              return;
-            }
-
-            inviteMutation.reset();
-            setIsInviteOpen(true);
-          }}
-        >
-          <Icon name="plus" size={12} />
-          Create
-        </button>
+        <PermissionGate permissions={USERS_INVITE_PERMISSIONS}>
+          <button
+            className="button primary notes-create-button"
+            type="button"
+            disabled={authLoading}
+            onClick={() => {
+              inviteMutation.reset();
+              setIsInviteOpen(true);
+            }}
+          >
+            <Icon name="plus" size={12} />
+            Create
+          </button>
+        </PermissionGate>
       </section>
 
       <section className="notes-filters" aria-label="Users filters">
@@ -404,7 +371,7 @@ export function UsersPage() {
       </section>
 
       <AnimatePresence>
-        {isInviteOpen ? (
+        {isInviteOpen && canInviteUsers ? (
           <motion.div
             className="note-modal-overlay"
             role="presentation"

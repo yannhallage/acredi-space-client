@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useUsersQuery } from "../../shared/api/users";
+import { PermissionGate, TEAM_CREATE_PERMISSIONS } from "../../shared/permissions";
 import type { User } from "../../shared/types";
 import { Avatar, Icon } from "../../shared/ui";
 import {
@@ -718,14 +719,16 @@ export function TeamsPage() {
           <strong>Equipes</strong>
         </div>
 
-        <button
-          className="button primary notes-create-button"
-          type="button"
-          onClick={openDrawer}
-        >
-          <Icon name="plus" size={12} />
-          Creer
-        </button>
+        <PermissionGate permissions={TEAM_CREATE_PERMISSIONS}>
+          <button
+            className="button primary notes-create-button"
+            type="button"
+            onClick={openDrawer}
+          >
+            <Icon name="plus" size={12} />
+            Creer
+          </button>
+        </PermissionGate>
       </section>
 
       {teamsQuery.isError ? (

@@ -8,6 +8,7 @@ import {
   useNotes,
   type Note as ApiNote,
 } from "../../shared/api/notes";
+import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
 import { Icon } from "../../shared/ui";
 
 type SortMode = "newest" | "oldest";
@@ -175,16 +176,18 @@ function NoteCard({
       <header>
         <h2 style={{ color: textColor }}>{note.title}</h2>
 
-        <button
-          className="icon-button"
-          type="button"
-          aria-label={`Delete ${note.title}`}
-          disabled={isDeleting}
-          onClick={() => onDelete(note.id)}
-          style={{ color: textColor }}
-        >
-          <Icon name="trash" size={15} />
-        </button>
+        <PermissionGate permission={PERMISSIONS.DELETE_NOTES}>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label={`Delete ${note.title}`}
+            disabled={isDeleting}
+            onClick={() => onDelete(note.id)}
+            style={{ color: textColor }}
+          >
+            <Icon name="trash" size={15} />
+          </button>
+        </PermissionGate>
       </header>
 
       <p style={{ color: mutedTextColor }}>{note.content}</p>
@@ -402,24 +405,26 @@ export function NotesPage() {
           <Icon name="chevDown" size={14} />
         </div>
 
-        <button
-          className="button primary notes-create-button"
-          type="button"
-          onClick={() => setIsCreateOpen(true)}
-          disabled={createNoteMutation.isPending}
-        >
-          {createNoteMutation.isPending ? (
-            <>
-              <ClipLoader size={12} color="#fff" />
-              Creating...
-            </>
-          ) : (
-            <>
-              <Icon name="plus" size={12} />
-              Create
-            </>
-          )}
-        </button>
+        <PermissionGate permission={PERMISSIONS.CREATE_NOTES}>
+          <button
+            className="button primary notes-create-button"
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            disabled={createNoteMutation.isPending}
+          >
+            {createNoteMutation.isPending ? (
+              <>
+                <ClipLoader size={12} color="#fff" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <Icon name="plus" size={12} />
+                Create
+              </>
+            )}
+          </button>
+        </PermissionGate>
       </section>
 
       <section className="notes-filters" aria-label="Notes filters">
