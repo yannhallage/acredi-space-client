@@ -48,6 +48,7 @@ interface AuthContextValue {
     options?: { trustDevice?: boolean }
   ) => Promise<LoginResult>;
   verifyOtp: (code: string) => Promise<void>;
+  updateUser: (patch: Partial<User>) => User | null;
   logout: () => void;
 }
 
@@ -77,16 +78,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const completeAuthSession = useCallback((
-    response: AuthResponse,
-    options?: PersistAuthSessionOptions
-  ) => {
-    const authenticatedUser = persistAuthSession(response, options);
-    setUser(authenticatedUser);
-    setPermissions(response.permissions ?? getStoredPermissions());
+  const completeAuthSession = useCallback(
+    (response: AuthResponse, options?: PersistAuthSessionOptions) => {
+      const authenticatedUser = persistAuthSession(response, options);
+      setUser(authenticatedUser);
+      setPermissions(response.permissions ?? getStoredPermissions());
 
-    return authenticatedUser;
-  }, []);
+      return authenticatedUser;
+    },
+    []
+  );
+
+  const updateUser = useCallback(
+    (patch: Partial<User>) => {
+      let updatedUser: User | null = null;
+
+      setUser((current) => {
+        if (!current) {
+          return null;
+        }
+
+        updatedUser = { ...current, ...patch };
+        localStorage.setItem('acredi-user', JSON.stringify(updatedUser));
+        return updatedUser;
+      });
+
+      return updatedUser;
+    },
+    []
+  );
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -158,13 +178,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
 
+      updateUser,
+
       logout: () => {
         clearAuthSession();
         setUser(null);
         setPermissions(null);
       },
     }),
-    [completeAuthSession, loading, permissions, user]
+    [completeAuthSession, loading, permissions, updateUser, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

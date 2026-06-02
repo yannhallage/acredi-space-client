@@ -1,6 +1,8 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { AdminPage } from '../features/admin/AdminPage';
 import { LoginPage } from '../features/auth/LoginPage';
+import { PasswordChangePage } from '../features/auth/PasswordChangePage';
+import { ProfileCompletionPage } from '../features/auth/ProfileCompletionPage';
 import { CalendarPage } from '../features/calendar/CalendarPage';
 import { ChatPage } from '../features/chat/ChatPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
@@ -34,6 +36,10 @@ export default function App() {
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/verify-otp" element={<OtpPage />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/onboarding/password-change" element={<PasswordChangePage />} />
+                  <Route path="/onboarding/profile-completion" element={<ProfileCompletionPage />} />
+                </Route>
               </Route>
               <Route element={<ProtectedRoute />}>
                 <Route path="/app" element={<AppLayout />}>

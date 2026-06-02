@@ -93,8 +93,10 @@ function buildTeam(payload: UserResponse) {
 }
 
 function buildStatus(payload: UserResponse) {
-  if (readString(payload.status)) {
-    return payload.status;
+  const status = readString(payload.status);
+
+  if (status) {
+    return status;
   }
 
   if (payload.enabled === false) {
@@ -127,6 +129,9 @@ export function normalizeUser(
     team: buildTeam(payload),
     presence: normalizePresence(payload, options.fallbackPresence),
     status: buildStatus(payload),
+    enabled: payload.enabled ?? true,
+    invitationStatus: readString(payload.invitationStatus),
+    onboardingStatus: readString(payload.onboardingStatus),
     adminRole,
   };
 }

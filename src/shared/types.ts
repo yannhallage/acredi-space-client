@@ -8,6 +8,13 @@ export type AdminRole =
   | 'member'
   | 'guest';
 
+export interface UserProfileDetails {
+  role?: string;
+  team?: string;
+  teamName?: string;
+  [key: string]: unknown;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -16,6 +23,13 @@ export interface User {
   team: string;
   presence: Presence;
   status: string;
+  appThemePreference?: string | null;
+  avatarUrl?: string | null;
+  enabled?: boolean;
+  invitationStatus?: string;
+  onboardingStatus?: string;
+  phoneNumber?: string | null;
+  profile?: string | UserProfileDetails | null;
   adminRole: AdminRole;
 }
 

@@ -15,6 +15,7 @@ export interface UserResponse extends Partial<User> {
   enabled?: boolean;
   firstName?: string;
   fullName?: string;
+  invitationStatus?: string;
   lastName?: string;
   onboardingStatus?: string;
   phoneNumber?: string | null;

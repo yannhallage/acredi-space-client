@@ -39,10 +39,31 @@ export function LoginPage() {
       const authData = getLoginAuthResponse(loginData);
 
       if (authData) {
+        const userStatus = authData.user?.enabled === false ? 'disabled' : 'active';
+        const onboardingStatus = authData.user?.onboardingStatus?.toUpperCase();
+
+        if (userStatus === 'disabled') {
+          setMessage(
+            "Ce compte est desactive. Contactez votre administrateur pour reactiver l'accès."
+          );
+          return;
+        }
+
         completeAuthSession(authData, {
           persistTrustedDevice: trustDevice,
           trustedDeviceEmail: email,
         });
+
+        if (onboardingStatus === 'PASSWORD_REQUIRED_CHANGE') {
+          navigate('/onboarding/password-change', { replace: true });
+          return;
+        }
+
+        if (onboardingStatus === 'PROFILE_COMPLETION_REQUIRED') {
+          navigate('/onboarding/profile-completion', { replace: true });
+          return;
+        }
+
         navigate(redirectTo, { replace: true });
         return;
       }
@@ -68,28 +89,28 @@ export function LoginPage() {
       <div className="login-mobile-brand">
         <AcrediLockup size={30} fontSize={22} />
       </div>
-      <div>
+      <div className="text-[14px]">
         <p className="eyebrow">Connexion securisee</p>
         <h1>Ravi de vous revoir.</h1>
         <p className="muted">Connectez-vous a votre espace pour retrouver fichiers, messages et reunions.</p>
       </div>
 
       <form className="login-form" onSubmit={handleSubmit}>
-        <label>
+        <label className="text-sm">
           <span>Email professionnel</span>
           <span className="input-wrap">
             <Icon name="mail" size={16} />
             <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required />
           </span>
         </label>
-        <label>
+        <label className="text-sm">
           <span>Mot de passe</span>
           <span className="input-wrap">
             <Icon name="lock" size={16} />
             <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required />
           </span>
         </label>
-        <div className="login-row">
+        <div className="login-row text-[11px]">
           <label className="check-row">
             <input
               type="checkbox"

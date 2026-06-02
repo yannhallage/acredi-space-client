@@ -81,6 +81,13 @@ export function normalizeAuthUser(value: unknown): User {
     team: readString(payload.team) ?? "Acredi Space",
     presence: readPresence(payload.presence),
     status: readString(payload.status) ?? "Disponible",
+    enabled: payload.enabled !== false,
+    onboardingStatus: readString(payload.onboardingStatus),
+    invitationStatus: readString(payload.invitationStatus),
+    avatarUrl: readString(payload.avatarUrl),
+    phoneNumber: readString(payload.phoneNumber),
+    appThemePreference: readString(payload.appThemePreference),
+    profile: readString(payload.profile),
     adminRole: readAdminRole(payload.adminRole ?? payload.role),
   };
 }

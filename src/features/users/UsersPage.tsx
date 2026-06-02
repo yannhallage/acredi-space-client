@@ -56,8 +56,10 @@ function UserRowSkeleton() {
       <div className="users-person">
         <span className="skeleton-line skeleton-user-name" />
         <span className="skeleton-line skeleton-user-email" />
+        <span className="skeleton-line skeleton-user-status" />
       </div>
       <span className="skeleton-pill" />
+      <span className="skeleton-status" />
       <span className="skeleton-more" />
     </article>
   );
@@ -367,6 +369,10 @@ export function UsersPage() {
                   <strong>{user.name}</strong>
                   <span>{user.email}</span>
                 </div>
+                <span className="users-status">
+                  {user.enabled === false ? "Désactivé" : "Activé"}
+                  {user.invitationStatus ? ` • ${user.invitationStatus}` : ""}
+                </span>
                 <button
                   className="users-role"
                   type="button"

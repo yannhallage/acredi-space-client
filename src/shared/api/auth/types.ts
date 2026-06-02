@@ -6,6 +6,13 @@ export interface AuthUserPayload extends Partial<User> {
   lastName?: string;
   userId?: string | number;
   uuid?: string | number;
+  enabled?: boolean;
+  onboardingStatus?: string;
+  invitationStatus?: string;
+  avatarUrl?: string | null;
+  phoneNumber?: string | null;
+  appThemePreference?: string;
+  profile?: string;
 }
 
 export interface ApiResponse<TData = unknown> {

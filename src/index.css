@@ -3050,7 +3050,7 @@ a {
 .users-row {
   min-height: 86px;
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto auto;
+  grid-template-columns: 56px minmax(0, 1fr) auto auto auto;
   align-items: center;
   column-gap: 16px;
   padding: 0;
@@ -3095,6 +3095,19 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.users-status {
+  min-height: 34px;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
 }
 
 .users-person strong {
@@ -4198,6 +4211,19 @@ a {
 
 .skeleton-user-email {
   width: 220px;
+}
+
+.skeleton-user-status {
+  width: 128px;
+  height: 12px;
+  margin-top: 6px;
+}
+
+.skeleton-status {
+  width: 100px;
+  height: 34px;
+  justify-self: end;
+  border-radius: 10px;
 }
 
 .skeleton-pill {
