@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Icon } from "../../shared/ui";
-import { useCreateNote, useNotes, type Note as ApiNote } from "../../shared/api/notes";
+import { Avatar, Icon } from "../../shared/ui";
+import { useUsersQuery } from "../../shared/api/users/hooks";
+import {
+  useCreateNote,
+  useDeleteNote,
+  useNotes,
+  useShareNote,
+  useUpdateNote,
+  type Note as ApiNote,
+} from "../../shared/api/notes";
 
 type SortMode = "newest" | "oldest";
 
@@ -15,27 +23,7 @@ interface NoteCard {
   color: string;
 }
 
-const initialNotes: NoteCard[] = [
-  {
-    id: "note-workspace",
-    title: "Acredi Workspace",
-    content:
-      "Tailwind CSS works by scanning all of your HTML files, JavaScript components, and any other templates for class names.",
-    authorName: "Administrator",
-    updatedLabel: "just now",
-    updatedMinutes: 0,
-    color: "#171717",
-  },
-  {
-    id: "note-test",
-    title: "Just an test",
-    content: "Lucide is available as a package for all major package managers.",
-    authorName: "yann hallage",
-    updatedLabel: "10 hours ago",
-    updatedMinutes: 600,
-    color: "#2563eb",
-  },
-];
+const initialNotes: NoteCard[] = [];
 
 const editorTools = [
   "H1",
@@ -55,17 +43,20 @@ const editorTools = [
   "<>",
 ];
 
-const noteSkeletons = ["note-skeleton-1", "note-skeleton-2", "note-skeleton-3", "note-skeleton-4"];
+const noteSkeletons = [
+  "note-skeleton-1",
+  "note-skeleton-2",
+  "note-skeleton-3",
+  "note-skeleton-4",
+];
 
 function mapApiNoteToCard(note: ApiNote): NoteCard {
   return {
     id: note.id,
-    title: note.title,
-    content: note.content,
-    authorName: note.ownerId ?? "Acredi",
-    updatedLabel: note.updatedAt
-      ? note.updatedAt.toLocaleDateString()
-      : "—",
+    title: note.title || "Sans titre",
+    content: note.content || "Aucun contenu.",
+    authorName: note.ownerId ? `Auteur ${note.ownerId.slice(0, 8)}` : "Acredi",
+    updatedLabel: note.updatedAt ? note.updatedAt.toLocaleDateString() : "—",
     updatedMinutes: note.updatedAt
       ? Math.max(0, Math.floor((Date.now() - note.updatedAt.getTime()) / 60000))
       : 0,
@@ -83,7 +74,19 @@ const noteColors = [
   "#db2777",
 ];
 
-function NoteCard({ note }: { note: NoteCard }) {
+function NoteCardItem({
+  note,
+  onDelete,
+  onEdit,
+  onShare,
+}: {
+  note: NoteCard;
+  onDelete: (id: string) => void;
+  onEdit: (note: NoteCard) => void;
+  onShare: (note: NoteCard) => void;
+}) {
+  const [openMenu, setOpenMenu] = useState(false);
+
   return (
     <article
       className="note-card"
@@ -93,23 +96,66 @@ function NoteCard({ note }: { note: NoteCard }) {
       }}
     >
       <header>
-        <h2>{note.title}</h2>
+        <h2 className="note-title" title={note.title}>
+          {note.title}
+        </h2>
 
-        <button
-          className="icon-button"
-          type="button"
-          aria-label={`Options ${note.title}`}
-        >
-          <Icon name="moreH" size={15} />
-        </button>
+        <div className="note-menu-wrapper">
+          <button
+            className="icon-button note-menu-button"
+            type="button"
+            aria-label={`Options ${note.title}`}
+            onClick={() => setOpenMenu((current) => !current)}
+          >
+           <span className="note-more-dots">⋮</span>
+          </button>
+
+          {openMenu && (
+            <div className="note-menu">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(false);
+                  onEdit(note);
+                }}
+              >
+                <Icon name="edit" size={14} />
+                Modifier
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(false);
+                  onShare(note);
+                }}
+              >
+                <Icon name="share" size={14} />
+                Partager
+              </button>
+
+              <button
+                type="button"
+                className="danger"
+                onClick={() => {
+                  setOpenMenu(false);
+                  onDelete(note.id);
+                }}
+              >
+                <Icon name="trash" size={14} />
+                Supprimer
+              </button>
+            </div>
+          )}
+        </div>
       </header>
 
-      <p>{note.content}</p>
+      <p className="note-content">{note.content}</p>
 
       <footer>
-        <span>
+        <span className="note-author">
           <i>{note.authorName[0]?.toUpperCase()}</i>
-          <strong>{note.authorName}</strong>
+          <strong title={note.authorName}>{note.authorName}</strong>
         </span>
 
         <time>{note.updatedLabel}</time>
@@ -166,6 +212,18 @@ export function NotesPage() {
   const [draftTitle, setDraftTitle] = useState("");
   const [draftContent, setDraftContent] = useState("");
   const [draftColor, setDraftColor] = useState("#171717");
+  const updateNoteMutation = useUpdateNote();
+  const deleteNoteMutation = useDeleteNote();
+  const shareNoteMutation = useShareNote();
+  const usersQuery = useUsersQuery();
+
+const [shareTargetNote, setShareTargetNote] = useState<NoteCard | null>(null);
+const [selectedShareUsers, setSelectedShareUsers] = useState<string[]>([]);
+const [shareLevel, setShareLevel] = useState<"READ" | "WRITE" | "ADMIN">("READ");
+
+const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+
+
 
   const visibleNotes = useMemo(() => {
     const titleQuery = titleFilter.trim().toLowerCase();
@@ -220,47 +278,114 @@ export function NotesPage() {
     setDraftContent("");
     setDraftColor("#171717");
   }
-
-  function closeCreateModal() {
-    setIsCreateOpen(false);
-    resetDraft();
-  }
+function closeCreateModal() {
+  setIsCreateOpen(false);
+  setEditingNoteId(null);
+  resetDraft();
+}
 
   function createNote() {
-    const title = draftTitle.trim();
-    const content = draftContent.trim();
+  const title = draftTitle.trim();
+  const content = draftContent.trim();
 
-    if (!title) return;
+  if (!title) return;
 
-    createNoteMutation.mutate(
+  if (editingNoteId) {
+    updateNoteMutation.mutate(
       {
-        title,
-        content: content || "No content yet.",
-        color: draftColor,
+        id: editingNoteId,
+        request: {
+          title,
+          content: content || "No content yet.",
+          color: draftColor,
+        },
       },
       {
         onSuccess: (note) => {
-          const createdNote = mapApiNoteToCard(note);
-          const nextNotes: NoteCard[] = [
-            createdNote,
-            ...notes.map((oldNote) =>
-              oldNote.updatedMinutes === 0
-                ? {
-                    ...oldNote,
-                    updatedLabel: "a few minutes ago",
-                    updatedMinutes: 8,
-                  }
-                : oldNote
-            ),
-          ];
+          const updatedNote = mapApiNoteToCard(note);
 
-          saveNotes(nextNotes);
+          setNotes((current) =>
+            current.map((item) =>
+              item.id === updatedNote.id ? updatedNote : item
+            )
+          );
+
+          setEditingNoteId(null);
           closeCreateModal();
         },
       }
     );
+
+    return;
   }
 
+  createNoteMutation.mutate(
+    {
+      title,
+      content: content || "No content yet.",
+      color: draftColor,
+    },
+    {
+      onSuccess: (note) => {
+        const createdNote = mapApiNoteToCard(note);
+        setNotes((current) => [createdNote, ...current]);
+        closeCreateModal();
+      },
+    }
+  );
+}
+
+  function deleteNote(id: string) {
+  const confirmed = window.confirm("Supprimer cette note ?");
+
+  if (!confirmed) return;
+
+  deleteNoteMutation.mutate(id, {
+    onSuccess: () => {
+      setNotes((current) => current.filter((note) => note.id !== id));
+    },
+  });
+}
+function editNote(note: NoteCard) {
+  setEditingNoteId(note.id);
+  setDraftTitle(note.title);
+  setDraftContent(note.content);
+  setDraftColor(note.color);
+  setIsCreateOpen(true);
+}
+
+function toggleShareUser(userId: string) {
+  setSelectedShareUsers((current) =>
+    current.includes(userId)
+      ? current.filter((id) => id !== userId)
+      : [...current, userId]
+  );
+}
+
+function submitShareNote() {
+  if (!shareTargetNote || selectedShareUsers.length === 0) return;
+
+  selectedShareUsers.forEach((userId) => {
+    shareNoteMutation.mutate({
+      id: shareTargetNote.id,
+      request: {
+        userId,
+        level: shareLevel,
+      },
+    });
+  });
+
+  setShareTargetNote(null);
+  setSelectedShareUsers([]);
+  setShareLevel("READ");
+}
+
+
+function shareNote(note: NoteCard) {
+  setShareTargetNote(note);
+  setSelectedShareUsers([]);
+  setShareLevel("READ");
+}
   return (
     <div className="notes-page">
       <section className="notes-toolbar">
@@ -340,11 +465,25 @@ export function NotesPage() {
         </div>
       </section>
 
+      {isError && (
+        <div className="notes-empty">
+          <Icon name="notes" size={14} />
+          <strong>Erreur lors du chargement</strong>
+          <span>Vérifie que le backend est lancé.</span>
+        </div>
+      )}
+
       <section className="notes-grid" aria-label="Notes list">
         {isLoading
           ? noteSkeletons.map((item) => <NoteCardSkeleton key={item} />)
           : visibleNotes.map((note) => (
-              <NoteCard key={note.id} note={note} />
+              <NoteCardItem
+                key={note.id}
+                note={note}
+                onDelete={deleteNote}
+                onEdit={editNote}
+                onShare={shareNote}
+              />
             ))}
 
         {!isLoading && visibleNotes.length === 0 && (
@@ -384,14 +523,6 @@ export function NotesPage() {
                 <h2>Create Note</h2>
 
                 <div>
-                  <button
-                    className="icon-button"
-                    type="button"
-                    aria-label="Open expanded editor"
-                  >
-                    <Icon name="edit" size={16} />
-                  </button>
-
                   <button
                     className="icon-button"
                     type="button"
@@ -468,6 +599,111 @@ export function NotesPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      {shareTargetNote && (
+  <div
+    className="note-modal-overlay"
+    role="presentation"
+    onMouseDown={() => setShareTargetNote(null)}
+  >
+    <div
+      className="note-share-modal"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(event) => event.stopPropagation()}
+    >
+      <header>
+        <div>
+          <span>Partage</span>
+          <h2>Partager la note</h2>
+          <p>{shareTargetNote.title}</p>
+        </div>
+
+        <button
+          className="icon-button"
+          type="button"
+          onClick={() => setShareTargetNote(null)}
+        >
+          <Icon name="x" size={16} />
+        </button>
+      </header>
+
+      <label className="note-field">
+        <span>Niveau d’accès</span>
+
+        <select
+          value={shareLevel}
+          onChange={(event) =>
+            setShareLevel(event.target.value as "READ" | "WRITE" | "ADMIN")
+          }
+        >
+          <option value="READ">Lecture</option>
+          <option value="WRITE">Modification</option>
+          <option value="ADMIN">Admin</option>
+        </select>
+      </label>
+
+      <div className="note-share-users">
+        {usersQuery.loading ? (
+          <div className="notes-empty">
+            <strong>Chargement des utilisateurs...</strong>
+          </div>
+        ) : usersQuery.data && usersQuery.data.length > 0 ? (
+          usersQuery.data.map((user) => {
+            const selected = selectedShareUsers.includes(user.id);
+
+            return (
+              <button
+                key={user.id}
+                type="button"
+                className={selected ? "note-share-user selected" : "note-share-user"}
+                onClick={() => toggleShareUser(user.id)}
+              >
+                <Avatar name={user.name} size={34} presence={user.presence} />
+
+                <span>
+                  <strong>{user.name}</strong>
+                  <small>{user.email}</small>
+                </span>
+
+                <Icon name={selected ? "check" : "plus"} size={15} />
+              </button>
+            );
+          })
+        ) : (
+          <div className="notes-empty">
+            <strong>Aucun utilisateur trouvé</strong>
+          </div>
+        )}
+      </div>
+
+      <footer>
+        <button
+          className="button ghost"
+          type="button"
+          onClick={() => setShareTargetNote(null)}
+        >
+          Annuler
+        </button>
+
+        <button
+          className="button primary"
+          type="button"
+          disabled={selectedShareUsers.length === 0 || shareNoteMutation.isPending}
+          onClick={submitShareNote}
+        >
+          Partager avec {selectedShareUsers.length} utilisateur
+          {selectedShareUsers.length > 1 ? "s" : ""}
+        </button>
+      </footer>
+    </div>
+  </div>
+)}
+
+
+
+
+
+
     </div>
   );
 }

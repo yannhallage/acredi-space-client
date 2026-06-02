@@ -9,7 +9,7 @@ export type CalendarEventResponse = {
   endsAt: string;
   location: string | null;
   ownerId: string | null;
- participants: {
+  participants: {
   id: string;
   firstName: string;
   lastName: string;
@@ -26,7 +26,12 @@ export type CalendarEvent = {
   endsAt: Date;
   location: string;
   ownerId: string | null;
-  participantIds: string[];
+ participants: {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}[];
   createdAt: Date | null;
   type: CalendarEventType;
   color: string;
