@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClipLoader } from "react-spinners";
 import Toast from "../../components/app/Toast/Toast";
@@ -6,6 +12,7 @@ import {
   useCreateNote,
   useDeleteNote,
   useNotes,
+  useUpdateNote,
   type Note as ApiNote,
 } from "../../shared/api/notes";
 import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
@@ -142,7 +149,7 @@ function mapApiNoteToCard(note: ApiNote): NoteCard {
   return {
     id: note.id,
     title: note.title,
-    content: note.content || "No content yet.",
+    content: note.content,
     ownerName: getOwnerDisplayName(note),
     updatedLabel: meta.label,
     updatedMinutes: meta.minutes,
@@ -154,15 +161,61 @@ function NoteCard({
   isDeleting,
   note,
   onDelete,
+  onEdit,
 }: {
   isDeleting: boolean;
   note: NoteCard;
   onDelete: (id: string) => void;
+  onEdit: (note: NoteCard) => void;
 }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const textColor = getTextColor(note.color);
   const mutedTextColor = getMutedTextColor(textColor);
   const borderColor = note.color ? getBorderColor(textColor) : undefined;
   const ownerInitial = note.ownerName.trim().charAt(0).toUpperCase() || "A";
+  const menuStyle: CSSProperties = note.color
+    ? {
+        backgroundColor:
+          textColor === "#111"
+            ? "rgba(255, 255, 255, 0.96)"
+            : "rgba(17, 17, 20, 0.96)",
+        borderColor:
+          textColor === "#111"
+            ? "rgba(0, 0, 0, 0.14)"
+            : "rgba(255, 255, 255, 0.18)",
+        color: textColor === "#111" ? "#111" : "#fff",
+      }
+    : {};
+
+  useEffect(() => {
+    if (!isMenuOpen) return undefined;
+
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      if (
+        event.target instanceof Node &&
+        menuRef.current &&
+        !menuRef.current.contains(event.target)
+      ) {
+        setIsMenuOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isMenuOpen]);
 
   return (
     <article
@@ -176,21 +229,78 @@ function NoteCard({
       <header>
         <h2 style={{ color: textColor }}>{note.title}</h2>
 
-        <PermissionGate permission={PERMISSIONS.DELETE_NOTES}>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label={`Delete ${note.title}`}
-            disabled={isDeleting}
-            onClick={() => onDelete(note.id)}
-            style={{ color: textColor }}
-          >
-            <Icon name="trash" size={15} />
-          </button>
+        <PermissionGate
+          permissions={[PERMISSIONS.UPDATE_NOTES, PERMISSIONS.DELETE_NOTES]}
+        >
+          <div className="note-card-actions" ref={menuRef}>
+            <button
+              className={isMenuOpen ? "icon-button active" : "icon-button"}
+              type="button"
+              aria-label={`Actions for ${note.title}`}
+              aria-haspopup="menu"
+              aria-expanded={isMenuOpen}
+              disabled={isDeleting}
+              onClick={() => setIsMenuOpen((current) => !current)}
+              style={{ color: textColor }}
+            >
+              {isDeleting ? (
+                <ClipLoader size={12} color="currentColor" />
+              ) : (
+                <Icon name="moreH" size={15} />
+              )}
+            </button>
+
+            <AnimatePresence>
+              {isMenuOpen ? (
+                <motion.div
+                  className="note-card-menu"
+                  role="menu"
+                  aria-label={`Actions for ${note.title}`}
+                  initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                  transition={{ duration: 0.14, ease: "easeOut" }}
+                  style={menuStyle}
+                >
+                  <PermissionGate permission={PERMISSIONS.UPDATE_NOTES}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        onEdit(note);
+                      }}
+                    >
+                      <Icon name="edit" size={15} />
+                      Modifier
+                    </button>
+                  </PermissionGate>
+
+                  <PermissionGate permission={PERMISSIONS.DELETE_NOTES}>
+                    <button
+                      className="danger"
+                      type="button"
+                      role="menuitem"
+                      disabled={isDeleting}
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        onDelete(note.id);
+                      }}
+                    >
+                      <Icon name="trash" size={15} />
+                      Supprimer
+                    </button>
+                  </PermissionGate>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
         </PermissionGate>
       </header>
 
-      <p style={{ color: mutedTextColor }}>{note.content}</p>
+      <p style={{ color: mutedTextColor }}>
+        {note.content || "No content yet."}
+      </p>
 
       <footer style={{ color: mutedTextColor }}>
         <span>
@@ -252,12 +362,14 @@ export function NotesPage() {
   } = useNotes(notesQueryParams);
   const createNoteMutation = useCreateNote();
   const deleteNoteMutation = useDeleteNote();
+  const updateNoteMutation = useUpdateNote();
 
   const [titleFilter, setTitleFilter] = useState("");
   const [contentFilter, setContentFilter] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<NoteCard | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftContent, setDraftContent] = useState("");
   const [draftColor, setDraftColor] = useState(noteColors[0]);
@@ -272,6 +384,9 @@ export function NotesPage() {
     [apiNotes]
   );
   const isNotesLoading = isLoading || (isFetching && !apiNotes);
+  const isEditing = Boolean(editingNote);
+  const isSavingNote =
+    createNoteMutation.isPending || updateNoteMutation.isPending;
 
   const visibleNotes = useMemo(() => {
     const titleQuery = titleFilter.trim().toLowerCase();
@@ -297,18 +412,19 @@ export function NotesPage() {
   }, [contentFilter, notes, sortMode, titleFilter]);
 
   useEffect(() => {
-    if (!isCreateOpen) return undefined;
+    if (!isNoteModalOpen) return undefined;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !createNoteMutation.isPending) {
-        setIsCreateOpen(false);
+      if (event.key === "Escape" && !isSavingNote) {
+        setIsNoteModalOpen(false);
+        setEditingNote(null);
         resetDraft();
       }
     };
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [createNoteMutation.isPending, isCreateOpen]);
+  }, [isNoteModalOpen, isSavingNote]);
 
   function showToast(
     intent: ToastState["intent"],
@@ -328,35 +444,65 @@ export function NotesPage() {
     setDraftColor(noteColors[0]);
   }
 
-  function closeCreateModal() {
-    if (createNoteMutation.isPending) return;
+  function openCreateModal() {
+    setEditingNote(null);
+    resetDraft();
+    setIsNoteModalOpen(true);
+  }
 
-    setIsCreateOpen(false);
+  function openEditModal(note: NoteCard) {
+    setEditingNote(note);
+    setDraftTitle(note.title);
+    setDraftContent(note.content);
+    setDraftColor(note.color ?? noteColors[0]);
+    setIsNoteModalOpen(true);
+  }
+
+  function closeNoteModal() {
+    if (isSavingNote) return;
+
+    setIsNoteModalOpen(false);
+    setEditingNote(null);
     resetDraft();
   }
 
-  async function createNote() {
+  async function saveNote() {
     const title = draftTitle.trim();
     const content = draftContent.trim();
 
     if (!title) return;
 
     try {
-      await createNoteMutation.mutateAsync({
-        title,
-        content: content || "No content yet.",
-        color: draftColor,
-      });
+      if (editingNote) {
+        await updateNoteMutation.mutateAsync({
+          id: editingNote.id,
+          request: {
+            title,
+            content: content || "No content yet.",
+            color: draftColor,
+          },
+        });
+        showToast("success", "Note updated.");
+      } else {
+        await createNoteMutation.mutateAsync({
+          title,
+          content: content || "No content yet.",
+          color: draftColor,
+        });
+        showToast("success", "Note created successfully.");
+      }
 
-      setIsCreateOpen(false);
+      setIsNoteModalOpen(false);
+      setEditingNote(null);
       resetDraft();
-      showToast("success", "Note created successfully.");
     } catch (caughtError) {
       showToast(
         "error",
         caughtError instanceof Error
           ? caughtError.message
-          : "Error while creating the note.",
+          : editingNote
+            ? "Error while updating the note."
+            : "Error while creating the note.",
         5000
       );
     }
@@ -409,8 +555,8 @@ export function NotesPage() {
           <button
             className="button primary notes-create-button"
             type="button"
-            onClick={() => setIsCreateOpen(true)}
-            disabled={createNoteMutation.isPending}
+            onClick={openCreateModal}
+            disabled={isSavingNote}
           >
             {createNoteMutation.isPending ? (
               <>
@@ -510,6 +656,7 @@ export function NotesPage() {
                   key={note.id}
                   isDeleting={deletingIds.has(note.id)}
                   note={note}
+                  onEdit={openEditModal}
                   onDelete={(noteId) => {
                     deleteNote(noteId).catch(() => undefined);
                   }}
@@ -535,7 +682,7 @@ export function NotesPage() {
       </section>
 
       <AnimatePresence>
-        {isCreateOpen ? (
+        {isNoteModalOpen ? (
           <motion.div
             className="note-modal-overlay"
             role="presentation"
@@ -543,11 +690,11 @@ export function NotesPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.16 }}
-            onMouseDown={closeCreateModal}
+            onMouseDown={closeNoteModal}
           >
             <motion.form
               className="note-modal"
-              aria-label="Create Note"
+              aria-label={isEditing ? "Edit Note" : "Create Note"}
               initial={{ opacity: 0, y: 14, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -555,18 +702,18 @@ export function NotesPage() {
               onMouseDown={(event) => event.stopPropagation()}
               onSubmit={(event) => {
                 event.preventDefault();
-                createNote().catch(() => undefined);
+                saveNote().catch(() => undefined);
               }}
             >
               <header>
-                <h2>Create Note</h2>
+                <h2>{isEditing ? "Edit Note" : "Create Note"}</h2>
 
                 <div>
                   <button
                     className="icon-button"
                     type="button"
                     aria-label="Open expanded editor"
-                    disabled={createNoteMutation.isPending}
+                    disabled={isSavingNote}
                   >
                     <Icon name="edit" size={16} />
                   </button>
@@ -574,9 +721,11 @@ export function NotesPage() {
                   <button
                     className="icon-button"
                     type="button"
-                    aria-label="Close create note"
-                    onClick={closeCreateModal}
-                    disabled={createNoteMutation.isPending}
+                    aria-label={
+                      isEditing ? "Close edit note" : "Close create note"
+                    }
+                    onClick={closeNoteModal}
+                    disabled={isSavingNote}
                   >
                     <Icon name="x" size={16} />
                   </button>
@@ -592,7 +741,7 @@ export function NotesPage() {
                   onChange={(event) => setDraftTitle(event.target.value)}
                   placeholder="Title"
                   autoFocus
-                  disabled={createNoteMutation.isPending}
+                  disabled={isSavingNote}
                 />
               </label>
 
@@ -610,7 +759,7 @@ export function NotesPage() {
                     value={draftContent}
                     onChange={(event) => setDraftContent(event.target.value)}
                     placeholder="Content"
-                    disabled={createNoteMutation.isPending}
+                    disabled={isSavingNote}
                   />
                 </div>
               </label>
@@ -628,7 +777,7 @@ export function NotesPage() {
                       style={{ background: color }}
                       onClick={() => setDraftColor(color)}
                       aria-label={`Choose color ${color}`}
-                      disabled={createNoteMutation.isPending}
+                      disabled={isSavingNote}
                     />
                   ))}
                 </div>
@@ -638,15 +787,15 @@ export function NotesPage() {
                 <button
                   className="button primary notes-submit"
                   type="submit"
-                  disabled={!draftTitle.trim() || createNoteMutation.isPending}
+                  disabled={!draftTitle.trim() || isSavingNote}
                 >
-                  {createNoteMutation.isPending ? (
+                  {isSavingNote ? (
                     <>
                       <ClipLoader size={12} color="#fff" />
-                      Creating...
+                      {isEditing ? "Saving..." : "Creating..."}
                     </>
                   ) : (
-                    "Create"
+                    isEditing ? "Save" : "Create"
                   )}
                 </button>
               </footer>

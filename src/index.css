@@ -4426,6 +4426,67 @@ a {
   color: var(--text);
 }
 
+.note-card-actions {
+  position: relative;
+  z-index: 2;
+  flex: none;
+}
+
+.note-card .note-card-actions .icon-button {
+  margin: -6px -6px 0 0;
+}
+
+.note-card .note-card-actions .icon-button.active {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.note-card-menu {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  z-index: 5;
+  width: 156px;
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
+  transform-origin: top right;
+}
+
+.note-card-menu button {
+  width: 100%;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 9px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.note-card-menu button:hover {
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+.note-card-menu button.danger {
+  color: var(--red);
+}
+
+.note-card-menu button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .note-card h2 {
   flex: 1;
   min-width: 0;
