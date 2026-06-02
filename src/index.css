@@ -1957,6 +1957,16 @@ a {
   color: var(--text);
 }
 
+.dm-new-conversation-user:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.dm-new-conversation-user:disabled:hover {
+  background: transparent;
+  color: var(--muted-soft);
+}
+
 .dm-new-conversation-user > svg {
   color: var(--muted);
 }
@@ -2067,6 +2077,14 @@ a {
   gap: 8px;
   color: var(--muted-soft);
   font-weight: 650;
+}
+
+.note-share-overlay {
+  z-index: 120;
+}
+
+.note-share-modal {
+  width: min(660px, calc(100vw - 44px));
 }
 
 .thread-panel {
