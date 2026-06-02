@@ -29,9 +29,9 @@ export function UserFormModal({ onClose, onInvite }: UserFormModalProps) {
       });
 
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      setMessage(error?.message || "Validation failed");
+      setMessage(error instanceof Error ? error.message : "Validation failed");
     } finally {
       setSubmitting(false);
     }

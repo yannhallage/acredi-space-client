@@ -1,29 +1,40 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Avatar, Icon } from "../../shared/ui";
-import { useUsersQuery } from "../../shared/api/users/hooks";
+import { ClipLoader } from "react-spinners";
+import Toast from "../../components/app/Toast/Toast";
 import {
   useCreateNote,
   useDeleteNote,
   useNotes,
-  useShareNote,
-  useUpdateNote,
   type Note as ApiNote,
 } from "../../shared/api/notes";
+import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
+import { Icon } from "../../shared/ui";
 
 type SortMode = "newest" | "oldest";
+
+type ToastState = {
+  show: boolean;
+  intent: "success" | "info" | "warning" | "error";
+  message: string;
+};
 
 interface NoteCard {
   id: string;
   title: string;
   content: string;
-  authorName: string;
+  ownerName: string;
   updatedLabel: string;
   updatedMinutes: number;
-  color: string;
+  color: string | null;
 }
 
-const initialNotes: NoteCard[] = [];
+const noteSkeletons = [
+  "note-skeleton-1",
+  "note-skeleton-2",
+  "note-skeleton-3",
+  "note-skeleton-4",
+];
 
 const editorTools = [
   "H1",
@@ -43,27 +54,6 @@ const editorTools = [
   "<>",
 ];
 
-const noteSkeletons = [
-  "note-skeleton-1",
-  "note-skeleton-2",
-  "note-skeleton-3",
-  "note-skeleton-4",
-];
-
-function mapApiNoteToCard(note: ApiNote): NoteCard {
-  return {
-    id: note.id,
-    title: note.title || "Sans titre",
-    content: note.content || "Aucun contenu.",
-    authorName: note.ownerId ? `Auteur ${note.ownerId.slice(0, 8)}` : "Acredi",
-    updatedLabel: note.updatedAt ? note.updatedAt.toLocaleDateString() : "—",
-    updatedMinutes: note.updatedAt
-      ? Math.max(0, Math.floor((Date.now() - note.updatedAt.getTime()) / 60000))
-      : 0,
-    color: note.color ?? "#171717",
-  };
-}
-
 const noteColors = [
   "#171717",
   "#7c3aed",
@@ -74,91 +64,151 @@ const noteColors = [
   "#db2777",
 ];
 
-function NoteCardItem({
+function isUuidLike(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
+function getOwnerDisplayName(note: ApiNote) {
+  const ownerName = note.ownerName?.trim();
+
+  if (ownerName) return ownerName;
+
+  const ownerId = note.ownerId?.trim();
+
+  if (!ownerId || isUuidLike(ownerId) || ownerId.length > 28) {
+    return "Auteur";
+  }
+
+  return ownerId;
+}
+
+function computeUpdatedMeta(dateValue?: Date | string | null) {
+  if (!dateValue) return { label: "unknown", minutes: 0 };
+
+  const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+  const time = date.getTime();
+
+  if (Number.isNaN(time)) {
+    return { label: "unknown", minutes: 0 };
+  }
+
+  const diff = Math.max(0, Math.floor((Date.now() - time) / 60000));
+
+  if (diff < 1) return { label: "just now", minutes: 0 };
+  if (diff < 60) return { label: `${diff} minutes ago`, minutes: diff };
+  if (diff < 60 * 24) {
+    return { label: `${Math.floor(diff / 60)} hours ago`, minutes: diff };
+  }
+
+  return {
+    label: `${Math.floor(diff / (60 * 24))} days ago`,
+    minutes: diff,
+  };
+}
+
+function getTextColor(background: string | null | undefined) {
+  if (!background || !/^#[0-9a-f]{6}$/i.test(background)) {
+    return "var(--text)";
+  }
+
+  const hex = background.replace("#", "");
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+  return brightness > 150 ? "#111" : "#fff";
+}
+
+function getMutedTextColor(textColor: string) {
+  if (textColor === "#111") return "rgba(17, 17, 17, 0.68)";
+  if (textColor === "#fff") return "rgba(255, 255, 255, 0.85)";
+
+  return "var(--muted-soft)";
+}
+
+function getBorderColor(textColor: string) {
+  if (textColor === "#111") return "rgba(0, 0, 0, 0.14)";
+  if (textColor === "#fff") return "rgba(255, 255, 255, 0.18)";
+
+  return undefined;
+}
+
+function mapApiNoteToCard(note: ApiNote): NoteCard {
+  const meta = computeUpdatedMeta(note.updatedAt ?? note.createdAt);
+
+  return {
+    id: note.id,
+    title: note.title,
+    content: note.content || "No content yet.",
+    ownerName: getOwnerDisplayName(note),
+    updatedLabel: meta.label,
+    updatedMinutes: meta.minutes,
+    color: note.color ?? null,
+  };
+}
+
+function NoteCard({
+  isDeleting,
   note,
   onDelete,
-  onEdit,
-  onShare,
 }: {
+  isDeleting: boolean;
   note: NoteCard;
   onDelete: (id: string) => void;
-  onEdit: (note: NoteCard) => void;
-  onShare: (note: NoteCard) => void;
 }) {
-  const [openMenu, setOpenMenu] = useState(false);
+  const textColor = getTextColor(note.color);
+  const mutedTextColor = getMutedTextColor(textColor);
+  const borderColor = note.color ? getBorderColor(textColor) : undefined;
+  const ownerInitial = note.ownerName.trim().charAt(0).toUpperCase() || "A";
 
   return (
     <article
       className="note-card"
       style={{
-        borderColor: note.color,
-        background: `${note.color}15`,
+        backgroundColor: note.color ?? undefined,
+        borderColor,
+        color: textColor,
       }}
     >
       <header>
-        <h2 className="note-title" title={note.title}>
-          {note.title}
-        </h2>
+        <h2 style={{ color: textColor }}>{note.title}</h2>
 
-        <div className="note-menu-wrapper">
+        <PermissionGate permission={PERMISSIONS.DELETE_NOTES}>
           <button
-            className="icon-button note-menu-button"
+            className="icon-button"
             type="button"
-            aria-label={`Options ${note.title}`}
-            onClick={() => setOpenMenu((current) => !current)}
+            aria-label={`Delete ${note.title}`}
+            disabled={isDeleting}
+            onClick={() => onDelete(note.id)}
+            style={{ color: textColor }}
           >
-           <span className="note-more-dots">⋮</span>
+            <Icon name="trash" size={15} />
           </button>
-
-          {openMenu && (
-            <div className="note-menu">
-              <button
-                type="button"
-                onClick={() => {
-                  setOpenMenu(false);
-                  onEdit(note);
-                }}
-              >
-                <Icon name="edit" size={14} />
-                Modifier
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setOpenMenu(false);
-                  onShare(note);
-                }}
-              >
-                <Icon name="share" size={14} />
-                Partager
-              </button>
-
-              <button
-                type="button"
-                className="danger"
-                onClick={() => {
-                  setOpenMenu(false);
-                  onDelete(note.id);
-                }}
-              >
-                <Icon name="trash" size={14} />
-                Supprimer
-              </button>
-            </div>
-          )}
-        </div>
+        </PermissionGate>
       </header>
 
-      <p className="note-content">{note.content}</p>
+      <p style={{ color: mutedTextColor }}>{note.content}</p>
 
-      <footer>
-        <span className="note-author">
-          <i>{note.authorName[0]?.toUpperCase()}</i>
-          <strong title={note.authorName}>{note.authorName}</strong>
+      <footer style={{ color: mutedTextColor }}>
+        <span>
+          <i
+            style={{
+              background:
+                textColor === "#111"
+                  ? "rgba(255, 255, 255, 0.24)"
+                  : "rgba(0, 0, 0, 0.18)",
+              color: textColor,
+            }}
+          >
+            {ownerInitial}
+          </i>
+          <strong style={{ color: textColor }}>{note.ownerName}</strong>
         </span>
 
-        <time>{note.updatedLabel}</time>
+        <time style={{ color: mutedTextColor }}>{note.updatedLabel}</time>
       </footer>
     </article>
   );
@@ -191,39 +241,37 @@ function NoteCardSkeleton() {
 }
 
 export function NotesPage() {
-  const { data: apiNotes, isLoading, isError, refetch } = useNotes();
-
-  const [notes, setNotes] = useState<NoteCard[]>(() => {
-    const stored = localStorage.getItem("acredi-notes");
-
-    if (stored) {
-      return JSON.parse(stored);
-    }
-
-    return initialNotes;
-  });
+  const notesQueryParams = useMemo(() => ({ archived: false }), []);
+  const {
+    data: apiNotes,
+    error,
+    isError,
+    isFetching,
+    isLoading,
+    refetch,
+  } = useNotes(notesQueryParams);
+  const createNoteMutation = useCreateNote();
+  const deleteNoteMutation = useDeleteNote();
 
   const [titleFilter, setTitleFilter] = useState("");
   const [contentFilter, setContentFilter] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
-
-  const createNoteMutation = useCreateNote();
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftContent, setDraftContent] = useState("");
-  const [draftColor, setDraftColor] = useState("#171717");
-  const updateNoteMutation = useUpdateNote();
-  const deleteNoteMutation = useDeleteNote();
-  const shareNoteMutation = useShareNote();
-  const usersQuery = useUsersQuery();
+  const [draftColor, setDraftColor] = useState(noteColors[0]);
+  const [toast, setToast] = useState<ToastState>({
+    show: false,
+    intent: "success",
+    message: "",
+  });
 
-const [shareTargetNote, setShareTargetNote] = useState<NoteCard | null>(null);
-const [selectedShareUsers, setSelectedShareUsers] = useState<string[]>([]);
-const [shareLevel, setShareLevel] = useState<"READ" | "WRITE" | "ADMIN">("READ");
-
-const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-
-
+  const notes = useMemo(
+    () => (apiNotes ? apiNotes.map(mapApiNoteToCard) : []),
+    [apiNotes]
+  );
+  const isNotesLoading = isLoading || (isFetching && !apiNotes);
 
   const visibleNotes = useMemo(() => {
     const titleQuery = titleFilter.trim().toLowerCase();
@@ -234,7 +282,6 @@ const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
         const matchesTitle =
           titleQuery.length === 0 ||
           note.title.toLowerCase().includes(titleQuery);
-
         const matchesContent =
           contentQuery.length === 0 ||
           note.content.toLowerCase().includes(contentQuery);
@@ -250,144 +297,106 @@ const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   }, [contentFilter, notes, sortMode, titleFilter]);
 
   useEffect(() => {
-    if (apiNotes) {
-      setNotes(apiNotes.map(mapApiNoteToCard));
-    }
-  }, [apiNotes]);
-
-  useEffect(() => {
     if (!isCreateOpen) return undefined;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !createNoteMutation.isPending) {
         setIsCreateOpen(false);
+        resetDraft();
       }
     };
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [isCreateOpen]);
+  }, [createNoteMutation.isPending, isCreateOpen]);
 
-  function saveNotes(nextNotes: NoteCard[]) {
-    setNotes(nextNotes);
-    localStorage.setItem("acredi-notes", JSON.stringify(nextNotes));
+  function showToast(
+    intent: ToastState["intent"],
+    message: string,
+    timeout = 4000
+  ) {
+    setToast({ show: true, intent, message });
+
+    window.setTimeout(() => {
+      setToast((current) => ({ ...current, show: false }));
+    }, timeout);
   }
 
   function resetDraft() {
     setDraftTitle("");
     setDraftContent("");
-    setDraftColor("#171717");
-  }
-function closeCreateModal() {
-  setIsCreateOpen(false);
-  setEditingNoteId(null);
-  resetDraft();
-}
-
-  function createNote() {
-  const title = draftTitle.trim();
-  const content = draftContent.trim();
-
-  if (!title) return;
-
-  if (editingNoteId) {
-    updateNoteMutation.mutate(
-      {
-        id: editingNoteId,
-        request: {
-          title,
-          content: content || "No content yet.",
-          color: draftColor,
-        },
-      },
-      {
-        onSuccess: (note) => {
-          const updatedNote = mapApiNoteToCard(note);
-
-          setNotes((current) =>
-            current.map((item) =>
-              item.id === updatedNote.id ? updatedNote : item
-            )
-          );
-
-          setEditingNoteId(null);
-          closeCreateModal();
-        },
-      }
-    );
-
-    return;
+    setDraftColor(noteColors[0]);
   }
 
-  createNoteMutation.mutate(
-    {
-      title,
-      content: content || "No content yet.",
-      color: draftColor,
-    },
-    {
-      onSuccess: (note) => {
-        const createdNote = mapApiNoteToCard(note);
-        setNotes((current) => [createdNote, ...current]);
-        closeCreateModal();
-      },
+  function closeCreateModal() {
+    if (createNoteMutation.isPending) return;
+
+    setIsCreateOpen(false);
+    resetDraft();
+  }
+
+  async function createNote() {
+    const title = draftTitle.trim();
+    const content = draftContent.trim();
+
+    if (!title) return;
+
+    try {
+      await createNoteMutation.mutateAsync({
+        title,
+        content: content || "No content yet.",
+        color: draftColor,
+      });
+
+      setIsCreateOpen(false);
+      resetDraft();
+      showToast("success", "Note created successfully.");
+    } catch (caughtError) {
+      showToast(
+        "error",
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Error while creating the note.",
+        5000
+      );
     }
-  );
-}
+  }
 
-  function deleteNote(id: string) {
-  const confirmed = window.confirm("Supprimer cette note ?");
+  async function deleteNote(id: string) {
+    setDeletingIds((current) => new Set(current).add(id));
 
-  if (!confirmed) return;
+    try {
+      await deleteNoteMutation.mutateAsync(id);
+      showToast("success", "Note deleted.");
+    } catch (caughtError) {
+      showToast(
+        "error",
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Error while deleting the note.",
+        5000
+      );
+    } finally {
+      setDeletingIds((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
+    }
+  }
 
-  deleteNoteMutation.mutate(id, {
-    onSuccess: () => {
-      setNotes((current) => current.filter((note) => note.id !== id));
-    },
-  });
-}
-function editNote(note: NoteCard) {
-  setEditingNoteId(note.id);
-  setDraftTitle(note.title);
-  setDraftContent(note.content);
-  setDraftColor(note.color);
-  setIsCreateOpen(true);
-}
+  async function refreshNotes() {
+    const result = await refetch();
 
-function toggleShareUser(userId: string) {
-  setSelectedShareUsers((current) =>
-    current.includes(userId)
-      ? current.filter((id) => id !== userId)
-      : [...current, userId]
-  );
-}
+    if (result.error) {
+      showToast("error", result.error.message, 5000);
+    }
+  }
 
-function submitShareNote() {
-  if (!shareTargetNote || selectedShareUsers.length === 0) return;
-
-  selectedShareUsers.forEach((userId) => {
-    shareNoteMutation.mutate({
-      id: shareTargetNote.id,
-      request: {
-        userId,
-        level: shareLevel,
-      },
-    });
-  });
-
-  setShareTargetNote(null);
-  setSelectedShareUsers([]);
-  setShareLevel("READ");
-}
-
-
-function shareNote(note: NoteCard) {
-  setShareTargetNote(note);
-  setSelectedShareUsers([]);
-  setShareLevel("READ");
-}
   return (
     <div className="notes-page">
+      {toast.show && <Toast intent={toast.intent} message={toast.message} />}
+
       <section className="notes-toolbar">
         <div className="notes-titlebar">
           <span>Notes</span>
@@ -396,14 +405,26 @@ function shareNote(note: NoteCard) {
           <Icon name="chevDown" size={14} />
         </div>
 
-        <button
-          className="button primary notes-create-button"
-          type="button"
-          onClick={() => setIsCreateOpen(true)}
-        >
-          <Icon name="plus" size={12} />
-          Create
-        </button>
+        <PermissionGate permission={PERMISSIONS.CREATE_NOTES}>
+          <button
+            className="button primary notes-create-button"
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            disabled={createNoteMutation.isPending}
+          >
+            {createNoteMutation.isPending ? (
+              <>
+                <ClipLoader size={12} color="#fff" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <Icon name="plus" size={12} />
+                Create
+              </>
+            )}
+          </button>
+        </PermissionGate>
       </section>
 
       <section className="notes-filters" aria-label="Notes filters">
@@ -432,9 +453,16 @@ function shareNote(note: NoteCard) {
             className="icon-button bordered"
             type="button"
             aria-label="Refresh notes"
-            onClick={() => void refetch()}
+            disabled={isFetching}
+            onClick={() => {
+              refreshNotes().catch(() => undefined);
+            }}
           >
-            <Icon name="refresh" size={14} />
+            {isFetching && !isLoading ? (
+              <ClipLoader size={12} color="currentColor" />
+            ) : (
+              <Icon name="refresh" size={14} />
+            )}
           </button>
 
           <button className="button ghost" type="button">
@@ -465,38 +493,49 @@ function shareNote(note: NoteCard) {
         </div>
       </section>
 
-      {isError && (
-        <div className="notes-empty">
-          <Icon name="notes" size={14} />
-          <strong>Erreur lors du chargement</strong>
-          <span>Vérifie que le backend est lancé.</span>
-        </div>
-      )}
-
-      <section className="notes-grid" aria-label="Notes list">
-        {isLoading
+      <section
+        className={
+          isNotesLoading ? "notes-grid notes-grid-loading" : "notes-grid"
+        }
+        aria-label="Notes list"
+        aria-busy={isNotesLoading}
+      >
+        {isNotesLoading
           ? noteSkeletons.map((item) => <NoteCardSkeleton key={item} />)
-          : visibleNotes.map((note) => (
-              <NoteCardItem
-                key={note.id}
-                note={note}
-                onDelete={deleteNote}
-                onEdit={editNote}
-                onShare={shareNote}
-              />
-            ))}
+          : visibleNotes.map((note) =>
+              deletingIds.has(note.id) ? (
+                <NoteCardSkeleton key={note.id} />
+              ) : (
+                <NoteCard
+                  key={note.id}
+                  isDeleting={deletingIds.has(note.id)}
+                  note={note}
+                  onDelete={(noteId) => {
+                    deleteNote(noteId).catch(() => undefined);
+                  }}
+                />
+              )
+            )}
 
-        {!isLoading && visibleNotes.length === 0 && (
+        {isError && !isNotesLoading && visibleNotes.length === 0 ? (
+          <div className="notes-empty">
+            <Icon name="notes" size={14} />
+            <strong>Unable to load notes</strong>
+            <span>{error.message}</span>
+          </div>
+        ) : null}
+
+        {!isError && !isNotesLoading && visibleNotes.length === 0 ? (
           <div className="notes-empty">
             <Icon name="notes" size={14} />
             <strong>No notes found</strong>
             <span>Try another title or content filter.</span>
           </div>
-        )}
+        ) : null}
       </section>
 
       <AnimatePresence>
-        {isCreateOpen && (
+        {isCreateOpen ? (
           <motion.div
             className="note-modal-overlay"
             role="presentation"
@@ -516,7 +555,7 @@ function shareNote(note: NoteCard) {
               onMouseDown={(event) => event.stopPropagation()}
               onSubmit={(event) => {
                 event.preventDefault();
-                createNote();
+                createNote().catch(() => undefined);
               }}
             >
               <header>
@@ -526,8 +565,18 @@ function shareNote(note: NoteCard) {
                   <button
                     className="icon-button"
                     type="button"
+                    aria-label="Open expanded editor"
+                    disabled={createNoteMutation.isPending}
+                  >
+                    <Icon name="edit" size={16} />
+                  </button>
+
+                  <button
+                    className="icon-button"
+                    type="button"
                     aria-label="Close create note"
                     onClick={closeCreateModal}
+                    disabled={createNoteMutation.isPending}
                   >
                     <Icon name="x" size={16} />
                   </button>
@@ -538,18 +587,17 @@ function shareNote(note: NoteCard) {
                 <span>
                   Title <b>*</b>
                 </span>
-
                 <input
                   value={draftTitle}
                   onChange={(event) => setDraftTitle(event.target.value)}
                   placeholder="Title"
                   autoFocus
+                  disabled={createNoteMutation.isPending}
                 />
               </label>
 
               <label className="note-field">
                 <span>Content</span>
-
                 <div className="note-editor">
                   <div className="note-editor-toolbar" aria-hidden="true">
                     {editorTools.map((tool) => (
@@ -558,29 +606,29 @@ function shareNote(note: NoteCard) {
                       </button>
                     ))}
                   </div>
-
                   <textarea
                     value={draftContent}
                     onChange={(event) => setDraftContent(event.target.value)}
                     placeholder="Content"
+                    disabled={createNoteMutation.isPending}
                   />
                 </div>
               </label>
 
               <label className="note-field">
                 <span>Color</span>
-
                 <div className="note-color-picker">
                   {noteColors.map((color) => (
                     <button
                       key={color}
                       type="button"
-                      className={`note-color ${
-                        draftColor === color ? "active" : ""
+                      className={`note-color${
+                        draftColor === color ? " active" : ""
                       }`}
                       style={{ background: color }}
                       onClick={() => setDraftColor(color)}
                       aria-label={`Choose color ${color}`}
+                      disabled={createNoteMutation.isPending}
                     />
                   ))}
                 </div>
@@ -590,120 +638,22 @@ function shareNote(note: NoteCard) {
                 <button
                   className="button primary notes-submit"
                   type="submit"
-                  disabled={!draftTitle.trim()}
+                  disabled={!draftTitle.trim() || createNoteMutation.isPending}
                 >
-                  Create
+                  {createNoteMutation.isPending ? (
+                    <>
+                      <ClipLoader size={12} color="#fff" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create"
+                  )}
                 </button>
               </footer>
             </motion.form>
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
-      {shareTargetNote && (
-  <div
-    className="note-modal-overlay"
-    role="presentation"
-    onMouseDown={() => setShareTargetNote(null)}
-  >
-    <div
-      className="note-share-modal"
-      role="dialog"
-      aria-modal="true"
-      onMouseDown={(event) => event.stopPropagation()}
-    >
-      <header>
-        <div>
-          <span>Partage</span>
-          <h2>Partager la note</h2>
-          <p>{shareTargetNote.title}</p>
-        </div>
-
-        <button
-          className="icon-button"
-          type="button"
-          onClick={() => setShareTargetNote(null)}
-        >
-          <Icon name="x" size={16} />
-        </button>
-      </header>
-
-      <label className="note-field">
-        <span>Niveau d’accès</span>
-
-        <select
-          value={shareLevel}
-          onChange={(event) =>
-            setShareLevel(event.target.value as "READ" | "WRITE" | "ADMIN")
-          }
-        >
-          <option value="READ">Lecture</option>
-          <option value="WRITE">Modification</option>
-          <option value="ADMIN">Admin</option>
-        </select>
-      </label>
-
-      <div className="note-share-users">
-        {usersQuery.loading ? (
-          <div className="notes-empty">
-            <strong>Chargement des utilisateurs...</strong>
-          </div>
-        ) : usersQuery.data && usersQuery.data.length > 0 ? (
-          usersQuery.data.map((user) => {
-            const selected = selectedShareUsers.includes(user.id);
-
-            return (
-              <button
-                key={user.id}
-                type="button"
-                className={selected ? "note-share-user selected" : "note-share-user"}
-                onClick={() => toggleShareUser(user.id)}
-              >
-                <Avatar name={user.name} size={34} presence={user.presence} />
-
-                <span>
-                  <strong>{user.name}</strong>
-                  <small>{user.email}</small>
-                </span>
-
-                <Icon name={selected ? "check" : "plus"} size={15} />
-              </button>
-            );
-          })
-        ) : (
-          <div className="notes-empty">
-            <strong>Aucun utilisateur trouvé</strong>
-          </div>
-        )}
-      </div>
-
-      <footer>
-        <button
-          className="button ghost"
-          type="button"
-          onClick={() => setShareTargetNote(null)}
-        >
-          Annuler
-        </button>
-
-        <button
-          className="button primary"
-          type="button"
-          disabled={selectedShareUsers.length === 0 || shareNoteMutation.isPending}
-          onClick={submitShareNote}
-        >
-          Partager avec {selectedShareUsers.length} utilisateur
-          {selectedShareUsers.length > 1 ? "s" : ""}
-        </button>
-      </footer>
-    </div>
-  </div>
-)}
-
-
-
-
-
-
     </div>
   );
 }

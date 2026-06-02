@@ -6,11 +6,12 @@ import {
   persistOtpSession,
   useLoginMutation,
 } from '../../shared/api/auth';
+import { resolveAuthenticatedRedirect } from '../../shared/auth/onboarding';
 import { useAuth } from '../../shared/context';
 import { AcrediLockup, Icon } from '../../shared/ui';
 
 export function LoginPage() {
-  const { completeAuthSession, isAuthenticated, loading } = useAuth();
+  const { completeAuthSession, isAuthenticated, loading, user } = useAuth();
   const loginMutation = useLoginMutation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +23,7 @@ export function LoginPage() {
   const redirectTo = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/app/dashboard';
 
   if (isAuthenticated) {
-    return <Navigate to={redirectTo} replace />;
+    return <Navigate to={resolveAuthenticatedRedirect(user, redirectTo)} replace />;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -39,11 +40,21 @@ export function LoginPage() {
       const authData = getLoginAuthResponse(loginData);
 
       if (authData) {
-        completeAuthSession(authData, {
+        const userStatus = authData.user?.enabled === false ? 'disabled' : 'active';
+
+        if (userStatus === 'disabled') {
+          setMessage(
+            "Ce compte est desactive. Contactez votre administrateur pour reactiver l'accès."
+          );
+          return;
+        }
+
+        const authenticatedUser = completeAuthSession(authData, {
           persistTrustedDevice: trustDevice,
           trustedDeviceEmail: email,
         });
-        navigate(redirectTo, { replace: true });
+
+        navigate(resolveAuthenticatedRedirect(authenticatedUser, redirectTo), { replace: true });
         return;
       }
 
@@ -68,28 +79,28 @@ export function LoginPage() {
       <div className="login-mobile-brand">
         <AcrediLockup size={30} fontSize={22} />
       </div>
-      <div>
+      <div className="text-[14px]">
         <p className="eyebrow">Connexion securisee</p>
         <h1>Ravi de vous revoir.</h1>
         <p className="muted">Connectez-vous a votre espace pour retrouver fichiers, messages et reunions.</p>
       </div>
 
       <form className="login-form" onSubmit={handleSubmit}>
-        <label>
+        <label className="text-sm">
           <span>Email professionnel</span>
           <span className="input-wrap">
             <Icon name="mail" size={16} />
             <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required />
           </span>
         </label>
-        <label>
+        <label className="text-sm">
           <span>Mot de passe</span>
           <span className="input-wrap">
             <Icon name="lock" size={16} />
             <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required />
           </span>
         </label>
-        <div className="login-row">
+        <div className="login-row text-[11px]">
           <label className="check-row">
             <input
               type="checkbox"

@@ -11,12 +11,21 @@ export const teamKeys = {
   all: ["teams"] as const,
   lists: () => [...teamKeys.all, "list"] as const,
   list: () => [...teamKeys.lists()] as const,
+  members: (teamId: string) => [...teamKeys.all, "members", teamId] as const,
 };
 
 export function useTeams() {
   return useQuery({
     queryKey: teamKeys.list(),
     queryFn: () => teamService.findAll(),
+  });
+}
+
+export function useTeamMembers(teamId: string) {
+  return useQuery({
+    queryKey: teamKeys.members(teamId),
+    queryFn: () => teamService.findMembers(teamId),
+    enabled: Boolean(teamId),
   });
 }
 
@@ -59,8 +68,11 @@ export function useAddTeamMember() {
       teamId: string;
       request: AddTeamMemberRequest;
     }) => teamService.addMember(teamId, request),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: teamKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: teamKeys.members(variables.teamId),
+      });
     },
   });
 }

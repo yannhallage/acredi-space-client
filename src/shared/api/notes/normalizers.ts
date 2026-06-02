@@ -20,6 +20,7 @@ export function normalizeNote(note: NoteResponse): Note {
     color: note.color ?? null,
 
     ownerId: note.ownerId,
+    ownerName: note.ownerName ?? null,
 
     teamId: note.teamId ?? null,
     folderId: note.folderId ?? null,

@@ -20,6 +20,27 @@ function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
 }
 
 export const noteService = {
+  async archive(id: string) {
+    const response = await http.post<ApiResponse<NoteResponse>>(
+      noteEndpoints.archive(id)
+    );
+
+    return normalizeNote(unwrapApiResponse(response));
+  },
+
+  async create(request: CreateNoteRequest) {
+    const response = await http.post<ApiResponse<NoteResponse>>(
+      noteEndpoints.create,
+      request
+    );
+
+    return normalizeNote(unwrapApiResponse(response));
+  },
+
+  async delete(id: string) {
+    await http.delete<ApiResponse<void>>(noteEndpoints.delete(id));
+  },
+
   async findAll(params?: { archived?: boolean; q?: string }) {
     const response = await http.get<ApiResponse<NoteResponse[]>>(
       noteEndpoints.findAll,
@@ -39,40 +60,17 @@ export const noteService = {
     return normalizeNote(unwrapApiResponse(response));
   },
 
-  async create(request: CreateNoteRequest) {
-    const response = await http.post<ApiResponse<NoteResponse>>(
-      noteEndpoints.create,
-      request
+  async findVersions(id: string) {
+    const response = await http.get<ApiResponse<NoteVersionResponse[]>>(
+      noteEndpoints.findVersions(id)
     );
 
-    return normalizeNote(unwrapApiResponse(response));
+    return normalizeNoteVersions(unwrapApiResponse(response));
   },
 
-  async update(id: string, request: UpdateNoteRequest) {
-    const response = await http.put<ApiResponse<NoteResponse>>(
-      noteEndpoints.update(id),
-      request
-    );
-
-    return normalizeNote(unwrapApiResponse(response));
-  },
-
-  async delete(id: string) {
-    await http.delete<ApiResponse<void>>(noteEndpoints.delete(id));
-  },
-
-  async share(id: string, request: ShareNoteRequest) {
+  async pin(id: string) {
     const response = await http.post<ApiResponse<NoteResponse>>(
-      noteEndpoints.share(id),
-      request
-    );
-
-    return normalizeNote(unwrapApiResponse(response));
-  },
-
-  async archive(id: string) {
-    const response = await http.post<ApiResponse<NoteResponse>>(
-      noteEndpoints.archive(id)
+      noteEndpoints.pin(id)
     );
 
     return normalizeNote(unwrapApiResponse(response));
@@ -86,9 +84,10 @@ export const noteService = {
     return normalizeNote(unwrapApiResponse(response));
   },
 
-  async pin(id: string) {
+  async share(id: string, request: ShareNoteRequest) {
     const response = await http.post<ApiResponse<NoteResponse>>(
-      noteEndpoints.pin(id)
+      noteEndpoints.share(id),
+      request
     );
 
     return normalizeNote(unwrapApiResponse(response));
@@ -102,11 +101,12 @@ export const noteService = {
     return normalizeNote(unwrapApiResponse(response));
   },
 
-  async findVersions(id: string) {
-    const response = await http.get<ApiResponse<NoteVersionResponse[]>>(
-      noteEndpoints.versions(id)
+  async update(id: string, request: UpdateNoteRequest) {
+    const response = await http.put<ApiResponse<NoteResponse>>(
+      noteEndpoints.update(id),
+      request
     );
 
-    return normalizeNoteVersions(unwrapApiResponse(response));
+    return normalizeNote(unwrapApiResponse(response));
   },
 };
