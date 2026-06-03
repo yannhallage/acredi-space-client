@@ -115,7 +115,7 @@ export function NewConversationModal({
           >
             <header className="dm-new-conversation-header">
               <div>
-                <h2 id="dm-new-conversation-title">Nouvelle conversation</h2>
+                <h2 id="dm-new-conversation-title">Nouvelle conversations</h2>
                 <small>{visibleUsers.length} contacts disponibles</small>
               </div>
               <button className="icon-button" type="button" aria-label="Fermer" onClick={onClose}>

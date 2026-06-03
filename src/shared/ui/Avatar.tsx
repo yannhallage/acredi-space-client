@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { Presence } from '../types';
 
 interface AvatarProps {
@@ -5,6 +6,7 @@ interface AvatarProps {
   size?: number;
   presence?: Presence;
   ring?: string;
+  src?: string | null;
 }
 
 const palette = [
@@ -43,8 +45,15 @@ function colorFor(name: string | null | undefined) {
   return palette[hash % palette.length];
 }
 
-export function Avatar({ name, size = 32, presence, ring }: AvatarProps) {
+export function Avatar({ name, size = 32, presence, ring, src }: AvatarProps) {
   const color = colorFor(name);
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = Boolean(src && !imageFailed);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [src]);
+
   return (
     <span className="avatar" style={{ width: size, height: size }}>
       <span
@@ -58,7 +67,16 @@ export function Avatar({ name, size = 32, presence, ring }: AvatarProps) {
           boxShadow: ring ? `0 0 0 2px ${ring}` : undefined
         }}
       >
-        {initialsFor(name)}
+        {showImage ? (
+          <img
+            alt=""
+            className="avatar-image"
+            src={src ?? undefined}
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          initialsFor(name)
+        )}
       </span>
       {presence ? <span className={`presence presence-${presence}`} /> : null}
     </span>

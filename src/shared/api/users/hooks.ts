@@ -194,6 +194,40 @@ export function useUpdateProfileMutation() {
   };
 }
 
+export function useUploadAvatarMutation() {
+  const [state, setState] = useState<MutationState<User>>({
+    data: null,
+    error: null,
+    isPending: false,
+  });
+
+  const reset = useCallback(() => {
+    setState({ data: null, error: null, isPending: false });
+  }, []);
+
+  const mutateAsync = useCallback(async (file: File) => {
+    setState({ data: null, error: null, isPending: true });
+
+    try {
+      const data = await userService.uploadAvatar(file);
+      setState({ data, error: null, isPending: false });
+      return data;
+    } catch (error) {
+      const normalizedError = toError(error);
+      setState({ data: null, error: normalizedError, isPending: false });
+      throw normalizedError;
+    }
+  }, []);
+
+  return {
+    ...state,
+    loading: state.isPending,
+    mutate: mutateAsync,
+    mutateAsync,
+    reset,
+  };
+}
+
 export function useChangeMyPasswordMutation() {
   const [state, setState] = useState<MutationState<User>>({
     data: null,

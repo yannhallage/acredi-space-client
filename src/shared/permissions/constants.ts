@@ -61,6 +61,8 @@ export const PERMISSIONS = {
 
   VIEW_SETTINGS: 'settings.view',
   UPDATE_SETTINGS: 'settings.update',
+  VIEW_TEAM_SETTINGS: 'settings.team.view',
+  UPDATE_TEAM_SETTINGS: 'settings.team.update',
   VIEW_COMPANY_SETTINGS: 'settings.company.view',
   UPDATE_COMPANY_SETTINGS: 'settings.company.update',
   VIEW_SECURITY_SETTINGS: 'settings.security.view',
@@ -68,6 +70,37 @@ export const PERMISSIONS = {
   VIEW_BILLING_SETTINGS: 'settings.billing.view',
   UPDATE_BILLING_SETTINGS: 'settings.billing.update',
   MANAGE_SETTINGS: 'settings.manage',
+
+  VIEW_PROFILE_SETTINGS: 'settings.profile.view',
+  UPDATE_PROFILE_SETTINGS: 'settings.profile.update',
+  VIEW_PREFERENCES_SETTINGS: 'settings.preferences.view',
+  UPDATE_PREFERENCES_SETTINGS: 'settings.preferences.update',
+
+  VIEW_TEAM_MEMBERS_SETTINGS: 'settings.team_members.view',
+  UPDATE_TEAM_MEMBERS_SETTINGS: 'settings.team_members.update',
+  VIEW_ROLES_SETTINGS: 'settings.roles.view',
+  UPDATE_ROLES_SETTINGS: 'settings.roles.update',
+  VIEW_INVITATIONS_SETTINGS: 'settings.invitations.view',
+  UPDATE_INVITATIONS_SETTINGS: 'settings.invitations.update',
+
+  VIEW_GENERAL_SETTINGS: 'settings.general.view',
+  UPDATE_GENERAL_SETTINGS: 'settings.general.update',
+  VIEW_DASHBOARD_SETTINGS: 'settings.dashboard.view',
+  UPDATE_DASHBOARD_SETTINGS: 'settings.dashboard.update',
+  VIEW_DEFAULTS_SETTINGS: 'settings.defaults.view',
+  UPDATE_DEFAULTS_SETTINGS: 'settings.defaults.update',
+  VIEW_BRAND_SETTINGS: 'settings.brand.view',
+  UPDATE_BRAND_SETTINGS: 'settings.brand.update',
+
+  VIEW_EMAIL_ACCOUNTS_SETTINGS: 'settings.email_accounts.view',
+  UPDATE_EMAIL_ACCOUNTS_SETTINGS: 'settings.email_accounts.update',
+  VIEW_EMAIL_TEMPLATES_SETTINGS: 'settings.email_templates.view',
+  UPDATE_EMAIL_TEMPLATES_SETTINGS: 'settings.email_templates.update',
+
+  VIEW_ASSIGNMENT_RULES_SETTINGS: 'settings.assignment_rules.view',
+  UPDATE_ASSIGNMENT_RULES_SETTINGS: 'settings.assignment_rules.update',
+
+  VIEW_AUDIT_LOGS: 'audit_logs.view',
 
   MANAGE_ROLES_PERMISSIONS: 'roles.manage',
 

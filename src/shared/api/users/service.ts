@@ -99,4 +99,16 @@ export const userService = {
     );
     return normalizeUser(unwrapApiResponse(response));
   },
+
+  async uploadAvatar(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await http.put<ApiResponse<UserResponse>>(
+      userEndpoints.uploadAvatar,
+      formData
+    );
+
+    return normalizeUser(unwrapApiResponse(response));
+  },
 };

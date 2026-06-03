@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClipLoader } from "react-spinners";
 import Toast from "../../components/app/Toast/Toast";
@@ -6,10 +12,15 @@ import {
   useCreateNote,
   useDeleteNote,
   useNotes,
+  useShareNote,
+  useUpdateNote,
   type Note as ApiNote,
 } from "../../shared/api/notes";
+import { useUsersQuery } from "../../shared/api/users";
+import { useAuth } from "../../shared/context";
 import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
-import { Icon } from "../../shared/ui";
+import type { User } from "../../shared/types";
+import { Avatar, Icon } from "../../shared/ui";
 
 type SortMode = "newest" | "oldest";
 
@@ -63,6 +74,13 @@ const noteColors = [
   "#dc2626",
   "#db2777",
 ];
+
+function normalizeSearch(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
 
 function isUuidLike(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -142,7 +160,7 @@ function mapApiNoteToCard(note: ApiNote): NoteCard {
   return {
     id: note.id,
     title: note.title,
-    content: note.content || "No content yet.",
+    content: note.content,
     ownerName: getOwnerDisplayName(note),
     updatedLabel: meta.label,
     updatedMinutes: meta.minutes,
@@ -154,15 +172,63 @@ function NoteCard({
   isDeleting,
   note,
   onDelete,
+  onEdit,
+  onShare,
 }: {
   isDeleting: boolean;
   note: NoteCard;
   onDelete: (id: string) => void;
+  onEdit: (note: NoteCard) => void;
+  onShare: (note: NoteCard) => void;
 }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const textColor = getTextColor(note.color);
   const mutedTextColor = getMutedTextColor(textColor);
   const borderColor = note.color ? getBorderColor(textColor) : undefined;
   const ownerInitial = note.ownerName.trim().charAt(0).toUpperCase() || "A";
+  const menuStyle: CSSProperties = note.color
+    ? {
+        backgroundColor:
+          textColor === "#111"
+            ? "rgba(255, 255, 255, 0.96)"
+            : "rgba(17, 17, 20, 0.96)",
+        borderColor:
+          textColor === "#111"
+            ? "rgba(0, 0, 0, 0.14)"
+            : "rgba(255, 255, 255, 0.18)",
+        color: textColor === "#111" ? "#111" : "#fff",
+      }
+    : {};
+
+  useEffect(() => {
+    if (!isMenuOpen) return undefined;
+
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      if (
+        event.target instanceof Node &&
+        menuRef.current &&
+        !menuRef.current.contains(event.target)
+      ) {
+        setIsMenuOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isMenuOpen]);
 
   return (
     <article
@@ -176,21 +242,96 @@ function NoteCard({
       <header>
         <h2 style={{ color: textColor }}>{note.title}</h2>
 
-        <PermissionGate permission={PERMISSIONS.DELETE_NOTES}>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label={`Delete ${note.title}`}
-            disabled={isDeleting}
-            onClick={() => onDelete(note.id)}
-            style={{ color: textColor }}
-          >
-            <Icon name="trash" size={15} />
-          </button>
+        <PermissionGate
+          permissions={[
+            PERMISSIONS.UPDATE_NOTES,
+            PERMISSIONS.SHARE_NOTES,
+            PERMISSIONS.DELETE_NOTES,
+          ]}
+        >
+          <div className="note-card-actions" ref={menuRef}>
+            <button
+              className={isMenuOpen ? "icon-button active" : "icon-button"}
+              type="button"
+              aria-label={`Actions for ${note.title}`}
+              aria-haspopup="menu"
+              aria-expanded={isMenuOpen}
+              disabled={isDeleting}
+              onClick={() => setIsMenuOpen((current) => !current)}
+              style={{ color: textColor }}
+            >
+              {isDeleting ? (
+                <ClipLoader size={12} color="currentColor" />
+              ) : (
+                <Icon name="moreH" size={15} />
+              )}
+            </button>
+
+            <AnimatePresence>
+              {isMenuOpen ? (
+                <motion.div
+                  className="note-card-menu"
+                  role="menu"
+                  aria-label={`Actions for ${note.title}`}
+                  initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                  transition={{ duration: 0.14, ease: "easeOut" }}
+                  style={menuStyle}
+                >
+                  <PermissionGate permission={PERMISSIONS.UPDATE_NOTES}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        onEdit(note);
+                      }}
+                    >
+                      <Icon name="edit" size={15} />
+                      Modifier
+                    </button>
+                  </PermissionGate>
+
+                  <PermissionGate permission={PERMISSIONS.SHARE_NOTES}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        onShare(note);
+                      }}
+                    >
+                      <Icon name="send" size={15} />
+                      Partager
+                    </button>
+                  </PermissionGate>
+
+                  <PermissionGate permission={PERMISSIONS.DELETE_NOTES}>
+                    <button
+                      className="danger"
+                      type="button"
+                      role="menuitem"
+                      disabled={isDeleting}
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        onDelete(note.id);
+                      }}
+                    >
+                      <Icon name="trash" size={15} />
+                      Supprimer
+                    </button>
+                  </PermissionGate>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
         </PermissionGate>
       </header>
 
-      <p style={{ color: mutedTextColor }}>{note.content}</p>
+      <p style={{ color: mutedTextColor }}>
+        {note.content || "No content yet."}
+      </p>
 
       <footer style={{ color: mutedTextColor }}>
         <span>
@@ -240,6 +381,216 @@ function NoteCardSkeleton() {
   );
 }
 
+function NoteShareModal({
+  error,
+  isOpen,
+  isSharing,
+  loading,
+  note,
+  onClose,
+  onRetry,
+  onSelect,
+  selectedUserId,
+  users,
+}: {
+  error: Error | null;
+  isOpen: boolean;
+  isSharing: boolean;
+  loading: boolean;
+  note: NoteCard | null;
+  onClose: () => void;
+  onRetry: () => Promise<User[]>;
+  onSelect: (user: User) => void;
+  selectedUserId: string | null;
+  users: User[];
+}) {
+  const { user: currentUser } = useAuth();
+  const [query, setQuery] = useState("");
+
+  const visibleUsers = useMemo(() => {
+    const normalizedQuery = normalizeSearch(query.trim());
+
+    return users
+      .filter((person) => person.id !== currentUser?.id)
+      .filter((person) => {
+        if (!normalizedQuery) return true;
+
+        const searchable = normalizeSearch(
+          [person.name, person.email, person.role, person.team, person.status]
+            .filter(Boolean)
+            .join(" ")
+        );
+
+        return searchable.includes(normalizedQuery);
+      });
+  }, [currentUser?.id, query, users]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setQuery("");
+      return undefined;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isSharing) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, isSharing, onClose]);
+
+  return (
+    <AnimatePresence>
+      {isOpen ? (
+        <motion.div
+          className="dm-new-conversation-overlay note-share-overlay"
+          role="presentation"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.14 }}
+          onMouseDown={() => {
+            if (!isSharing) onClose();
+          }}
+        >
+          <motion.section
+            className="dm-new-conversation-modal note-share-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="note-share-title"
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header className="dm-new-conversation-header">
+              <div>
+                <h2 id="note-share-title">Partager la note</h2>
+                <small>
+                  {note ? note.title : "Selectionnez un utilisateur"}
+                </small>
+              </div>
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="Fermer"
+                onClick={onClose}
+                disabled={isSharing}
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </header>
+
+            <label className="dm-new-conversation-search">
+              <Icon name="search" size={16} />
+              <input
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Rechercher un utilisateur..."
+                disabled={isSharing}
+              />
+            </label>
+
+            <div className="dm-new-conversation-list">
+              <p>Utilisateurs</p>
+              {loading
+                ? ["note-share-loading-1", "note-share-loading-2"].map(
+                    (item) => (
+                      <div
+                        className="dm-new-conversation-user team-picker-row-skeleton"
+                        key={item}
+                      >
+                        <span className="skeleton-dot" />
+                        <span className="skeleton-avatar" />
+                        <span>
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line skeleton-short" />
+                        </span>
+                        <span className="skeleton-pill" />
+                      </div>
+                    )
+                  )
+                : visibleUsers.map((person) => {
+                    const isSelected = selectedUserId === person.id;
+
+                    return (
+                      <button
+                        key={person.id}
+                        className="dm-new-conversation-user note-share-user"
+                        type="button"
+                        disabled={isSharing}
+                        onClick={() => onSelect(person)}
+                      >
+                        {isSelected ? (
+                          <ClipLoader size={14} color="currentColor" />
+                        ) : (
+                          <Icon name="send" size={16} />
+                        )}
+                        <Avatar
+                          name={person.name}
+                          presence={person.presence}
+                          size={34}
+                        />
+                        <span>
+                          <strong>{person.name}</strong>
+                          <small>
+                            {person.role} - {person.team}
+                          </small>
+                        </span>
+                        <em
+                          className={`dm-new-conversation-status presence-${person.presence}`}
+                        >
+                          {person.status}
+                        </em>
+                      </button>
+                    );
+                  })}
+
+              {!loading && error ? (
+                <div className="dm-new-conversation-empty">
+                  <Icon name="alert" size={18} />
+                  <strong>Chargement impossible</strong>
+                  <span>{error.message}</span>
+                  <button
+                    className="button ghost mini"
+                    type="button"
+                    onClick={() => {
+                      onRetry().catch(() => undefined);
+                    }}
+                    disabled={isSharing}
+                  >
+                    Reessayer
+                  </button>
+                </div>
+              ) : null}
+
+              {!loading && !error && visibleUsers.length === 0 ? (
+                <div className="dm-new-conversation-empty">
+                  <Icon name="users" size={18} />
+                  <strong>Aucun utilisateur trouve</strong>
+                  <span>Essayez un autre nom, email ou role.</span>
+                </div>
+              ) : null}
+            </div>
+
+            <footer className="dm-new-conversation-footer">
+              <span>
+                <Icon name="notes" size={14} />
+                Note partagee
+              </span>
+              <small>{visibleUsers.length} utilisateur(s)</small>
+            </footer>
+          </motion.section>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
 export function NotesPage() {
   const notesQueryParams = useMemo(() => ({ archived: false }), []);
   const {
@@ -252,12 +603,17 @@ export function NotesPage() {
   } = useNotes(notesQueryParams);
   const createNoteMutation = useCreateNote();
   const deleteNoteMutation = useDeleteNote();
+  const shareNoteMutation = useShareNote();
+  const updateNoteMutation = useUpdateNote();
 
   const [titleFilter, setTitleFilter] = useState("");
   const [contentFilter, setContentFilter] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [shareTargetNote, setShareTargetNote] = useState<NoteCard | null>(null);
+  const [sharingUserId, setSharingUserId] = useState<string | null>(null);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<NoteCard | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftContent, setDraftContent] = useState("");
   const [draftColor, setDraftColor] = useState(noteColors[0]);
@@ -266,12 +622,17 @@ export function NotesPage() {
     intent: "success",
     message: "",
   });
+  const usersQuery = useUsersQuery({ enabled: Boolean(shareTargetNote) });
 
   const notes = useMemo(
     () => (apiNotes ? apiNotes.map(mapApiNoteToCard) : []),
     [apiNotes]
   );
   const isNotesLoading = isLoading || (isFetching && !apiNotes);
+  const isEditing = Boolean(editingNote);
+  const isSavingNote =
+    createNoteMutation.isPending || updateNoteMutation.isPending;
+  const isSharingNote = shareNoteMutation.isPending;
 
   const visibleNotes = useMemo(() => {
     const titleQuery = titleFilter.trim().toLowerCase();
@@ -297,18 +658,19 @@ export function NotesPage() {
   }, [contentFilter, notes, sortMode, titleFilter]);
 
   useEffect(() => {
-    if (!isCreateOpen) return undefined;
+    if (!isNoteModalOpen) return undefined;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !createNoteMutation.isPending) {
-        setIsCreateOpen(false);
+      if (event.key === "Escape" && !isSavingNote) {
+        setIsNoteModalOpen(false);
+        setEditingNote(null);
         resetDraft();
       }
     };
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [createNoteMutation.isPending, isCreateOpen]);
+  }, [isNoteModalOpen, isSavingNote]);
 
   function showToast(
     intent: ToastState["intent"],
@@ -328,37 +690,108 @@ export function NotesPage() {
     setDraftColor(noteColors[0]);
   }
 
-  function closeCreateModal() {
-    if (createNoteMutation.isPending) return;
+  function openCreateModal() {
+    setEditingNote(null);
+    resetDraft();
+    setIsNoteModalOpen(true);
+  }
 
-    setIsCreateOpen(false);
+  function openEditModal(note: NoteCard) {
+    setEditingNote(note);
+    setDraftTitle(note.title);
+    setDraftContent(note.content);
+    setDraftColor(note.color ?? noteColors[0]);
+    setIsNoteModalOpen(true);
+  }
+
+  function openShareModal(note: NoteCard) {
+    setSharingUserId(null);
+    setShareTargetNote(note);
+  }
+
+  function closeShareModal() {
+    if (isSharingNote) return;
+
+    setSharingUserId(null);
+    setShareTargetNote(null);
+  }
+
+  function closeNoteModal() {
+    if (isSavingNote) return;
+
+    setIsNoteModalOpen(false);
+    setEditingNote(null);
     resetDraft();
   }
 
-  async function createNote() {
+  async function saveNote() {
     const title = draftTitle.trim();
     const content = draftContent.trim();
 
     if (!title) return;
 
     try {
-      await createNoteMutation.mutateAsync({
-        title,
-        content: content || "No content yet.",
-        color: draftColor,
-      });
+      if (editingNote) {
+        await updateNoteMutation.mutateAsync({
+          id: editingNote.id,
+          request: {
+            title,
+            content: content || "No content yet.",
+            color: draftColor,
+          },
+        });
+        showToast("success", "Note updated.");
+      } else {
+        await createNoteMutation.mutateAsync({
+          title,
+          content: content || "No content yet.",
+          color: draftColor,
+        });
+        showToast("success", "Note created successfully.");
+      }
 
-      setIsCreateOpen(false);
+      setIsNoteModalOpen(false);
+      setEditingNote(null);
       resetDraft();
-      showToast("success", "Note created successfully.");
     } catch (caughtError) {
       showToast(
         "error",
         caughtError instanceof Error
           ? caughtError.message
-          : "Error while creating the note.",
+          : editingNote
+            ? "Error while updating the note."
+            : "Error while creating the note.",
         5000
       );
+    }
+  }
+
+  async function shareNoteWithUser(user: User) {
+    if (!shareTargetNote || isSharingNote) return;
+
+    setSharingUserId(user.id);
+
+    try {
+      await shareNoteMutation.mutateAsync({
+        id: shareTargetNote.id,
+        request: {
+          userId: user.id,
+          level: "READ",
+        },
+      });
+
+      showToast("success", `Note shared with ${user.name}.`);
+      setShareTargetNote(null);
+    } catch (caughtError) {
+      showToast(
+        "error",
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Error while sharing the note.",
+        5000
+      );
+    } finally {
+      setSharingUserId(null);
     }
   }
 
@@ -409,8 +842,8 @@ export function NotesPage() {
           <button
             className="button primary notes-create-button"
             type="button"
-            onClick={() => setIsCreateOpen(true)}
-            disabled={createNoteMutation.isPending}
+            onClick={openCreateModal}
+            disabled={isSavingNote}
           >
             {createNoteMutation.isPending ? (
               <>
@@ -510,6 +943,8 @@ export function NotesPage() {
                   key={note.id}
                   isDeleting={deletingIds.has(note.id)}
                   note={note}
+                  onEdit={openEditModal}
+                  onShare={openShareModal}
                   onDelete={(noteId) => {
                     deleteNote(noteId).catch(() => undefined);
                   }}
@@ -534,8 +969,23 @@ export function NotesPage() {
         ) : null}
       </section>
 
+      <NoteShareModal
+        error={usersQuery.error}
+        isOpen={Boolean(shareTargetNote)}
+        isSharing={isSharingNote}
+        loading={usersQuery.loading}
+        note={shareTargetNote}
+        onClose={closeShareModal}
+        onRetry={usersQuery.refetch}
+        onSelect={(user) => {
+          shareNoteWithUser(user).catch(() => undefined);
+        }}
+        selectedUserId={sharingUserId}
+        users={usersQuery.data ?? []}
+      />
+
       <AnimatePresence>
-        {isCreateOpen ? (
+        {isNoteModalOpen ? (
           <motion.div
             className="note-modal-overlay"
             role="presentation"
@@ -543,11 +993,11 @@ export function NotesPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.16 }}
-            onMouseDown={closeCreateModal}
+            onMouseDown={closeNoteModal}
           >
             <motion.form
               className="note-modal"
-              aria-label="Create Note"
+              aria-label={isEditing ? "Edit Note" : "Create Note"}
               initial={{ opacity: 0, y: 14, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -555,18 +1005,18 @@ export function NotesPage() {
               onMouseDown={(event) => event.stopPropagation()}
               onSubmit={(event) => {
                 event.preventDefault();
-                createNote().catch(() => undefined);
+                saveNote().catch(() => undefined);
               }}
             >
               <header>
-                <h2>Create Note</h2>
+                <h2>{isEditing ? "Edit Note" : "Create Note"}</h2>
 
                 <div>
                   <button
                     className="icon-button"
                     type="button"
                     aria-label="Open expanded editor"
-                    disabled={createNoteMutation.isPending}
+                    disabled={isSavingNote}
                   >
                     <Icon name="edit" size={16} />
                   </button>
@@ -574,9 +1024,11 @@ export function NotesPage() {
                   <button
                     className="icon-button"
                     type="button"
-                    aria-label="Close create note"
-                    onClick={closeCreateModal}
-                    disabled={createNoteMutation.isPending}
+                    aria-label={
+                      isEditing ? "Close edit note" : "Close create note"
+                    }
+                    onClick={closeNoteModal}
+                    disabled={isSavingNote}
                   >
                     <Icon name="x" size={16} />
                   </button>
@@ -592,7 +1044,7 @@ export function NotesPage() {
                   onChange={(event) => setDraftTitle(event.target.value)}
                   placeholder="Title"
                   autoFocus
-                  disabled={createNoteMutation.isPending}
+                  disabled={isSavingNote}
                 />
               </label>
 
@@ -610,7 +1062,7 @@ export function NotesPage() {
                     value={draftContent}
                     onChange={(event) => setDraftContent(event.target.value)}
                     placeholder="Content"
-                    disabled={createNoteMutation.isPending}
+                    disabled={isSavingNote}
                   />
                 </div>
               </label>
@@ -628,7 +1080,7 @@ export function NotesPage() {
                       style={{ background: color }}
                       onClick={() => setDraftColor(color)}
                       aria-label={`Choose color ${color}`}
-                      disabled={createNoteMutation.isPending}
+                      disabled={isSavingNote}
                     />
                   ))}
                 </div>
@@ -638,15 +1090,15 @@ export function NotesPage() {
                 <button
                   className="button primary notes-submit"
                   type="submit"
-                  disabled={!draftTitle.trim() || createNoteMutation.isPending}
+                  disabled={!draftTitle.trim() || isSavingNote}
                 >
-                  {createNoteMutation.isPending ? (
+                  {isSavingNote ? (
                     <>
                       <ClipLoader size={12} color="#fff" />
-                      Creating...
+                      {isEditing ? "Saving..." : "Creating..."}
                     </>
                   ) : (
-                    "Create"
+                    isEditing ? "Save" : "Create"
                   )}
                 </button>
               </footer>
