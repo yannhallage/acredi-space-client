@@ -7,6 +7,7 @@ import { CalendarPage } from '../features/calendar/CalendarPage';
 import { ChatPage } from '../features/chat/ChatPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { DirectMessagesPage } from '../features/dm/DirectMessagesPage';
+import { FolderFilesPage } from '../features/files/FolderFilesPage';
 import { FilesPage } from '../features/files/FilesPage';
 import { MeetingPage } from '../features/meeting/MeetingPage';
 import { NotesPage } from '../features/notes/NotesPage';
@@ -54,6 +55,7 @@ export default function App() {
                   <Route index element={<DefaultAppRoute />} />
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="files" element={<FilesPage />} />
+                  <Route path="files/:folderId" element={<FolderFilesPage />} />
                   <Route path="chat" element={<Navigate to="/app/chat/general" replace />} />
                   <Route path="chat/:channelId" element={<ChatPage />} />
                   <Route path="dm" element={<Navigate to="/app/dm/dm-yann" replace />} />

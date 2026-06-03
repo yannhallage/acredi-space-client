@@ -9,6 +9,7 @@ export const userEndpoints = {
   invite: "/users/invite",
   me: "/users/me",
   myPermissions: "/users/me/permissions",
+  uploadAvatar: "/users/me/avatar",
   update: (id: string) => `/users/${id}`,
   updateProfile: "/users/me",
 } as const;
