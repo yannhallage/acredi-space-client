@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import "./Toast.css";
 
 export type ToastIntent = "success" | "info" | "warning" | "error";
@@ -10,7 +10,7 @@ type ToastProps = {
 
 const toastConfig = {
   success: {
-    icon: "✓",
+    icon: "v",
     text: "Toast intent: success",
   },
   info: {
@@ -22,7 +22,7 @@ const toastConfig = {
     text: "Toast intent: warning",
   },
   error: {
-    icon: "×",
+    icon: "x",
     text: "Toast intent: error",
   },
 };

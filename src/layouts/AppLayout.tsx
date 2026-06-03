@@ -320,7 +320,7 @@ export function AppLayout() {
                   )
                 }
               >
-                <Avatar name={user.name} size={32} presence={user.presence} />
+                <Avatar name={user.name} size={32} presence={user.presence} src={user.avatarUrl} />
               </button>
 
               <AnimatePresence>

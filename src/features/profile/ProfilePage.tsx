@@ -15,7 +15,13 @@ export function ProfilePage() {
     <div className="page-stack">
       <section className="profile-hero">
         <div className="profile-pattern" />
-        <Avatar name={user?.name ?? 'Mohamed Doumbia'} size={84} presence={user?.presence ?? 'online'} ring="var(--bg)" />
+        <Avatar
+          name={user?.name ?? 'Mohamed Doumbia'}
+          size={84}
+          presence={user?.presence ?? 'online'}
+          ring="var(--bg)"
+          src={user?.avatarUrl}
+        />
         <div>
           <p className="eyebrow">Profil utilisateur</p>
           <h1>{user?.name}</h1>
