@@ -32,6 +32,7 @@ export const PERMISSIONS = {
   UPDATE_TEAM: 'teams.update',
   DELETE_TEAM: 'teams.delete',
   MANAGE_TEAM: 'teams.manage',
+  VIEW_MY_TEAMS: 'my_teams.view',
 
   VIEW_NOTES: 'notes.view',
   CREATE_NOTES: 'notes.create',

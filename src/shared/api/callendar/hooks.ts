@@ -6,15 +6,22 @@ import type {
     UpdateCalendarEventRequest,
 } from "./types";
 
+interface UseCalendarEventsOptions {
+    enabled?: boolean;
+}
+
 export const calendarKeys = {
     all: ["calendar"] as const,
     events: () => [...calendarKeys.all, "events"] as const,
 };
 
-export function useCalendarEvents() {
+export function useCalendarEvents(options: UseCalendarEventsOptions = {}) {
+    const { enabled = true } = options;
+
     return useQuery({
         queryKey: calendarKeys.events(),
         queryFn: () => calendarService.events(),
+        enabled,
     });
 }
 

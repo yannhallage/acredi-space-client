@@ -1,17 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { ClipLoader } from "react-spinners";
 import {
+  type FilePermissionLevel,
+  isSmallFileUpload,
+  SMALL_FILE_UPLOAD_MAX_SIZE_LABEL,
   useDeleteFile,
   useDownloadFileUrl,
   useFiles,
+  useShareFile,
   useUploadFile,
   type WorkspaceFile,
 } from "../../shared/api/files";
 import { useFolders, type Folder } from "../../shared/api/folders";
+import { useUsersQuery } from "../../shared/api/users";
+import { useAuth } from "../../shared/context";
 import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
+import type { User } from "../../shared/types";
 import Toast from "../../components/app/Toast/Toast";
-import { EmptyState, FileIcon, Icon } from "../../shared/ui";
+import { Avatar, EmptyState, FileIcon, Icon } from "../../shared/ui";
 
 const fileSkeletons = [
   "file-skeleton-1",
@@ -26,6 +34,23 @@ const fileSkeletons = [
 
 const emptyFolders: Folder[] = [];
 const emptyFiles: WorkspaceFile[] = [];
+
+const fileShareLevels: Array<{
+  description: string;
+  label: string;
+  value: FilePermissionLevel;
+}> = [
+  {
+    description: "Lecture et telechargement",
+    label: "Lecture",
+    value: "READ",
+  },
+  {
+    description: "Acces avec modification",
+    label: "Ecriture",
+    value: "WRITE",
+  },
+];
 
 type ToastState = {
   show: boolean;
@@ -42,6 +67,13 @@ type PreviewState = {
 
 function pluralizeFile(count: number) {
   return `${count} fichier${count > 1 ? "s" : ""}`;
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
 function buildFolderTrail(
@@ -240,6 +272,236 @@ function FilePreviewContent({
   );
 }
 
+function FileShareModal({
+  error,
+  file,
+  isOpen,
+  isSharing,
+  level,
+  loading,
+  onClose,
+  onLevelChange,
+  onRetry,
+  onSelect,
+  selectedUserId,
+  users,
+}: {
+  error: Error | null;
+  file: WorkspaceFile | null;
+  isOpen: boolean;
+  isSharing: boolean;
+  level: FilePermissionLevel;
+  loading: boolean;
+  onClose: () => void;
+  onLevelChange: (level: FilePermissionLevel) => void;
+  onRetry: () => Promise<User[]>;
+  onSelect: (user: User) => void;
+  selectedUserId: string | null;
+  users: User[];
+}) {
+  const { user: currentUser } = useAuth();
+  const [query, setQuery] = useState("");
+
+  const visibleUsers = useMemo(() => {
+    const normalizedQuery = normalizeSearch(query.trim());
+
+    return users
+      .filter((person) => person.id !== currentUser?.id)
+      .filter((person) => {
+        if (!normalizedQuery) {
+          return true;
+        }
+
+        const searchable = normalizeSearch(
+          [person.name, person.email, person.role, person.team, person.status]
+            .filter(Boolean)
+            .join(" "),
+        );
+
+        return searchable.includes(normalizedQuery);
+      });
+  }, [currentUser?.id, query, users]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setQuery("");
+      return undefined;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isSharing) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, isSharing, onClose]);
+
+  return (
+    <AnimatePresence>
+      {isOpen ? (
+        <motion.div
+          className="dm-new-conversation-overlay file-share-overlay"
+          role="presentation"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.14 }}
+          onMouseDown={() => {
+            if (!isSharing) onClose();
+          }}
+        >
+          <motion.section
+            className="dm-new-conversation-modal file-share-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="file-share-title"
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header className="dm-new-conversation-header">
+              <div>
+                <h2 id="file-share-title">Partager le fichier</h2>
+                <small>
+                  {file ? file.name : "Selectionnez un utilisateur"}
+                </small>
+              </div>
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="Fermer"
+                onClick={onClose}
+                disabled={isSharing}
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </header>
+
+            <label className="dm-new-conversation-search">
+              <Icon name="search" size={16} />
+              <input
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Rechercher un utilisateur..."
+                disabled={isSharing}
+              />
+            </label>
+
+            <div className="folder-share-access" aria-label="Niveau d'acces">
+              {fileShareLevels.map((option) => (
+                <button
+                  key={option.value}
+                  className={level === option.value ? "active" : ""}
+                  type="button"
+                  onClick={() => onLevelChange(option.value)}
+                  disabled={isSharing}
+                >
+                  <strong>{option.label}</strong>
+                  <span>{option.description}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="dm-new-conversation-list">
+              <p>Utilisateurs</p>
+              {loading
+                ? ["file-share-loading-1", "file-share-loading-2"].map(
+                    (item) => (
+                      <div
+                        className="dm-new-conversation-user team-picker-row-skeleton"
+                        key={item}
+                      >
+                        <span className="skeleton-dot" />
+                        <span className="skeleton-avatar" />
+                        <span>
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line skeleton-short" />
+                        </span>
+                        <span className="skeleton-pill" />
+                      </div>
+                    ),
+                  )
+                : error ? (
+                    <div className="dm-new-conversation-empty">
+                      <Icon name="alert" size={18} />
+                      <strong>Chargement impossible</strong>
+                      <span>{error.message}</span>
+                      <button
+                        className="button ghost mini"
+                        type="button"
+                        onClick={() => {
+                          onRetry().catch(() => undefined);
+                        }}
+                        disabled={isSharing}
+                      >
+                        Reessayer
+                      </button>
+                    </div>
+                  )
+                : visibleUsers.map((person) => {
+                    const isSelected = selectedUserId === person.id;
+
+                    return (
+                      <button
+                        key={person.id}
+                        className="dm-new-conversation-user file-share-user"
+                        type="button"
+                        disabled={isSharing}
+                        onClick={() => onSelect(person)}
+                      >
+                        {isSelected ? (
+                          <ClipLoader size={14} color="currentColor" />
+                        ) : (
+                          <Icon name="send" size={16} />
+                        )}
+                        <Avatar
+                          name={person.name}
+                          presence={person.presence}
+                          size={34}
+                        />
+                        <span>
+                          <strong>{person.name}</strong>
+                          <small>
+                            {person.role} - {person.team}
+                          </small>
+                        </span>
+                        <em
+                          className={`dm-new-conversation-status presence-${person.presence}`}
+                        >
+                          {person.status}
+                        </em>
+                      </button>
+                    );
+                  })}
+
+              {!loading && !error && visibleUsers.length === 0 ? (
+                <div className="dm-new-conversation-empty">
+                  <Icon name="users" size={18} />
+                  <strong>Aucun utilisateur trouve</strong>
+                  <span>Essayez un autre nom, email ou role.</span>
+                </div>
+              ) : null}
+            </div>
+
+            <footer className="dm-new-conversation-footer">
+              <span>
+                <Icon name="file" size={14} />
+                Fichier partage
+              </span>
+              <small>{visibleUsers.length} utilisateur(s)</small>
+            </footer>
+          </motion.section>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
 function FolderFilesPageSkeleton() {
   return (
     <div className="files-page folders-only files-folder-detail" aria-busy="true">
@@ -274,6 +536,9 @@ export function FolderFilesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [openMenuFileId, setOpenMenuFileId] = useState<string | null>(null);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [shareTargetFile, setShareTargetFile] = useState<WorkspaceFile | null>(null);
+  const [shareLevel, setShareLevel] = useState<FilePermissionLevel>("READ");
+  const [sharingUserId, setSharingUserId] = useState<string | null>(null);
   const [preview, setPreview] = useState<PreviewState>({
     error: null,
     fileId: null,
@@ -305,7 +570,9 @@ export function FolderFilesPage() {
   const uploadFileMutation = useUploadFile();
   const previewFileUrlMutation = useDownloadFileUrl();
   const downloadFileUrlMutation = useDownloadFileUrl();
+  const shareFileMutation = useShareFile();
   const deleteFileMutation = useDeleteFile();
+  const usersQuery = useUsersQuery({ enabled: Boolean(shareTargetFile) });
 
   const folders = foldersData ?? emptyFolders;
   const files = filesData ?? emptyFiles;
@@ -425,6 +692,15 @@ export function FolderFilesPage() {
       return;
     }
 
+    if (!isSmallFileUpload(file)) {
+      showToast(
+        "warning",
+        `Ce fichier depasse la limite de ${SMALL_FILE_UPLOAD_MAX_SIZE_LABEL}.`,
+        5000,
+      );
+      return;
+    }
+
     try {
       await uploadFileMutation.mutateAsync({
         file,
@@ -509,11 +785,51 @@ export function FolderFilesPage() {
 
   function handleShareFile(file: WorkspaceFile) {
     setOpenMenuFileId(null);
-    showToast(
-      "info",
-      `Partage du fichier "${file.name}" a connecter au formulaire de partage.`,
-      5000,
-    );
+    setShareLevel("READ");
+    setSharingUserId(null);
+    setShareTargetFile(file);
+  }
+
+  function closeFileShareModal() {
+    if (sharingUserId) {
+      return;
+    }
+
+    setShareTargetFile(null);
+    setShareLevel("READ");
+    setSharingUserId(null);
+  }
+
+  async function shareFileWithUser(user: User) {
+    if (!shareTargetFile || sharingUserId) {
+      return;
+    }
+
+    setSharingUserId(user.id);
+
+    try {
+      await shareFileMutation.mutateAsync({
+        id: shareTargetFile.id,
+        request: {
+          level: shareLevel,
+          userId: user.id,
+        },
+      });
+
+      showToast("success", `Fichier partage avec ${user.name}.`);
+      setShareTargetFile(null);
+      setShareLevel("READ");
+    } catch (caughtError) {
+      showToast(
+        "error",
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Impossible de partager ce fichier.",
+        5000,
+      );
+    } finally {
+      setSharingUserId(null);
+    }
   }
 
   async function handleDeleteFile(file: WorkspaceFile) {
@@ -880,6 +1196,23 @@ export function FolderFilesPage() {
           </motion.aside>
         ) : null}
       </AnimatePresence>
+
+      <FileShareModal
+        error={usersQuery.error}
+        file={shareTargetFile}
+        isOpen={Boolean(shareTargetFile)}
+        isSharing={Boolean(sharingUserId)}
+        level={shareLevel}
+        loading={usersQuery.loading}
+        onClose={closeFileShareModal}
+        onLevelChange={setShareLevel}
+        onRetry={usersQuery.refetch}
+        onSelect={(user) => {
+          void shareFileWithUser(user);
+        }}
+        selectedUserId={sharingUserId}
+        users={usersQuery.data ?? []}
+      />
     </div>
   );
 }

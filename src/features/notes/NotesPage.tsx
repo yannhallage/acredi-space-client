@@ -174,12 +174,14 @@ function NoteCard({
   onDelete,
   onEdit,
   onShare,
+  onView,
 }: {
   isDeleting: boolean;
   note: NoteCard;
   onDelete: (id: string) => void;
   onEdit: (note: NoteCard) => void;
   onShare: (note: NoteCard) => void;
+  onView: (note: NoteCard) => void;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -244,6 +246,7 @@ function NoteCard({
 
         <PermissionGate
           permissions={[
+            PERMISSIONS.VIEW_NOTES,
             PERMISSIONS.UPDATE_NOTES,
             PERMISSIONS.SHARE_NOTES,
             PERMISSIONS.DELETE_NOTES,
@@ -279,6 +282,20 @@ function NoteCard({
                   transition={{ duration: 0.14, ease: "easeOut" }}
                   style={menuStyle}
                 >
+                  <PermissionGate permission={PERMISSIONS.VIEW_NOTES}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        onView(note);
+                      }}
+                    >
+                      <Icon name="eye" size={15} />
+                      Voir
+                    </button>
+                  </PermissionGate>
+
                   <PermissionGate permission={PERMISSIONS.UPDATE_NOTES}>
                     <button
                       type="button"
@@ -378,6 +395,129 @@ function NoteCardSkeleton() {
         <span className="skeleton-line skeleton-time" />
       </footer>
     </article>
+  );
+}
+
+function NotesPageSkeleton() {
+  return (
+    <div className="notes-page notes-page-skeleton" aria-busy="true">
+      <section className="notes-toolbar" aria-hidden="true">
+        <div className="notes-page-skeleton-title">
+          <span className="skeleton-line notes-page-skeleton-kicker" />
+          <span className="skeleton-line notes-page-skeleton-heading" />
+        </div>
+        <span className="skeleton-pill notes-page-skeleton-create" />
+      </section>
+
+      <section className="notes-filters" aria-hidden="true">
+        <div className="notes-filter-inputs">
+          <span className="notes-skeleton-filter" />
+          <span className="notes-skeleton-filter" />
+        </div>
+
+        <div className="notes-filter-actions">
+          <span className="notes-skeleton-action" />
+          <span className="notes-skeleton-action notes-skeleton-action-wide" />
+          <span className="notes-skeleton-action notes-skeleton-action-wide" />
+          <span className="notes-skeleton-action" />
+        </div>
+      </section>
+
+      <section className="notes-grid notes-grid-loading" aria-hidden="true">
+        {noteSkeletons.map((item) => (
+          <NoteCardSkeleton key={item} />
+        ))}
+      </section>
+    </div>
+  );
+}
+
+function NoteViewModal({
+  note,
+  onClose,
+}: {
+  note: NoteCard;
+  onClose: () => void;
+}) {
+  const textColor = getTextColor(note.color);
+  const mutedTextColor = getMutedTextColor(textColor);
+  const ownerInitial = note.ownerName.trim().charAt(0).toUpperCase() || "A";
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      className="note-modal-overlay note-view-overlay"
+      role="presentation"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16 }}
+      onMouseDown={onClose}
+    >
+      <motion.section
+        className="note-modal note-view-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="note-view-title"
+        initial={{ opacity: 0, y: 14, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header>
+          <div className="note-view-heading">
+            <span
+              className="note-view-accent"
+              style={{ background: note.color ?? "var(--accent)" }}
+            />
+            <div>
+              <small>Note</small>
+              <h2 id="note-view-title">{note.title}</h2>
+            </div>
+          </div>
+
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="Fermer la note"
+            onClick={onClose}
+          >
+            <Icon name="x" size={16} />
+          </button>
+        </header>
+
+        <article
+          className="note-view-content"
+          style={{
+            backgroundColor: note.color ?? undefined,
+            color: textColor,
+          }}
+        >
+          <p style={{ color: mutedTextColor }}>
+            {note.content || "No content yet."}
+          </p>
+        </article>
+
+        <footer>
+          <span className="note-view-owner">
+            <i>{ownerInitial}</i>
+            <strong>{note.ownerName}</strong>
+          </span>
+          <time>{note.updatedLabel}</time>
+        </footer>
+      </motion.section>
+    </motion.div>
   );
 }
 
@@ -599,6 +739,7 @@ export function NotesPage() {
     isError,
     isFetching,
     isLoading,
+    isPending,
     refetch,
   } = useNotes(notesQueryParams);
   const createNoteMutation = useCreateNote();
@@ -611,6 +752,7 @@ export function NotesPage() {
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [shareTargetNote, setShareTargetNote] = useState<NoteCard | null>(null);
+  const [viewingNote, setViewingNote] = useState<NoteCard | null>(null);
   const [sharingUserId, setSharingUserId] = useState<string | null>(null);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<NoteCard | null>(null);
@@ -628,7 +770,9 @@ export function NotesPage() {
     () => (apiNotes ? apiNotes.map(mapApiNoteToCard) : []),
     [apiNotes]
   );
-  const isNotesLoading = isLoading || (isFetching && !apiNotes);
+  const isNotesInitialLoading =
+    isPending || isLoading || (isFetching && !apiNotes);
+  const isNotesLoading = isPending || isLoading || isFetching;
   const isEditing = Boolean(editingNote);
   const isSavingNote =
     createNoteMutation.isPending || updateNoteMutation.isPending;
@@ -707,6 +851,14 @@ export function NotesPage() {
   function openShareModal(note: NoteCard) {
     setSharingUserId(null);
     setShareTargetNote(note);
+  }
+
+  function openViewModal(note: NoteCard) {
+    setViewingNote(note);
+  }
+
+  function closeViewModal() {
+    setViewingNote(null);
   }
 
   function closeShareModal() {
@@ -826,6 +978,10 @@ export function NotesPage() {
     }
   }
 
+  if (isNotesInitialLoading) {
+    return <NotesPageSkeleton />;
+  }
+
   return (
     <div className="notes-page">
       {toast.show && <Toast intent={toast.intent} message={toast.message} />}
@@ -892,7 +1048,7 @@ export function NotesPage() {
             }}
           >
             {isFetching && !isLoading ? (
-              <ClipLoader size={12} color="currentColor" />
+              <span className="skeleton-dot notes-refresh-skeleton" />
             ) : (
               <Icon name="refresh" size={14} />
             )}
@@ -945,6 +1101,7 @@ export function NotesPage() {
                   note={note}
                   onEdit={openEditModal}
                   onShare={openShareModal}
+                  onView={openViewModal}
                   onDelete={(noteId) => {
                     deleteNote(noteId).catch(() => undefined);
                   }}
@@ -983,6 +1140,16 @@ export function NotesPage() {
         selectedUserId={sharingUserId}
         users={usersQuery.data ?? []}
       />
+
+      <AnimatePresence>
+        {viewingNote ? (
+          <NoteViewModal
+            key={viewingNote.id}
+            note={viewingNote}
+            onClose={closeViewModal}
+          />
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isNoteModalOpen ? (

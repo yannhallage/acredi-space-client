@@ -6,6 +6,7 @@ export interface ApiResponse<TData = unknown> {
 }
 
 export type FileVisibility = "PRIVATE" | "TEAM" | "PUBLIC" | string;
+export type FilePermissionLevel = "READ" | "WRITE" | "ADMIN";
 
 export interface UploadFileRequest {
   file: globalThis.File;
@@ -14,7 +15,10 @@ export interface UploadFileRequest {
   visibility?: FileVisibility | null;
 }
 
-export type ShareFileRequest = Record<string, unknown>;
+export interface ShareFileRequest {
+  level?: FilePermissionLevel | null;
+  userId: string;
+}
 
 export interface FileResponse {
   id: string;

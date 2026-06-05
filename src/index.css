@@ -145,6 +145,23 @@ a {
   border: 1px solid var(--border);
 }
 
+.button.danger {
+  border: 1px solid var(--red-soft);
+  background: color-mix(in srgb, var(--red) 12%, var(--surface));
+  color: var(--red);
+}
+
+.button.danger:hover:not(:disabled),
+.icon-button.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red) 16%, transparent);
+}
+
+.button.danger:disabled,
+.icon-button.danger:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .button.mini {
   min-height: 28px;
   padding: 5px 10px;
@@ -168,6 +185,10 @@ a {
 .icon-button.bordered {
   border: 1px solid var(--border);
   background: var(--surface);
+}
+
+.icon-button.danger {
+  color: var(--red);
 }
 
 .muted {
@@ -1582,70 +1603,6 @@ a {
   font-size: 14px;
 }
 
-.dashboard-feed-list li,
-.dashboard-file-list li,
-.dashboard-people-list li {
-  display: grid;
-  align-items: center;
-  column-gap: 12px;
-}
-
-.dashboard-feed-list li {
-  grid-template-columns: auto minmax(0, 1fr) auto;
-}
-
-.dashboard-file-list li {
-  grid-template-columns: auto minmax(0, 1fr) 64px 76px;
-}
-
-.dashboard-people-list li {
-  grid-template-columns: auto minmax(0, 1fr) auto;
-}
-
-.dashboard-feed-list .avatar,
-.dashboard-people-list .avatar,
-.dashboard-file-list .file-icon {
-  flex: none;
-}
-
-.dashboard-file-list .file-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dashboard-feed-copy,
-.dashboard-file-name,
-.dashboard-person-copy {
-  min-width: 0;
-}
-
-.dashboard-feed-copy {
-  display: block;
-  font-size: 14px;
-  line-height: 1.45;
-}
-
-.dashboard-file-name,
-.dashboard-person-copy strong,
-.dashboard-person-copy small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dashboard-file-name {
-  font-size: 14px;
-}
-
-.dashboard-row-meta,
-.dashboard-file-size,
-.dashboard-file-date {
-  justify-self: end;
-  white-space: nowrap;
-}
-
 .file-icon {
   display: inline-flex;
   align-items: center;
@@ -2203,6 +2160,66 @@ a {
   margin: 0;
   font-size: 12px;
   line-height: 1.4;
+}
+
+.files-shared-section {
+  display: grid;
+  gap: 18px;
+  margin-top: 48px;
+}
+
+.files-section-header {
+  max-width: 980px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 24px;
+}
+
+.files-section-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 780;
+  letter-spacing: 0;
+}
+
+.files-section-header span {
+  flex: none;
+  color: var(--muted);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.files-inline-state {
+  max-width: 560px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.files-inline-state strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.files-inline-state p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.files-shared-empty {
+  margin-top: 28px;
 }
 
 .file-grid {
@@ -3491,6 +3508,73 @@ a {
   width: min(660px, calc(100vw - 44px));
 }
 
+.folder-share-overlay {
+  z-index: 120;
+}
+
+.folder-share-modal {
+  width: min(660px, calc(100vw - 44px));
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+}
+
+.file-share-overlay {
+  z-index: 120;
+}
+
+.file-share-modal {
+  width: min(660px, calc(100vw - 44px));
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+}
+
+.folder-share-access {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 18px 12px;
+}
+
+.folder-share-access button {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.folder-share-access button:hover,
+.folder-share-access button:focus-visible,
+.folder-share-access button.active {
+  outline: 0;
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
+  color: var(--text);
+}
+
+.folder-share-access button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.folder-share-access strong,
+.folder-share-access span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-share-access strong {
+  font-size: 13px;
+}
+
+.folder-share-access span {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
 .thread-panel {
   min-width: 0;
   min-height: 0;
@@ -4629,6 +4713,32 @@ a {
   gap: 24px;
 }
 
+.teams-page-skeleton {
+  pointer-events: none;
+}
+
+.team-page-skeleton-title {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.team-page-skeleton-kicker {
+  width: 96px;
+  height: 12px;
+}
+
+.team-page-skeleton-heading {
+  width: 156px;
+  height: 18px;
+}
+
+.team-page-skeleton-create {
+  width: 92px;
+  height: 36px;
+  border-radius: 8px;
+}
+
 .teams-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -4722,6 +4832,30 @@ a {
   min-height: 34px;
   gap: 8px;
   padding: 7px 10px;
+}
+
+.team-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.team-card-actions .icon-button {
+  width: 34px;
+  height: 34px;
+}
+
+.team-card-footnote {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  padding: 6px 9px;
+  background: var(--surface-2);
+  color: var(--muted-soft);
+  font-size: 12px;
+  font-weight: 750;
 }
 
 .team-avatar-more {
@@ -5505,6 +5639,81 @@ a {
   padding: 14px;
 }
 
+.note-modal-overlay.team-delete-overlay {
+  z-index: 110;
+}
+
+.note-modal.team-delete-modal {
+  width: min(460px, 100%);
+  min-height: 0;
+  grid-template-rows: auto auto auto auto;
+  gap: 18px;
+  padding: 24px;
+  border-radius: 12px;
+}
+
+.note-modal.team-delete-modal header {
+  align-items: flex-start;
+}
+
+.note-modal.team-delete-modal .team-delete-title {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.note-modal.team-delete-modal .team-delete-title > div {
+  min-width: 0;
+  display: grid;
+  gap: 0;
+}
+
+.team-delete-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  color: var(--red);
+}
+
+.team-delete-title small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.note-modal.team-delete-modal > p {
+  margin: 0;
+  color: var(--muted-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.team-delete-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--red-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--red-soft) 72%, transparent);
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.note-modal.team-delete-modal footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 @media (max-width: 640px) {
   .team-drawer {
     width: 100vw;
@@ -5537,6 +5746,15 @@ a {
 
   .team-details-modal {
     min-height: min(620px, calc(100vh - 24px));
+  }
+
+  .note-modal.team-delete-modal footer {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .note-modal.team-delete-modal footer .button {
+    width: 100%;
   }
 }
 
@@ -5685,6 +5903,69 @@ a {
   grid-template-rows: auto auto minmax(240px, 1fr);
   gap: 20px;
   font-size: 14px;
+}
+
+.notes-page-skeleton {
+  pointer-events: none;
+}
+
+.notes-page-skeleton-title {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.notes-page-skeleton-kicker {
+  width: 92px;
+  height: 12px;
+}
+
+.notes-page-skeleton-heading {
+  width: 142px;
+  height: 18px;
+}
+
+.notes-page-skeleton-create {
+  width: 98px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.notes-skeleton-filter,
+.notes-skeleton-action {
+  display: block;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      90deg,
+      var(--surface-2) 0%,
+      var(--surface-3) 48%,
+      var(--surface-2) 100%
+    );
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.15s ease-in-out infinite;
+}
+
+.notes-skeleton-filter {
+  width: min(320px, 40vw);
+  height: 36px;
+  border-radius: 8px;
+}
+
+.notes-skeleton-action {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.notes-skeleton-action-wide {
+  width: 86px;
+}
+
+.notes-refresh-skeleton {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
 }
 
 .notes-toolbar,
@@ -6160,6 +6441,108 @@ a {
 
 .note-modal footer {
   justify-content: flex-end;
+}
+
+.note-view-overlay {
+  z-index: 82;
+}
+
+.note-modal.note-view-modal {
+  width: min(760px, 100%);
+  max-height: min(720px, calc(100vh - 56px));
+  max-height: min(720px, calc(100dvh - 56px));
+  min-height: min(520px, calc(100vh - 56px));
+  min-height: min(520px, calc(100dvh - 56px));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.note-modal.note-view-modal header {
+  align-items: flex-start;
+}
+
+.note-modal .note-view-heading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.note-modal .note-view-heading > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.note-view-accent {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 8px;
+}
+
+.note-view-heading small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.note-view-heading h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-view-content {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+  background: var(--surface-2);
+}
+
+.note-view-content p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.note-modal.note-view-modal footer {
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.note-view-owner {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.note-view-owner i {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.note-view-owner strong {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .notes-submit {
@@ -6774,6 +7157,10 @@ a {
     width: 100%;
   }
 
+  .notes-skeleton-filter {
+    width: 100%;
+  }
+
   .notes-filter-actions {
     flex-wrap: wrap;
   }
@@ -6864,6 +7251,23 @@ a {
     min-height: min(620px, calc(100vh - 24px));
     padding: 22px;
     border-radius: 14px;
+  }
+
+  .note-modal.note-view-modal {
+    width: 100%;
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+    min-height: min(560px, calc(100vh - 24px));
+    min-height: min(560px, calc(100dvh - 24px));
+  }
+
+  .note-modal.note-view-modal .note-view-heading h2 {
+    font-size: 18px;
+  }
+
+  .note-modal.note-view-modal footer {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .team-create-modal {

@@ -2,16 +2,34 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fileService } from "./service";
 import type { ShareFileRequest, UploadFileRequest } from "./types";
 
+interface UseFilesOptions {
+  enabled?: boolean;
+}
+
 export const fileKeys = {
   all: ["files"] as const,
   lists: () => [...fileKeys.all, "list"] as const,
   list: () => [...fileKeys.lists()] as const,
+  sharedList: () => [...fileKeys.lists(), "shared"] as const,
 };
 
-export function useFiles() {
+export function useFiles(options: UseFilesOptions = {}) {
+  const { enabled = true } = options;
+
   return useQuery({
     queryKey: fileKeys.list(),
     queryFn: () => fileService.findMine(),
+    enabled,
+  });
+}
+
+export function useSharedFiles(options: UseFilesOptions = {}) {
+  const { enabled = true } = options;
+
+  return useQuery({
+    queryKey: fileKeys.sharedList(),
+    queryFn: () => fileService.findSharedWithMe(),
+    enabled,
   });
 }
 

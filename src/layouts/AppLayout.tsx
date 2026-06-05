@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth, useWorkspace } from "../shared/context";
+import { canAccessAllTeams, canAccessMyTeams } from "../features/teams/access";
 import {
   FEATURE_PERMISSION_REQUIREMENTS,
   getRoutePermissionRule,
@@ -22,6 +23,7 @@ const pageMeta: Record<string, { title: string; crumb: string }> = {
   "/app/meeting": { title: "Salle de reunion", crumb: "VISIO" },
   "/app/profile": { title: "Mon profil", crumb: "PARAMETRES" },
   "/app/admin": { title: "Administration", crumb: "PARAMETRES" },
+  "/app/my-team": { title: "My Team", crumb: "COLLABORATION" },
   "/app/teams": { title: "Teams", crumb: "COLLABORATION" },
   "/app/users": { title: "Users", crumb: "CRM" },
   "/app/notes": { title: "Notes", crumb: "CRM" },
@@ -29,6 +31,7 @@ const pageMeta: Record<string, { title: string; crumb: string }> = {
 };
 
 interface NavItem {
+  canShow?: boolean;
   count?: number;
   accent?: boolean;
   icon: IconName;
@@ -99,6 +102,14 @@ export function AppLayout() {
       icon: "building",
       label: "Teams",
       permissions: FEATURE_PERMISSION_REQUIREMENTS.teams,
+      canShow: canAccessAllTeams(user.adminRole),
+    },
+    {
+      to: "/app/my-team",
+      icon: "users",
+      label: "My Team",
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.myTeams,
+      canShow: canAccessMyTeams(user.adminRole),
     },
     {
       to: "/app/users",
@@ -114,8 +125,8 @@ export function AppLayout() {
     },
     // { to: '/app/notifications', icon: 'bell', label: 'Notifications', count: counts.notifications, accent: true },
   ];
-  const visibleNavItems = navItems.filter((item) =>
-    hasAnyPermission(item.permissions)
+  const visibleNavItems = navItems.filter(
+    (item) => item.canShow !== false && hasAnyPermission(item.permissions)
   );
   const canUseChat = hasAnyPermission(FEATURE_PERMISSION_REQUIREMENTS.chat);
   const canUseSettings = hasAnyPermission(
