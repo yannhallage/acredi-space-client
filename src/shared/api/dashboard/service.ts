@@ -7,6 +7,7 @@ import type {
   DashboardRole,
   DashboardStats,
   DashboardWidgetConfig,
+  DashboardWidgetPermissionsResponse,
   DashboardWidgetsResponse,
   MeetingResponse,
   NotificationResponse,
@@ -33,6 +34,37 @@ function clampLayout(widget: DashboardWidgetConfig): DashboardWidgetConfig {
     position: Math.max(0, widget.position || 0),
     visible: Boolean(widget.visible),
     width: Math.min(4, Math.max(1, widget.width || 1)),
+  };
+}
+
+function isDashboardWidgetsResponse(
+  data: DashboardWidgetsResponse | DashboardWidgetPermissionsResponse
+): data is DashboardWidgetsResponse {
+  return Array.isArray((data as DashboardWidgetsResponse).widgets);
+}
+
+function normalizeWidgetPermissions(
+  data: DashboardWidgetsResponse | DashboardWidgetPermissionsResponse
+): DashboardWidgetsResponse {
+  if (isDashboardWidgetsResponse(data)) {
+    return {
+      ...data,
+      widgets: data.widgets.map(clampLayout),
+    };
+  }
+
+  return {
+    role: data.role,
+    widgets: data.permissions.map((permission, position) =>
+      clampLayout({
+        height: 1,
+        label: permission.label,
+        position,
+        type: permission.type,
+        visible: true,
+        width: 1,
+      })
+    ),
   };
 }
 
@@ -66,15 +98,13 @@ function normalizeNotification(
 
 export const dashboardService = {
   async widgets() {
-    const response = await http.get<ApiResponse<DashboardWidgetsResponse>>(
+    const response = await http.get<
+      ApiResponse<DashboardWidgetsResponse | DashboardWidgetPermissionsResponse>
+    >(
       dashboardEndpoints.widgets
     );
-    const data = unwrapApiResponse(response);
 
-    return {
-      ...data,
-      widgets: data.widgets.map(clampLayout),
-    };
+    return normalizeWidgetPermissions(unwrapApiResponse(response));
   },
 
   async updateWidgets(widgets: UpdateDashboardWidgetRequest[]) {

@@ -39,6 +39,16 @@ export type DashboardWidgetsResponse = {
   widgets: DashboardWidgetConfig[];
 };
 
+export type DashboardWidgetPermissionResponse = {
+  type: DashboardWidgetType;
+  label: string;
+};
+
+export type DashboardWidgetPermissionsResponse = {
+  role: DashboardRole;
+  permissions: DashboardWidgetPermissionResponse[];
+};
+
 export type UpdateDashboardWidgetRequest = DashboardWidgetConfig;
 
 export type AdminDashboardStats = {
