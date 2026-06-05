@@ -53,6 +53,14 @@ export const fileService = {
     return normalizeFiles(unwrapApiResponse(response));
   },
 
+  async findSharedWithMe() {
+    const response = await http.get<ApiResponse<FileResponse[]>>(
+      fileEndpoints.findSharedWithMe,
+    );
+
+    return normalizeFiles(unwrapApiResponse(response));
+  },
+
   async share(id: string, request: ShareFileRequest) {
     const response = await http.post<ApiResponse<FileResponse>>(
       fileEndpoints.share(id),

@@ -31,8 +31,9 @@ export type TeamResponse = {
   teamColor: string | null;
   avatarUrl: string | null;
   ownerId: string;
+  ownerName?: string | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string | null;
   membersCount?: number;
 };
 
@@ -57,6 +58,7 @@ export type Team = {
   color: string;
   avatarUrl: string | null;
   ownerId: string;
+  ownerName: string | null;
   membersCount: number;
   createdAt: Date;
   updatedAt: Date;

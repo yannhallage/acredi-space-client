@@ -24,6 +24,14 @@ export const teamService = {
     return normalizeTeams(unwrapApiResponse(response));
   },
 
+  async findMine() {
+    const response = await http.get<ApiResponse<TeamResponse[]>>(
+      teamEndpoints.findMine
+    );
+
+    return normalizeTeams(unwrapApiResponse(response));
+  },
+
   async create(request: CreateTeamRequest) {
     const response = await http.post<ApiResponse<TeamResponse>>(
       teamEndpoints.create,

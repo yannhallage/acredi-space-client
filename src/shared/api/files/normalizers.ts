@@ -81,7 +81,7 @@ export function normalizeFile(file: FileResponse): WorkspaceFile {
       readString(source, ["folderId"]) ?? readNestedId(source, "folder"),
     teamId: readString(source, ["teamId"]) ?? readNestedId(source, "team"),
     ownerId: readString(source, ["ownerId"]) ?? readNestedId(source, "owner"),
-    size: readNumber(source, ["size", "fileSize", "bytes"]),
+    size: readNumber(source, ["size", "sizeBytes", "fileSize", "bytes"]),
     contentType: readString(source, ["contentType", "mimeType"]),
     visibility: file.visibility ?? null,
     createdAt: readDate(source, ["createdAt", "uploadedAt"]),
