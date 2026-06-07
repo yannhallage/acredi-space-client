@@ -22,6 +22,7 @@ import { OtpPage } from '../features/OtpPage/OtpPage';
 import { AppLayout } from '../layouts/AppLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { AuthProvider, WorkspaceProvider } from '../shared/context';
+import { OneSignalSessionBridge } from '../shared/notifications/OneSignalSessionBridge';
 import { getDefaultAllowedAppPath, usePermissions } from '../shared/permissions';
 import { ThemeProvider } from '../shared/theme';
 import { ProtectedRoute } from './ProtectedRoute';
@@ -41,6 +42,7 @@ export default function App() {
       <AuthProvider>
         <WorkspaceProvider>
           <Router>
+            <OneSignalSessionBridge />
             <Routes>
               <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
               <Route element={<AuthLayout />}>

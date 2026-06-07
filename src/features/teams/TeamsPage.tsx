@@ -768,6 +768,10 @@ export function TeamsPage() {
       (teamsQuery.isPending ||
         teamsQuery.isLoading ||
         (teamsQuery.isFetching && !teamsQuery.data && !teamsQuery.isError)));
+  const isTeamsFetching =
+    canViewAllTeams &&
+    !teamsQuery.isError &&
+    (teamsQuery.isPending || teamsQuery.isLoading || teamsQuery.isFetching);
   const canSubmit = form.name.trim().length >= 2 && !isSubmitting;
 
   const selectedUserIds = useMemo(
@@ -1010,7 +1014,7 @@ export function TeamsPage() {
       ) : null}
 
       <section className="teams-grid" aria-label="Teams">
-        {isTeamsInitialLoading
+        {isTeamsFetching
           ? teamSkeletons.map((item) => <TeamCardSkeleton key={item} />)
           : teams.map((team) => (
               <TeamCard
@@ -1022,7 +1026,7 @@ export function TeamsPage() {
               />
             ))}
 
-        {!teamsQuery.isLoading && !teamsQuery.isError && teams.length === 0 ? (
+        {!isTeamsFetching && !teamsQuery.isError && teams.length === 0 ? (
           <div className="notes-empty">
             <Icon name="users" size={18} />
             <strong>Aucune equipe</strong>
