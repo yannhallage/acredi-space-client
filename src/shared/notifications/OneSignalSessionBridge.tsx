@@ -1,6 +1,11 @@
 import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import type { NotificationClickEvent } from "react-onesignal";
+import type {
+  NotificationClickEvent,
+  NotificationForegroundWillDisplayEvent,
+} from "react-onesignal";
+import { dashboardKeys } from "../api/dashboard";
 import { useAuth } from "../context";
 import {
   clearOneSignalUser,
@@ -9,10 +14,12 @@ import {
   isOneSignalConfigured,
   syncOneSignalUser,
 } from "./onesignal";
+import { unlockNotificationSound } from "./sound";
 
 export function OneSignalSessionBridge() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!isOneSignalConfigured()) {
@@ -30,6 +37,29 @@ export function OneSignalSessionBridge() {
   }, [user]);
 
   useEffect(() => {
+    let unlocked = false;
+
+    const unlock = () => {
+      if (unlocked) {
+        return;
+      }
+
+      unlocked = true;
+      void unlockNotificationSound().catch(() => undefined);
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+
+    window.addEventListener("pointerdown", unlock, { passive: true });
+    window.addEventListener("keydown", unlock);
+
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isOneSignalConfigured()) {
       return undefined;
     }
@@ -42,14 +72,36 @@ export function OneSignalSessionBridge() {
         return;
       }
 
+      const refreshNotifications = () => {
+        void queryClient.invalidateQueries({
+          queryKey: dashboardKeys.notifications(),
+        });
+      };
+
+      const handleForegroundWillDisplay = (
+        _event: NotificationForegroundWillDisplayEvent
+      ) => {
+        refreshNotifications();
+      };
+
       const handleClick = (event: NotificationClickEvent) => {
+        refreshNotifications();
+
         if (isFileSharedNotification(event)) {
           navigate("/app/files");
         }
       };
 
+      OneSignal.Notifications.addEventListener(
+        "foregroundWillDisplay",
+        handleForegroundWillDisplay
+      );
       OneSignal.Notifications.addEventListener("click", handleClick);
       cleanup = () => {
+        OneSignal.Notifications.removeEventListener(
+          "foregroundWillDisplay",
+          handleForegroundWillDisplay
+        );
         OneSignal.Notifications.removeEventListener("click", handleClick);
       };
     });
@@ -58,7 +110,7 @@ export function OneSignalSessionBridge() {
       cancelled = true;
       cleanup?.();
     };
-  }, [navigate]);
+  }, [navigate, queryClient]);
 
   return null;
 }

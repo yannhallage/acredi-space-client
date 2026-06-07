@@ -1314,7 +1314,7 @@ export function FilesPage() {
           aria-labelledby="files-shared-title"
         >
           <div className="">
-            <h2 id="text-sm">Fichiers partages</h2>
+            <h2 id="files-shared-title">Fichiers partages</h2>
             <span className="">{pluralizeFile(sharedFiles.length)}</span>
           </div>
 

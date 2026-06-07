@@ -31,10 +31,6 @@ export const APP_ROUTE_PERMISSION_RULES = [
   },
   { path: '/app/teams', permissions: FEATURE_PERMISSION_REQUIREMENTS.teams },
   { path: '/app/notes', permissions: FEATURE_PERMISSION_REQUIREMENTS.notes },
-  {
-    path: '/app/notifications',
-    permissions: FEATURE_PERMISSION_REQUIREMENTS.notifications,
-  },
 ] as const satisfies readonly AppRoutePermissionRule[];
 
 export const DEFAULT_APP_ROUTE_CANDIDATES = [

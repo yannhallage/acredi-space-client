@@ -11,7 +11,6 @@ import { FolderFilesPage } from '../features/files/FolderFilesPage';
 import { FilesPage } from '../features/files/FilesPage';
 import { MeetingPage } from '../features/meeting/MeetingPage';
 import { NotesPage } from '../features/notes/NotesPage';
-import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { PreviewPage } from '../features/preview/PreviewPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
 import { MyTeamsPage } from '../features/teams/MyTeamsPage';
@@ -73,7 +72,6 @@ export default function App() {
                   <Route path="users" element={<UsersPage />} />
                   <Route path="users/:userId" element={<UserDetailPage />} />
                   <Route path="notes" element={<NotesPage />} />
-                  <Route path="notifications" element={<NotificationsPage />} />
                   <Route path="/app/teams/create" element={<CreateTeamPage />} />
                 </Route>
               </Route>

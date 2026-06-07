@@ -1158,14 +1158,22 @@ a {
   box-shadow: inset 0 0 0 1px var(--border);
 }
 
-.notification-button span {
+.notification-button .notification-count-badge {
   position: absolute;
-  top: 7px;
-  right: 7px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+  top: 2px;
+  right: 1px;
+  min-width: 17px;
+  height: 17px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
   background: var(--red);
+  color: #fff;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
   box-shadow: 0 0 0 2px var(--bg);
 }
 
@@ -1223,7 +1231,6 @@ a {
 
 .notifications-tabs button,
 .notifications-header-actions button,
-.notifications-activity,
 .account-menu-item {
   border: 0;
   background: transparent;
@@ -1255,6 +1262,21 @@ a {
   background: var(--text);
 }
 
+.notifications-count {
+  min-width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1;
+}
+
 .notifications-header-actions {
   margin-left: auto;
   display: inline-flex;
@@ -1276,13 +1298,48 @@ a {
   color: var(--text);
 }
 
+.notifications-header-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.notifications-header-actions button:disabled:hover {
+  background: transparent;
+  color: var(--muted);
+}
+
+.notifications-list {
+  max-height: 380px;
+  display: grid;
+  gap: 4px;
+  padding-top: 12px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.notifications-list::-webkit-scrollbar {
+  display: none;
+}
+
 .notification-preview {
-  margin-top: 24px;
+  width: 100%;
+  min-height: 64px;
   display: grid;
   grid-template-columns: 12px 42px minmax(0, 1fr);
   align-items: start;
   gap: 14px;
-  padding-right: 8px;
+  padding: 10px 8px 10px 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.notification-preview:hover {
+  background: var(--surface-2);
 }
 
 .notification-unread-dot {
@@ -1291,6 +1348,10 @@ a {
   margin-top: 18px;
   border-radius: 50%;
   background: var(--text);
+}
+
+.notification-preview:not(.unread) .notification-unread-dot {
+  background: transparent;
 }
 
 .notification-avatar {
@@ -1312,6 +1373,13 @@ a {
   line-height: 1.45;
 }
 
+.notification-preview p > span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .notification-preview strong,
 .notification-preview b {
   color: var(--text);
@@ -1325,17 +1393,41 @@ a {
   font-size: 13px;
 }
 
-.notifications-activity {
-  display: block;
-  margin: 34px auto 0;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  color: var(--text);
+.notification-preview-skeleton {
+  cursor: default;
+  pointer-events: none;
 }
 
-.notifications-activity:hover {
+.notification-preview-skeleton .notification-unread-dot,
+.notification-preview-skeleton .notification-avatar {
   background: var(--surface-2);
+}
+
+.notification-preview-skeleton p {
+  display: grid;
+  gap: 8px;
+  padding-top: 3px;
+}
+
+.notifications-empty {
+  min-height: 250px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.notifications-empty strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.notifications-empty small {
+  max-width: 240px;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .account-popover {
@@ -2166,6 +2258,30 @@ a {
   display: grid;
   gap: 18px;
   margin-top: 48px;
+}
+
+.files-shared-section > div:first-child h2 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.files-shared-section > div:first-child span {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.files-shared-section .files-file-card strong {
+  font-size: 10.5px;
+  line-height: 1.2;
+}
+
+.files-shared-section .files-file-card small {
+  font-size: 9.5px;
+  line-height: 1.2;
 }
 
 .files-section-header {
@@ -4439,18 +4555,111 @@ a {
   position: relative;
 }
 
-.profile-hero div:nth-of-type(2) {
+.profile-avatar-control {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.profile-avatar-edit {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+  cursor: pointer;
+}
+
+.profile-avatar-edit:hover {
+  background: var(--surface-2);
+}
+
+.profile-avatar-edit:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.profile-avatar-input {
+  display: none;
+}
+
+.profile-avatar-message {
+  display: block;
+  margin-top: 7px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profile-avatar-message.success {
+  color: #16a34a;
+}
+
+.profile-avatar-message.error {
+  color: var(--red);
+}
+
+.profile-hero-main {
   flex: 1;
 }
 
 .profile-hero h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 22px;
+  line-height: 1.15;
 }
 
 .profile-hero p {
   margin: 4px 0 0;
   color: var(--muted-soft);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.profile-hero .eyebrow {
+  font-size: 11px;
+}
+
+.profile-hero .button {
+  min-height: 34px;
+  padding-inline: 12px;
+  font-size: 13px;
+}
+
+.profile-page .card-header h3 {
+  font-size: 14px;
+  line-height: 1.15;
+}
+
+.profile-page .details-list div {
+  min-height: 36px;
+  padding-block: 8px;
+}
+
+.profile-page .details-list dt {
+  font-size: 12px;
+}
+
+.profile-page .details-list dd {
+  font-size: 12px;
+}
+
+.profile-page .settings-list li {
+  min-height: 34px;
+  padding: 7px 0;
+}
+
+.profile-page .settings-list span {
+  font-size: 13px;
+}
+
+.profile-page .settings-list strong {
+  font-size: 11px;
 }
 
 .settings-list li {
