@@ -83,7 +83,7 @@ function normalizeMeeting(meeting: MeetingResponse): DashboardMeeting {
   };
 }
 
-function normalizeNotification(
+export function normalizeNotification(
   notification: NotificationResponse
 ): DashboardNotification {
   return {
@@ -91,6 +91,7 @@ function normalizeNotification(
     type: notification.type ?? "SYSTEM",
     title: notification.title ?? "Notification",
     message: notification.message ?? "",
+    linkUrl: notification.linkUrl ?? null,
     readAt: readDate(notification.readAt),
     createdAt: readDate(notification.createdAt),
   };
@@ -142,5 +143,33 @@ export const dashboardService = {
     );
 
     return unwrapApiResponse(response).map(normalizeNotification);
+  },
+
+  async unreadNotificationCount() {
+    const response = await http.get<ApiResponse<number>>(
+      dashboardEndpoints.unreadNotificationCount
+    );
+
+    return unwrapApiResponse(response);
+  },
+
+  async markNotificationRead(id: string) {
+    const response = await http.patch<ApiResponse<NotificationResponse>>(
+      dashboardEndpoints.markNotificationRead(id)
+    );
+
+    return normalizeNotification(unwrapApiResponse(response));
+  },
+
+  async markAllNotificationsRead() {
+    const response = await http.patch<ApiResponse<number>>(
+      dashboardEndpoints.markAllNotificationsRead
+    );
+
+    return unwrapApiResponse(response);
+  },
+
+  async deleteNotification(id: string) {
+    await http.delete<ApiResponse<void>>(dashboardEndpoints.deleteNotification(id));
   },
 };

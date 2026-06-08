@@ -15,13 +15,13 @@ The React Compiler is not enabled on this template because of its impact on dev 
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
-## OneSignal
+## Notifications temps reel
 
-Configure the public OneSignal app id in `.env`:
+Configure the API and optional SockJS endpoint in `.env`:
 
 ```env
-VITE_ONESIGNAL_APP_ID=your-onesignal-app-id
-VITE_ONESIGNAL_AUTO_PROMPT=true
+VITE_API_BASE_URL=http://localhost:8080/api
+VITE_WS_URL=http://localhost:8080/ws
 ```
 
-The frontend logs the authenticated user into OneSignal with the backend user UUID. File sharing keeps calling `POST /files/{id}/share`; after the backend validates and stores the notification, OneSignal targets that same UUID as `external_id`.
+The app uses STOMP over SockJS, sends the JWT in the STOMP `Authorization` header, and subscribes to `/user/queue/notifications`. The backend stores notifications in the database first; the socket only pushes the small `NotificationResponse` payload in real time.

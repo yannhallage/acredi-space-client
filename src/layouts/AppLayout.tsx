@@ -6,6 +6,8 @@ import { useAuth, useWorkspace } from "../shared/context";
 import { canAccessAllTeams, canAccessMyTeams } from "../features/teams/access";
 import {
   dashboardKeys,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
   useDashboardNotifications,
   type DashboardNotification,
 } from "../shared/api/dashboard";
@@ -88,6 +90,10 @@ function getNotificationInitials(notification: DashboardNotification) {
 }
 
 function getNotificationTarget(notification: DashboardNotification) {
+  if (notification.linkUrl) {
+    return notification.linkUrl;
+  }
+
   const type = notification.type.toUpperCase();
 
   if (type.includes("FILE")) {
@@ -206,6 +212,8 @@ export function AppLayout() {
     FEATURE_PERMISSION_REQUIREMENTS.notifications
   );
   const notificationsQuery = useDashboardNotifications(canReadNotifications);
+  const markNotificationReadMutation = useMarkNotificationRead();
+  const markAllNotificationsReadMutation = useMarkAllNotificationsRead();
   const notifications = useMemo(
     () =>
       (notificationsQuery.data ?? []).map((notification) => {
@@ -357,6 +365,36 @@ export function AppLayout() {
           readAt: notification.readAt ?? readAt,
         })) ?? current
     );
+
+    markAllNotificationsReadMutation.mutate();
+  }
+
+  function handleMarkNotificationRead(notification: DashboardNotification) {
+    if (notification.readAt) {
+      return;
+    }
+
+    const readAt = new Date();
+    const nextReadNotificationIds = {
+      ...readNotificationIds,
+      [notification.id]: readAt.toISOString(),
+    };
+
+    setReadNotificationIds(nextReadNotificationIds);
+    localStorage.setItem(
+      notificationReadStorageKey,
+      JSON.stringify(nextReadNotificationIds)
+    );
+
+    queryClient.setQueryData<DashboardNotification[]>(
+      dashboardKeys.notifications(),
+      (current) =>
+        current?.map((item) =>
+          item.id === notification.id ? { ...item, readAt } : item
+        ) ?? current
+    );
+
+    markNotificationReadMutation.mutate(notification.id);
   }
 
   return (
@@ -545,7 +583,10 @@ export function AppLayout() {
                         <button
                           type="button"
                           aria-label="Tout marquer comme lu"
-                          disabled={unreadNotifications === 0}
+                          disabled={
+                            unreadNotifications === 0 ||
+                            markAllNotificationsReadMutation.isPending
+                          }
                           onClick={handleMarkAllNotificationsRead}
                         >
                           <Icon name="check" size={15} />
@@ -616,6 +657,7 @@ export function AppLayout() {
                               key={notification.id}
                               type="button"
                               onClick={() => {
+                                handleMarkNotificationRead(notification);
                                 const target = getNotificationTarget(notification);
 
                                 if (!target) {
