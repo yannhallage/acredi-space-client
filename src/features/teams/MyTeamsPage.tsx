@@ -1,8 +1,15 @@
 import { useAuth } from "../../shared/context";
-import { AccessDeniedState, EmptyState, Icon, LoadingState } from "../../shared/ui";
+import { AccessDeniedState, EmptyState, Icon } from "../../shared/ui";
 import { canAccessMyTeams } from "./access";
 import { useMyTeams } from "./hooks";
 import type { Team } from "./types";
+
+const myTeamSkeletons = [
+  "my-team-skeleton-1",
+  "my-team-skeleton-2",
+  "my-team-skeleton-3",
+  "my-team-skeleton-4",
+];
 
 function formatTeamDate(date: Date) {
   if (Number.isNaN(date.getTime())) {
@@ -52,11 +59,41 @@ function MyTeamCard({ team }: { team: Team }) {
   );
 }
 
+function MyTeamCardSkeleton() {
+  return (
+    <article className="team-card team-card-skeleton" aria-hidden="true">
+      <header>
+        <span className="skeleton-line team-skeleton-accent" />
+        <div className="skeleton-copy">
+          <span className="skeleton-line team-skeleton-title" />
+          <span className="skeleton-line" />
+          <span className="skeleton-line skeleton-short" />
+        </div>
+      </header>
+
+      <div className="team-card-meta">
+        <span className="skeleton-line team-skeleton-meta" />
+        <span className="skeleton-line team-skeleton-meta" />
+      </div>
+
+      <div className="team-card-footer">
+        <span className="skeleton-pill team-skeleton-button" />
+      </div>
+    </article>
+  );
+}
+
 export function MyTeamsPage() {
   const { user } = useAuth();
   const canViewMyTeams = canAccessMyTeams(user?.adminRole);
   const myTeamsQuery = useMyTeams({ enabled: canViewMyTeams });
   const teams = myTeamsQuery.data ?? [];
+  const isMyTeamsFetching =
+    canViewMyTeams &&
+    !myTeamsQuery.isError &&
+    (myTeamsQuery.isPending ||
+      myTeamsQuery.isLoading ||
+      myTeamsQuery.isFetching);
 
   if (!canViewMyTeams) {
     return (
@@ -92,8 +129,12 @@ export function MyTeamsPage() {
         </div>
       ) : null}
 
-      {myTeamsQuery.isLoading ? (
-        <LoadingState label="Chargement de mes equipes..." />
+      {isMyTeamsFetching ? (
+        <section className="teams-grid" aria-label="Chargement de mes equipes">
+          {myTeamSkeletons.map((item) => (
+            <MyTeamCardSkeleton key={item} />
+          ))}
+        </section>
       ) : teams.length > 0 ? (
         <section className="teams-grid" aria-label="Mes equipes">
           {teams.map((team) => (

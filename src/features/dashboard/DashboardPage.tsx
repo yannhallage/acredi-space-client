@@ -874,7 +874,7 @@ export function DashboardPage() {
     );
   }
 
-  if (widgetsQuery.error) {
+  if (widgetsQuery.error && !widgetsResponse) {
     return (
       <PanelState
         title="Dashboard indisponible"

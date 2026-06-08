@@ -11,8 +11,7 @@ const screens: Array<{ label: string; title: string; to: string; icon: IconName;
   { label: '06 - Calendrier', title: 'Planning', to: '/app/calendar', icon: 'calendar', tone: '#8B7FFF' },
   { label: '07 - Reunion', title: 'Salle video', to: '/app/meeting/meet-daily', icon: 'video', tone: '#EF4444' },
   { label: '08 - Profil', title: 'Compte', to: '/app/profile', icon: 'user', tone: '#22C55E' },
-  { label: '09 - Admin', title: 'Administration', to: '/app/admin', icon: 'settings', tone: '#F59E0B' },
-  { label: '10 - Notifications', title: 'Inbox activite', to: '/app/notifications', icon: 'bell', tone: '#5B6CFF' }
+  { label: '09 - Admin', title: 'Administration', to: '/app/admin', icon: 'settings', tone: '#F59E0B' }
 ];
 
 function PreviewTile({ title, to, icon, tone }: { title: string; to: string; icon: IconName; tone: string }) {

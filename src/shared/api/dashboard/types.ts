@@ -39,6 +39,16 @@ export type DashboardWidgetsResponse = {
   widgets: DashboardWidgetConfig[];
 };
 
+export type DashboardWidgetPermissionResponse = {
+  type: DashboardWidgetType;
+  label: string;
+};
+
+export type DashboardWidgetPermissionsResponse = {
+  role: DashboardRole;
+  permissions: DashboardWidgetPermissionResponse[];
+};
+
 export type UpdateDashboardWidgetRequest = DashboardWidgetConfig;
 
 export type AdminDashboardStats = {
@@ -98,6 +108,7 @@ export type DashboardNotification = {
   type: string;
   title: string;
   message: string;
+  linkUrl: string | null;
   readAt: Date | null;
   createdAt: Date | null;
 };
@@ -107,6 +118,7 @@ export type NotificationResponse = {
   type?: string | null;
   title?: string | null;
   message?: string | null;
+  linkUrl?: string | null;
   readAt?: string | null;
   createdAt?: string | null;
 };

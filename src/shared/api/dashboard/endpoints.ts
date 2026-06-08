@@ -9,4 +9,8 @@ export const dashboardEndpoints = {
   },
   meetings: "/meetings",
   notifications: "/notifications",
+  unreadNotificationCount: "/notifications/unread-count",
+  markNotificationRead: (id: string) => `/notifications/${id}/read`,
+  markAllNotificationsRead: "/notifications/read-all",
+  deleteNotification: (id: string) => `/notifications/${id}`,
 } as const;

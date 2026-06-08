@@ -7,6 +7,7 @@ import type {
   DashboardRole,
   DashboardStats,
   DashboardWidgetConfig,
+  DashboardWidgetPermissionsResponse,
   DashboardWidgetsResponse,
   MeetingResponse,
   NotificationResponse,
@@ -36,6 +37,37 @@ function clampLayout(widget: DashboardWidgetConfig): DashboardWidgetConfig {
   };
 }
 
+function isDashboardWidgetsResponse(
+  data: DashboardWidgetsResponse | DashboardWidgetPermissionsResponse
+): data is DashboardWidgetsResponse {
+  return Array.isArray((data as DashboardWidgetsResponse).widgets);
+}
+
+function normalizeWidgetPermissions(
+  data: DashboardWidgetsResponse | DashboardWidgetPermissionsResponse
+): DashboardWidgetsResponse {
+  if (isDashboardWidgetsResponse(data)) {
+    return {
+      ...data,
+      widgets: data.widgets.map(clampLayout),
+    };
+  }
+
+  return {
+    role: data.role,
+    widgets: data.permissions.map((permission, position) =>
+      clampLayout({
+        height: 1,
+        label: permission.label,
+        position,
+        type: permission.type,
+        visible: true,
+        width: 1,
+      })
+    ),
+  };
+}
+
 function normalizeMeeting(meeting: MeetingResponse): DashboardMeeting {
   return {
     id: meeting.id,
@@ -51,7 +83,7 @@ function normalizeMeeting(meeting: MeetingResponse): DashboardMeeting {
   };
 }
 
-function normalizeNotification(
+export function normalizeNotification(
   notification: NotificationResponse
 ): DashboardNotification {
   return {
@@ -59,6 +91,7 @@ function normalizeNotification(
     type: notification.type ?? "SYSTEM",
     title: notification.title ?? "Notification",
     message: notification.message ?? "",
+    linkUrl: notification.linkUrl ?? null,
     readAt: readDate(notification.readAt),
     createdAt: readDate(notification.createdAt),
   };
@@ -66,15 +99,13 @@ function normalizeNotification(
 
 export const dashboardService = {
   async widgets() {
-    const response = await http.get<ApiResponse<DashboardWidgetsResponse>>(
+    const response = await http.get<
+      ApiResponse<DashboardWidgetsResponse | DashboardWidgetPermissionsResponse>
+    >(
       dashboardEndpoints.widgets
     );
-    const data = unwrapApiResponse(response);
 
-    return {
-      ...data,
-      widgets: data.widgets.map(clampLayout),
-    };
+    return normalizeWidgetPermissions(unwrapApiResponse(response));
   },
 
   async updateWidgets(widgets: UpdateDashboardWidgetRequest[]) {
@@ -112,5 +143,33 @@ export const dashboardService = {
     );
 
     return unwrapApiResponse(response).map(normalizeNotification);
+  },
+
+  async unreadNotificationCount() {
+    const response = await http.get<ApiResponse<number>>(
+      dashboardEndpoints.unreadNotificationCount
+    );
+
+    return unwrapApiResponse(response);
+  },
+
+  async markNotificationRead(id: string) {
+    const response = await http.patch<ApiResponse<NotificationResponse>>(
+      dashboardEndpoints.markNotificationRead(id)
+    );
+
+    return normalizeNotification(unwrapApiResponse(response));
+  },
+
+  async markAllNotificationsRead() {
+    const response = await http.patch<ApiResponse<number>>(
+      dashboardEndpoints.markAllNotificationsRead
+    );
+
+    return unwrapApiResponse(response);
+  },
+
+  async deleteNotification(id: string) {
+    await http.delete<ApiResponse<void>>(dashboardEndpoints.deleteNotification(id));
   },
 };
