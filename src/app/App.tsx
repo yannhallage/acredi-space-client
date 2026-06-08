@@ -9,7 +9,7 @@ import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { DirectMessagesPage } from '../features/dm/DirectMessagesPage';
 import { FolderFilesPage } from '../features/files/FolderFilesPage';
 import { FilesPage } from '../features/files/FilesPage';
-import { MeetingPage } from '../features/meeting/MeetingPage';
+import MeetingPage from '../features/meeting/MeetingPage';
 import { NotesPage } from '../features/notes/NotesPage';
 import { PreviewPage } from '../features/preview/PreviewPage';
 import { ProfilePage } from '../features/profile/ProfilePage';

@@ -1,17 +1,18 @@
 let audioContext: AudioContext | null = null;
 let isUnlocked = false;
 
-function canUseAudio() {
-  return typeof window !== "undefined" && "AudioContext" in window;
-}
-
 function getAudioContext() {
-  if (!canUseAudio()) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const AudioCtor = window.AudioContext ?? (window as any).webkitAudioContext;
+  if (!AudioCtor) {
     return null;
   }
 
   if (!audioContext) {
-    audioContext = new AudioContext();
+    audioContext = new AudioCtor();
   }
 
   return audioContext;
@@ -28,7 +29,9 @@ export async function unlockNotificationSound() {
     await context.resume();
   }
 
-  isUnlocked = true;
+  if (context.state === "running") {
+    isUnlocked = true;
+  }
 }
 
 export function playNotificationSound() {
@@ -40,14 +43,12 @@ export function playNotificationSound() {
 
   const now = context.currentTime;
   const gain = context.createGain();
-  const firstTone = context.createOscillator();
-  const secondTone = context.createOscillator();
-
   gain.connect(context.destination);
   gain.gain.setValueAtTime(0.0001, now);
   gain.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
 
+  const firstTone = context.createOscillator();
   firstTone.type = "sine";
   firstTone.frequency.setValueAtTime(880, now);
   firstTone.frequency.exponentialRampToValueAtTime(1046.5, now + 0.16);
@@ -55,9 +56,18 @@ export function playNotificationSound() {
   firstTone.start(now);
   firstTone.stop(now + 0.22);
 
+  const secondTone = context.createOscillator();
   secondTone.type = "sine";
   secondTone.frequency.setValueAtTime(1318.5, now + 0.12);
   secondTone.connect(gain);
   secondTone.start(now + 0.12);
   secondTone.stop(now + 0.42);
+
+  const cleanup = () => {
+    firstTone.disconnect();
+    secondTone.disconnect();
+    gain.disconnect();
+  };
+
+  secondTone.onended = cleanup;
 }
