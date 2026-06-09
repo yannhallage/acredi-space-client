@@ -13,6 +13,7 @@ import {
   useUpdateFolder,
   type Folder,
 } from "../../shared/api/folders";
+import { useSharedFiles } from "../../shared/api/files";
 import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
 import Toast from "../../components/app/Toast/Toast";
 import { EmptyState, Icon } from "../../shared/ui";
@@ -94,12 +95,67 @@ function FilesPageSkeleton() {
   );
 }
 
+
+function formatRelativeDate(date: string) {
+  const target = new Date(date);
+
+  if (Number.isNaN(target.getTime())) {
+    return "date inconnue";
+  }
+
+  const now = new Date();
+  const diff = now.getTime() - target.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+
+  if (minutes < 1) {
+    return "à l'instant";
+  }
+
+  if (minutes < 60) {
+    return `il y a ${minutes} min`;
+  }
+
+  if (hours < 24) {
+    return `il y a ${hours} h`;
+  }
+
+  return target.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function formatPermission(permission: string) {
+  const normalized = permission.toUpperCase();
+
+  if (["WRITE", "EDITOR", "EDIT", "ADMIN"].includes(normalized)) {
+    return "Modification";
+  }
+
+  return "Lecture seule";
+}
+
 export function FilesPage() {
   const navigate = useNavigate();
+
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [folderName, setFolderName] = useState("");
+  
   const [openMenuFolderId, setOpenMenuFolderId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [toast, setToast] = useState<ToastState>({
@@ -118,6 +174,7 @@ export function FilesPage() {
     isLoading,
     isPending,
   } = useFolders();
+  const { data: sharedFiles = [] } = useSharedFiles();
   const folders = foldersData ?? emptyFolders;
   const isFoldersInitialLoading =
     isPending || isLoading || (isFetching && !foldersData && !isError);
@@ -181,7 +238,9 @@ export function FilesPage() {
   const isFolderSaving =
     createFolderMutation.isPending || updateFolderMutation.isPending;
   const isFolderModalOpen = createModalOpen || Boolean(editingFolder);
-  const folderModalTitle = editingFolder ? "Modifier le dossier" : "Creer un dossier";
+  const folderModalTitle = editingFolder
+    ? "Modifier le dossier"
+    : "Creer un dossier";
   const folderSubmitLabel = editingFolder ? "Modifier" : "Creer";
   const folderSavingLabel = editingFolder ? "Modification..." : "Creation...";
 
@@ -563,6 +622,66 @@ export function FilesPage() {
             <p>Creez un dossier pour organiser cet espace.</p>
           </div>
         )}
+
+
+        <section className="files-shared-activity">
+          <div className="files-shared-header">
+            <div>
+              <h2>Activité des fichiers partagés</h2>
+              <p>Historique des derniers partages de fichiers.</p>
+            </div>
+
+            <span>{sharedFiles.length} partage{sharedFiles.length > 1 ? "s" : ""}</span>
+          </div>
+
+          {sharedFiles.length > 0 ? (
+            <div className="files-shared-list">
+              {sharedFiles.map((share) => (
+                <article key={share.id} className="files-shared-item">
+                  <div className="files-shared-avatar">
+                    {getInitials(share.sharedByName)}
+                  </div>
+
+                  <div className="files-shared-content">
+                    <p>
+                      <strong>{share.sharedByName}</strong>
+                      {" a partagé "}
+                      <strong>{share.fileName}</strong>
+                      {share.folderName ? (
+                        <>
+                          {" du dossier "}
+                          <strong>{share.folderName}</strong>
+                        </>
+                      ) : null}
+                      {" à "}
+                      <strong>{share.sharedWithName}</strong>
+                    </p>
+
+                    <div className="files-shared-meta">
+                      <span className="files-shared-badge">
+                        {formatPermission(share.permission)}
+                      </span>
+                      <span>•</span>
+                      <span>{formatRelativeDate(share.sharedAt)}</span>
+                    </div>
+                  </div>
+
+                  <div className="files-shared-icon" aria-hidden="true">
+                    <Icon name="file" size={18} />
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="files-shared-empty">
+              <Icon name="users" size={24} />
+              <div>
+                <strong>Aucun partage récent</strong>
+                <p>Les fichiers partagés apparaîtront ici.</p>
+              </div>
+            </div>
+          )}
+        </section>
 
         {/* Section fichiers masquee pendant la vue dossiers uniquement.
         <p className="section-label split">

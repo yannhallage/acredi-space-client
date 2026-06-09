@@ -14,7 +14,10 @@ export interface UploadFileRequest {
   visibility?: FileVisibility | null;
 }
 
-export type ShareFileRequest = Record<string, unknown>;
+export type ShareFileRequest = {
+  userId: string;
+  permission: "VIEWER" | "EDITOR";
+};
 
 export interface FileResponse {
   id: string;
@@ -49,4 +52,15 @@ export interface WorkspaceFile {
   createdAt: Date | null;
   updatedAt: Date | null;
   raw: FileResponse;
+}
+
+export interface SharedFile {
+  id: string;
+  fileId: string;
+  fileName: string;
+  folderName: string | null;
+  sharedByName: string;
+  sharedWithName: string;
+  permission: string;
+  sharedAt: string;
 }

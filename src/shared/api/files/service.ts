@@ -5,6 +5,7 @@ import type {
   ApiResponse,
   FileResponse,
   ShareFileRequest,
+  SharedFile,
   UploadFileRequest,
 } from "./types";
 
@@ -51,6 +52,14 @@ export const fileService = {
     );
 
     return normalizeFiles(unwrapApiResponse(response));
+  },
+
+  async getSharedFiles() {
+    const response = await http.get<ApiResponse<SharedFile[]>>(
+      fileEndpoints.shared,
+    );
+
+    return unwrapApiResponse(response);
   },
 
   async share(id: string, request: ShareFileRequest) {

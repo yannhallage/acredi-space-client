@@ -58,4 +58,16 @@ export function useDeleteFile() {
       queryClient.invalidateQueries({ queryKey: fileKeys.lists() });
     },
   });
+
+
+
+
+
+}
+
+  export function useSharedFiles() {
+  return useQuery({
+    queryKey: ["files", "shared"],
+    queryFn: () => fileService.getSharedFiles(),
+  });
 }
