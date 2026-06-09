@@ -1,5 +1,6 @@
 export const teamEndpoints = {
   findAll: "/teams",
+  findMine: "/teams/my-team",
   create: "/teams",
   update: (id: string) => `/teams/${id}`,
   members: (id: string) => `/teams/${id}/members`,

@@ -8,6 +8,10 @@ import type {
   UpdateNoteRequest,
 } from "./type";
 
+interface UseNotesOptions {
+  enabled?: boolean;
+}
+
 export const noteKeys = {
   all: ["notes"] as const,
   lists: () => [...noteKeys.all, "list"] as const,
@@ -18,10 +22,16 @@ export const noteKeys = {
   versions: (id: string) => [...noteKeys.detail(id), "versions"] as const,
 };
 
-export function useNotes(params?: { archived?: boolean; q?: string }) {
+export function useNotes(
+  params?: { archived?: boolean; q?: string },
+  options: UseNotesOptions = {}
+) {
+  const { enabled = true } = options;
+
   return useQuery({
     queryKey: noteKeys.list(params),
     queryFn: () => noteService.findAll(params),
+    enabled,
   });
 }
 

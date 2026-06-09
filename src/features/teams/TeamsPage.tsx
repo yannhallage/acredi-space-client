@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import Toast, { type ToastIntent } from "../../components/app/Toast/Toast";
 import { useUsersQuery } from "../../shared/api/users";
-import { PermissionGate, TEAM_CREATE_PERMISSIONS } from "../../shared/permissions";
+import { useAuth } from "../../shared/context";
+import {
+  PermissionGate,
+  TEAM_CREATE_PERMISSIONS,
+  TEAM_DELETE_PERMISSIONS,
+} from "../../shared/permissions";
 import type { User } from "../../shared/types";
-import { Avatar, Icon } from "../../shared/ui";
+import { AccessDeniedState, Avatar, Icon } from "../../shared/ui";
+import { canAccessAllTeams } from "./access";
 import {
   useAddTeamMember,
   useCreateTeam,
+  useDeleteTeam,
   useTeamMembers,
   useTeams,
 } from "./hooks";
@@ -49,6 +57,12 @@ type TeamFormState = {
   teamColor: string;
 };
 
+type ToastState = {
+  intent: ToastIntent;
+  message: string;
+  show: boolean;
+};
+
 function createInitialTeamForm(): TeamFormState {
   return {
     avatarUrl: "",
@@ -66,7 +80,10 @@ function normalizeSearch(value: string) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-function getErrorMessage(error: unknown) {
+function getErrorMessage(
+  error: unknown,
+  fallback = "Une erreur est survenue."
+) {
   if (error && typeof error === "object") {
     const maybeError = error as {
       message?: unknown;
@@ -83,7 +100,7 @@ function getErrorMessage(error: unknown) {
     }
   }
 
-  return "Une erreur est survenue pendant la creation.";
+  return fallback;
 }
 
 function memberDisplayName(member: TeamMember) {
@@ -121,6 +138,26 @@ function TeamCardSkeleton() {
         <span className="skeleton-pill team-skeleton-button" />
       </div>
     </article>
+  );
+}
+
+function TeamsPageSkeleton() {
+  return (
+    <div className="teams-page teams-page-skeleton" aria-busy="true">
+      <section className="notes-toolbar" aria-hidden="true">
+        <div className="team-page-skeleton-title">
+          <span className="skeleton-line team-page-skeleton-kicker" />
+          <span className="skeleton-line team-page-skeleton-heading" />
+        </div>
+        <span className="skeleton-pill team-page-skeleton-create" />
+      </section>
+
+      <section className="teams-grid" aria-label="Chargement des equipes">
+        {teamSkeletons.map((item) => (
+          <TeamCardSkeleton key={item} />
+        ))}
+      </section>
+    </div>
   );
 }
 
@@ -176,10 +213,14 @@ function TeamAvatarStack({
 }
 
 function TeamCard({
+  isDeleting,
   onOpenDetails,
+  onRequestDelete,
   team,
 }: {
+  isDeleting: boolean;
   onOpenDetails: (team: Team) => void;
+  onRequestDelete: (team: Team) => void;
   team: Team;
 }) {
   const membersQuery = useTeamMembers(team.id);
@@ -217,14 +258,29 @@ function TeamCard({
           />
         </div>
 
-        <button
-          className="button ghost"
-          type="button"
-          onClick={() => onOpenDetails(team)}
-        >
-          Ouvrir
-          <Icon name="arrowRight" size={14} />
-        </button>
+        <div className="team-card-actions">
+          <PermissionGate permissions={TEAM_DELETE_PERMISSIONS}>
+            <button
+              className="icon-button bordered danger"
+              type="button"
+              aria-label={`Supprimer ${team.name}`}
+              title="Supprimer"
+              disabled={isDeleting}
+              onClick={() => onRequestDelete(team)}
+            >
+              <Icon name="trash" size={14} />
+            </button>
+          </PermissionGate>
+
+          <button
+            className="button ghost"
+            type="button"
+            onClick={() => onOpenDetails(team)}
+          >
+            Ouvrir
+            <Icon name="arrowRight" size={14} />
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -571,10 +627,123 @@ function TeamDetailsModal({
   );
 }
 
+function DeleteTeamConfirmModal({
+  error,
+  isDeleting,
+  onClose,
+  onConfirm,
+  team,
+}: {
+  error: string | null;
+  isDeleting: boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+  team: Team;
+}) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isDeleting) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isDeleting, onClose]);
+
+  return (
+    <motion.div
+      className="note-modal-overlay team-delete-overlay"
+      role="presentation"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16 }}
+      onMouseDown={() => {
+        if (!isDeleting) {
+          onClose();
+        }
+      }}
+    >
+      <motion.section
+        className="note-modal team-delete-modal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="team-delete-title"
+        aria-describedby="team-delete-description"
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header>
+          <div className="team-delete-title">
+            <span className="team-delete-icon">
+              <Icon name="alert" size={18} />
+            </span>
+            <div>
+              <h2 id="team-delete-title">Supprimer la team ?</h2>
+              <small>{team.name}</small>
+            </div>
+          </div>
+
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="Fermer"
+            disabled={isDeleting}
+            onClick={onClose}
+          >
+            <Icon name="x" size={16} />
+          </button>
+        </header>
+
+        <p id="team-delete-description">
+          Cette action supprimera definitivement la team et ses informations
+          associees. Voulez-vous continuer ?
+        </p>
+
+        {error ? (
+          <div className="team-delete-error">
+            <Icon name="alert" size={16} />
+            {error}
+          </div>
+        ) : null}
+
+        <footer>
+          <button
+            className="button ghost"
+            type="button"
+            disabled={isDeleting}
+            onClick={onClose}
+          >
+            Non
+          </button>
+          <button
+            className="button danger"
+            type="button"
+            disabled={isDeleting}
+            onClick={() => {
+              onConfirm().catch(() => undefined);
+            }}
+          >
+            <Icon name="trash" size={14} />
+            {isDeleting ? "Suppression..." : "Oui, supprimer"}
+          </button>
+        </footer>
+      </motion.section>
+    </motion.div>
+  );
+}
+
 export function TeamsPage() {
-  const teamsQuery = useTeams();
+  const { loading: authLoading, user } = useAuth();
+  const canViewAllTeams = canAccessAllTeams(user?.adminRole);
+  const teamsQuery = useTeams({ enabled: canViewAllTeams });
   const createTeamMutation = useCreateTeam();
   const addMemberMutation = useAddTeamMember();
+  const deleteTeamMutation = useDeleteTeam();
   const resetCreateTeam = createTeamMutation.reset;
   const resetAddMember = addMemberMutation.reset;
   const [form, setForm] = useState<TeamFormState>(createInitialTeamForm);
@@ -582,9 +751,27 @@ export function TeamsPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isUserPickerOpen, setIsUserPickerOpen] = useState(false);
   const [detailsTeam, setDetailsTeam] = useState<Team | null>(null);
+  const [deleteTargetTeam, setDeleteTargetTeam] = useState<Team | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState>({
+    show: false,
+    intent: "success",
+    message: "",
+  });
   const usersQuery = useUsersQuery({ enabled: isDrawerOpen });
   const teams = teamsQuery.data ?? [];
   const isSubmitting = createTeamMutation.isPending || addMemberMutation.isPending;
+  const isDeletingTeam = deleteTeamMutation.isPending;
+  const isTeamsInitialLoading =
+    authLoading ||
+    (canViewAllTeams &&
+      (teamsQuery.isPending ||
+        teamsQuery.isLoading ||
+        (teamsQuery.isFetching && !teamsQuery.data && !teamsQuery.isError)));
+  const isTeamsFetching =
+    canViewAllTeams &&
+    !teamsQuery.isError &&
+    (teamsQuery.isPending || teamsQuery.isLoading || teamsQuery.isFetching);
   const canSubmit = form.name.trim().length >= 2 && !isSubmitting;
 
   const selectedUserIds = useMemo(
@@ -676,6 +863,69 @@ export function TeamsPage() {
     }));
   }
 
+  const showToast = useCallback(
+    (intent: ToastIntent, message: string, timeout = 4000) => {
+      setToast({ show: true, intent, message });
+
+      window.setTimeout(() => {
+        setToast((current) => ({ ...current, show: false }));
+      }, timeout);
+    },
+    []
+  );
+
+  function openDeleteTeamModal(team: Team) {
+    if (isDeletingTeam) {
+      return;
+    }
+
+    deleteTeamMutation.reset();
+    setDeleteError(null);
+    setDeleteTargetTeam(team);
+  }
+
+  function closeDeleteTeamModal() {
+    if (isDeletingTeam) {
+      return;
+    }
+
+    setDeleteTargetTeam(null);
+    setDeleteError(null);
+    deleteTeamMutation.reset();
+  }
+
+  async function handleConfirmDeleteTeam() {
+    if (!deleteTargetTeam || isDeletingTeam) {
+      return;
+    }
+
+    const teamToDelete = deleteTargetTeam;
+
+    setDeleteError(null);
+
+    try {
+      await deleteTeamMutation.mutateAsync(teamToDelete.id);
+
+      if (detailsTeam?.id === teamToDelete.id) {
+        setDetailsTeam(null);
+      }
+
+      setDeleteTargetTeam(null);
+      setDeleteError(null);
+      deleteTeamMutation.reset();
+      showToast("success", "Team supprimee avec succes.");
+      teamsQuery.refetch().catch(() => undefined);
+    } catch (error) {
+      const message = getErrorMessage(
+        error,
+        "Impossible de supprimer cette equipe."
+      );
+
+      setDeleteError(message);
+      showToast("error", message, 5000);
+    }
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -706,12 +956,29 @@ export function TeamsPage() {
       await teamsQuery.refetch();
       closeDrawer();
     } catch (error) {
-      setFormError(getErrorMessage(error));
+      setFormError(
+        getErrorMessage(error, "Une erreur est survenue pendant la creation.")
+      );
     }
+  }
+
+  if (isTeamsInitialLoading) {
+    return <TeamsPageSkeleton />;
+  }
+
+  if (!canViewAllTeams) {
+    return (
+      <AccessDeniedState
+        title="Acces reserve"
+        body="La liste globale des equipes est reservee aux managers et administrateurs."
+      />
+    );
   }
 
   return (
     <div className="teams-page">
+      {toast.show ? <Toast intent={toast.intent} message={toast.message} /> : null}
+
       <section className="notes-toolbar">
         <div className="notes-titlebar">
           <span>Teams</span>
@@ -747,17 +1014,19 @@ export function TeamsPage() {
       ) : null}
 
       <section className="teams-grid" aria-label="Teams">
-        {teamsQuery.isLoading
+        {isTeamsFetching
           ? teamSkeletons.map((item) => <TeamCardSkeleton key={item} />)
           : teams.map((team) => (
               <TeamCard
+                isDeleting={isDeletingTeam && deleteTargetTeam?.id === team.id}
                 key={team.id}
                 onOpenDetails={setDetailsTeam}
+                onRequestDelete={openDeleteTeamModal}
                 team={team}
               />
             ))}
 
-        {!teamsQuery.isLoading && !teamsQuery.isError && teams.length === 0 ? (
+        {!isTeamsFetching && !teamsQuery.isError && teams.length === 0 ? (
           <div className="notes-empty">
             <Icon name="users" size={18} />
             <strong>Aucune equipe</strong>
@@ -1000,6 +1269,19 @@ export function TeamsPage() {
             key={detailsTeam.id}
             onClose={() => setDetailsTeam(null)}
             team={detailsTeam}
+          />
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {deleteTargetTeam ? (
+          <DeleteTeamConfirmModal
+            key={deleteTargetTeam.id}
+            error={deleteError}
+            isDeleting={isDeletingTeam}
+            onClose={closeDeleteTeamModal}
+            onConfirm={handleConfirmDeleteTeam}
+            team={deleteTargetTeam}
           />
         ) : null}
       </AnimatePresence>

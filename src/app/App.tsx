@@ -9,11 +9,12 @@ import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { DirectMessagesPage } from '../features/dm/DirectMessagesPage';
 import { FolderFilesPage } from '../features/files/FolderFilesPage';
 import { FilesPage } from '../features/files/FilesPage';
-import { MeetingPage } from '../features/meeting/MeetingPage';
+import MeetingPage from '../features/meeting/MeetingPage';
+import { MeetingRoom } from '../features/meeting/MeetingRoom';
 import { NotesPage } from '../features/notes/NotesPage';
-import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { PreviewPage } from '../features/preview/PreviewPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
+import { MyTeamsPage } from '../features/teams/MyTeamsPage';
 import { TeamsPage } from '../features/teams/TeamsPage';
 import { UserDetailPage } from '../features/users/UserDetailPage';
 import { UsersPage } from '../features/users/UsersPage';
@@ -21,6 +22,7 @@ import { OtpPage } from '../features/OtpPage/OtpPage';
 import { AppLayout } from '../layouts/AppLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { AuthProvider, WorkspaceProvider } from '../shared/context';
+import { NotificationSocketBridge } from '../shared/notifications/NotificationSocketBridge';
 import { getDefaultAllowedAppPath, usePermissions } from '../shared/permissions';
 import { ThemeProvider } from '../shared/theme';
 import { ProtectedRoute } from './ProtectedRoute';
@@ -40,6 +42,7 @@ export default function App() {
       <AuthProvider>
         <WorkspaceProvider>
           <Router>
+            <NotificationSocketBridge />
             <Routes>
               <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
               <Route element={<AuthLayout />}>
@@ -63,13 +66,14 @@ export default function App() {
                   <Route path="calendar" element={<CalendarPage />} />
                   <Route path="meeting" element={<Navigate to="/app/meeting/meet-daily" replace />} />
                   <Route path="meeting/:meetingId" element={<MeetingPage />} />
+                  <Route path="meeting-room/:roomName" element={<MeetingRoom />} />
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="admin" element={<AdminPage />} />
+                  <Route path="my-team" element={<MyTeamsPage />} />
                   <Route path="teams" element={<TeamsPage />} />
                   <Route path="users" element={<UsersPage />} />
                   <Route path="users/:userId" element={<UserDetailPage />} />
                   <Route path="notes" element={<NotesPage />} />
-                  <Route path="notifications" element={<NotificationsPage />} />
                   <Route path="/app/teams/create" element={<CreateTeamPage />} />
                 </Route>
               </Route>

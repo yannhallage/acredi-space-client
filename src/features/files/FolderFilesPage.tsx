@@ -1,19 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { useUsersQuery } from "../../shared/api/users/hooks";
+import { ClipLoader } from "react-spinners";
 import {
-  fileService,
+  type FilePermissionLevel,
+  isSmallFileUpload,
+  SMALL_FILE_UPLOAD_MAX_SIZE_LABEL,
   useDeleteFile,
   useDownloadFileUrl,
   useFiles,
+  useShareFile,
   useUploadFile,
   type WorkspaceFile,
 } from "../../shared/api/files";
 import { useFolders, type Folder } from "../../shared/api/folders";
+import { useUsersQuery } from "../../shared/api/users";
+import { useAuth } from "../../shared/context";
 import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
+import type { User } from "../../shared/types";
 import Toast from "../../components/app/Toast/Toast";
-import { EmptyState, FileIcon, Icon } from "../../shared/ui";
+import { Avatar, EmptyState, FileIcon, Icon } from "../../shared/ui";
+
 const fileSkeletons = [
   "file-skeleton-1",
   "file-skeleton-2",
@@ -27,6 +34,23 @@ const fileSkeletons = [
 
 const emptyFolders: Folder[] = [];
 const emptyFiles: WorkspaceFile[] = [];
+
+const fileShareLevels: Array<{
+  description: string;
+  label: string;
+  value: FilePermissionLevel;
+}> = [
+  {
+    description: "Lecture et telechargement",
+    label: "Lecture",
+    value: "READ",
+  },
+  {
+    description: "Acces avec modification",
+    label: "Ecriture",
+    value: "WRITE",
+  },
+];
 
 type ToastState = {
   show: boolean;
@@ -43,6 +67,13 @@ type PreviewState = {
 
 function pluralizeFile(count: number) {
   return `${count} fichier${count > 1 ? "s" : ""}`;
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
 function buildFolderTrail(
@@ -92,31 +123,6 @@ function getFileColor(file: WorkspaceFile) {
   }
 
   return "#6f7bff";
-}
-
-
-function getUserDisplayName(user: {
-  email?: string | null;
-  firstName?: string | null;
-  id: string;
-  lastName?: string | null;
-  name?: string | null;
-}) {
-  const fullName =
-    user.name ||
-    [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-
-  return fullName || user.email || user.id;
-}
-
-function getUserInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 }
 
 function formatFileSize(size: number | null) {
@@ -266,6 +272,236 @@ function FilePreviewContent({
   );
 }
 
+function FileShareModal({
+  error,
+  file,
+  isOpen,
+  isSharing,
+  level,
+  loading,
+  onClose,
+  onLevelChange,
+  onRetry,
+  onSelect,
+  selectedUserId,
+  users,
+}: {
+  error: Error | null;
+  file: WorkspaceFile | null;
+  isOpen: boolean;
+  isSharing: boolean;
+  level: FilePermissionLevel;
+  loading: boolean;
+  onClose: () => void;
+  onLevelChange: (level: FilePermissionLevel) => void;
+  onRetry: () => Promise<User[]>;
+  onSelect: (user: User) => void;
+  selectedUserId: string | null;
+  users: User[];
+}) {
+  const { user: currentUser } = useAuth();
+  const [query, setQuery] = useState("");
+
+  const visibleUsers = useMemo(() => {
+    const normalizedQuery = normalizeSearch(query.trim());
+
+    return users
+      .filter((person) => person.id !== currentUser?.id)
+      .filter((person) => {
+        if (!normalizedQuery) {
+          return true;
+        }
+
+        const searchable = normalizeSearch(
+          [person.name, person.email, person.role, person.team, person.status]
+            .filter(Boolean)
+            .join(" "),
+        );
+
+        return searchable.includes(normalizedQuery);
+      });
+  }, [currentUser?.id, query, users]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setQuery("");
+      return undefined;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isSharing) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, isSharing, onClose]);
+
+  return (
+    <AnimatePresence>
+      {isOpen ? (
+        <motion.div
+          className="dm-new-conversation-overlay file-share-overlay"
+          role="presentation"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.14 }}
+          onMouseDown={() => {
+            if (!isSharing) onClose();
+          }}
+        >
+          <motion.section
+            className="dm-new-conversation-modal file-share-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="file-share-title"
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header className="dm-new-conversation-header">
+              <div>
+                <h2 id="file-share-title">Partager le fichier</h2>
+                <small>
+                  {file ? file.name : "Selectionnez un utilisateur"}
+                </small>
+              </div>
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="Fermer"
+                onClick={onClose}
+                disabled={isSharing}
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </header>
+
+            <label className="dm-new-conversation-search">
+              <Icon name="search" size={16} />
+              <input
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Rechercher un utilisateur..."
+                disabled={isSharing}
+              />
+            </label>
+
+            <div className="folder-share-access" aria-label="Niveau d'acces">
+              {fileShareLevels.map((option) => (
+                <button
+                  key={option.value}
+                  className={level === option.value ? "active" : ""}
+                  type="button"
+                  onClick={() => onLevelChange(option.value)}
+                  disabled={isSharing}
+                >
+                  <strong>{option.label}</strong>
+                  <span>{option.description}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="dm-new-conversation-list">
+              <p>Utilisateurs</p>
+              {loading
+                ? ["file-share-loading-1", "file-share-loading-2"].map(
+                    (item) => (
+                      <div
+                        className="dm-new-conversation-user team-picker-row-skeleton"
+                        key={item}
+                      >
+                        <span className="skeleton-dot" />
+                        <span className="skeleton-avatar" />
+                        <span>
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line skeleton-short" />
+                        </span>
+                        <span className="skeleton-pill" />
+                      </div>
+                    ),
+                  )
+                : error ? (
+                    <div className="dm-new-conversation-empty">
+                      <Icon name="alert" size={18} />
+                      <strong>Chargement impossible</strong>
+                      <span>{error.message}</span>
+                      <button
+                        className="button ghost mini"
+                        type="button"
+                        onClick={() => {
+                          onRetry().catch(() => undefined);
+                        }}
+                        disabled={isSharing}
+                      >
+                        Reessayer
+                      </button>
+                    </div>
+                  )
+                : visibleUsers.map((person) => {
+                    const isSelected = selectedUserId === person.id;
+
+                    return (
+                      <button
+                        key={person.id}
+                        className="dm-new-conversation-user file-share-user"
+                        type="button"
+                        disabled={isSharing}
+                        onClick={() => onSelect(person)}
+                      >
+                        {isSelected ? (
+                          <ClipLoader size={14} color="currentColor" />
+                        ) : (
+                          <Icon name="send" size={16} />
+                        )}
+                        <Avatar
+                          name={person.name}
+                          presence={person.presence}
+                          size={34}
+                        />
+                        <span>
+                          <strong>{person.name}</strong>
+                          <small>
+                            {person.role} - {person.team}
+                          </small>
+                        </span>
+                        <em
+                          className={`dm-new-conversation-status presence-${person.presence}`}
+                        >
+                          {person.status}
+                        </em>
+                      </button>
+                    );
+                  })}
+
+              {!loading && !error && visibleUsers.length === 0 ? (
+                <div className="dm-new-conversation-empty">
+                  <Icon name="users" size={18} />
+                  <strong>Aucun utilisateur trouve</strong>
+                  <span>Essayez un autre nom, email ou role.</span>
+                </div>
+              ) : null}
+            </div>
+
+            <footer className="dm-new-conversation-footer">
+              <span>
+                <Icon name="file" size={14} />
+                Fichier partage
+              </span>
+              <small>{visibleUsers.length} utilisateur(s)</small>
+            </footer>
+          </motion.section>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
 function FolderFilesPageSkeleton() {
   return (
     <div className="files-page folders-only files-folder-detail" aria-busy="true">
@@ -301,9 +537,8 @@ export function FolderFilesPage() {
   const [openMenuFileId, setOpenMenuFileId] = useState<string | null>(null);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [shareTargetFile, setShareTargetFile] = useState<WorkspaceFile | null>(null);
-  const [shareUserId, setShareUserId] = useState("");
-  const [sharePermission, setSharePermission] = useState<"VIEWER" | "EDITOR">("VIEWER");
-  const [isSharingFile, setIsSharingFile] = useState(false);
+  const [shareLevel, setShareLevel] = useState<FilePermissionLevel>("READ");
+  const [sharingUserId, setSharingUserId] = useState<string | null>(null);
   const [preview, setPreview] = useState<PreviewState>({
     error: null,
     fileId: null,
@@ -335,12 +570,12 @@ export function FolderFilesPage() {
   const uploadFileMutation = useUploadFile();
   const previewFileUrlMutation = useDownloadFileUrl();
   const downloadFileUrlMutation = useDownloadFileUrl();
+  const shareFileMutation = useShareFile();
   const deleteFileMutation = useDeleteFile();
-  const { data: usersData, isLoading: isUsersLoading } = useUsersQuery();
+  const usersQuery = useUsersQuery({ enabled: Boolean(shareTargetFile) });
 
   const folders = foldersData ?? emptyFolders;
   const files = filesData ?? emptyFiles;
-  const users = usersData ?? [];
   const isInitialLoading =
     isFoldersPending ||
     isFoldersLoading ||
@@ -457,6 +692,15 @@ export function FolderFilesPage() {
       return;
     }
 
+    if (!isSmallFileUpload(file)) {
+      showToast(
+        "warning",
+        `Ce fichier depasse la limite de ${SMALL_FILE_UPLOAD_MAX_SIZE_LABEL}.`,
+        5000,
+      );
+      return;
+    }
+
     try {
       await uploadFileMutation.mutateAsync({
         file,
@@ -539,46 +783,52 @@ export function FolderFilesPage() {
     }
   }
 
-
   function handleShareFile(file: WorkspaceFile) {
     setOpenMenuFileId(null);
+    setShareLevel("READ");
+    setSharingUserId(null);
     setShareTargetFile(file);
-    setShareUserId("");
-    setSharePermission("VIEWER");
   }
 
-  async function confirmShareFile() {
-    if (!shareTargetFile) {
+  function closeFileShareModal() {
+    if (sharingUserId) {
       return;
     }
 
-    if (!shareUserId) {
-      showToast("error", "Veuillez selectionner un utilisateur.");
+    setShareTargetFile(null);
+    setShareLevel("READ");
+    setSharingUserId(null);
+  }
+
+  async function shareFileWithUser(user: User) {
+    if (!shareTargetFile || sharingUserId) {
       return;
     }
+
+    setSharingUserId(user.id);
 
     try {
-      setIsSharingFile(true);
-
-      await fileService.share(shareTargetFile.id, {
-        userId: shareUserId,
-        permission: sharePermission,
+      await shareFileMutation.mutateAsync({
+        id: shareTargetFile.id,
+        request: {
+          level: shareLevel,
+          userId: user.id,
+        },
       });
 
-      showToast("success", "Fichier partage avec succes.");
+      showToast("success", `Fichier partage avec ${user.name}.`);
       setShareTargetFile(null);
-      setShareUserId("");
-      setSharePermission("VIEWER");
+      setShareLevel("READ");
     } catch (caughtError) {
       showToast(
         "error",
         caughtError instanceof Error
           ? caughtError.message
-          : "Erreur lors du partage du fichier.",
+          : "Impossible de partager ce fichier.",
         5000,
       );
     } finally {
-      setIsSharingFile(false);
+      setSharingUserId(null);
     }
   }
 
@@ -945,169 +1195,24 @@ export function FolderFilesPage() {
             </dl>
           </motion.aside>
         ) : null}
-
-
-
-
-        {shareTargetFile ? (
-          <div
-            className="files-folder-overlay"
-            role="presentation"
-            onClick={() => {
-              if (!isSharingFile) {
-                setShareTargetFile(null);
-                setShareUserId("");
-                setSharePermission("VIEWER");
-              }
-            }}
-          >
-            <div
-              className="files-folder-modal files-share-modal"
-              role="dialog"
-              aria-modal="true"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <header className="files-share-header">
-                <div>
-                  <span className="files-share-eyebrow">Partage sécurisé</span>
-                  <h2>Partager le fichier</h2>
-                  <p>{shareTargetFile.name}</p>
-                </div>
-
-                <button
-                  className="files-folder-close"
-                  type="button"
-                  disabled={isSharingFile}
-                  onClick={() => {
-                    setShareTargetFile(null);
-                    setShareUserId("");
-                    setSharePermission("VIEWER");
-                  }}
-                >
-                  <Icon name="x" size={15} />
-                </button>
-              </header>
-
-              <div className="files-share-section">
-                <div className="files-share-section-title">
-                  <span>Utilisateur</span>
-                  <small>
-                    {isUsersLoading
-                      ? "Chargement..."
-                      : `${users.length} utilisateur${users.length > 1 ? "s" : ""}`}
-                  </small>
-                </div>
-
-                <div className="share-user-list">
-                  {isUsersLoading ? (
-                    <div className="share-user-placeholder">
-                      Chargement des utilisateurs...
-                    </div>
-                  ) : users.length > 0 ? (
-                    users.map((user) => {
-                      const displayName = getUserDisplayName(user);
-                      const initials = getUserInitials(displayName);
-                      const isSelected = shareUserId === user.id;
-
-                      return (
-                        <button
-                          key={user.id}
-                          type="button"
-                          className={
-                            isSelected
-                              ? "share-user-item selected"
-                              : "share-user-item"
-                          }
-                          disabled={isSharingFile}
-                          onClick={() => setShareUserId(user.id)}
-                        >
-                          <span className="share-user-avatar">{initials}</span>
-
-                          <span className="share-user-info">
-                            <strong>{displayName}</strong>
-                            {user.email ? <small>{user.email}</small> : null}
-                          </span>
-
-                          <span className="share-user-check">
-                            {isSelected ? <Icon name="check" size={14} /> : null}
-                          </span>
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <div className="share-user-placeholder">
-                      Aucun utilisateur disponible.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="files-share-section">
-                <div className="files-share-section-title">
-                  <span>Niveau de permission</span>
-                </div>
-
-                <div className="share-permission-grid">
-                  <button
-                    type="button"
-                    className={
-                      sharePermission === "VIEWER"
-                        ? "share-permission-card selected"
-                        : "share-permission-card"
-                    }
-                    disabled={isSharingFile}
-                    onClick={() => setSharePermission("VIEWER")}
-                  >
-                    <strong>Lecture seule</strong>
-                    <small>Peut consulter et télécharger.</small>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={
-                      sharePermission === "EDITOR"
-                        ? "share-permission-card selected"
-                        : "share-permission-card"
-                    }
-                    disabled={isSharingFile}
-                    onClick={() => setSharePermission("EDITOR")}
-                  >
-                    <strong>Modification</strong>
-                    <small>Peut modifier ou gérer le fichier.</small>
-                  </button>
-                </div>
-              </div>
-
-              <footer className="files-share-actions">
-                <button
-                  className="files-modal-secondary"
-                  type="button"
-                  disabled={isSharingFile}
-                  onClick={() => {
-                    setShareTargetFile(null);
-                    setShareUserId("");
-                    setSharePermission("VIEWER");
-                  }}
-                >
-                  Annuler
-                </button>
-
-                <button
-                  className="files-modal-primary"
-                  type="button"
-                  disabled={!shareUserId || isSharingFile}
-                  onClick={() => {
-                    void confirmShareFile();
-                  }}
-                >
-                  {isSharingFile ? "Partage..." : "Partager"}
-                </button>
-              </footer>
-            </div>
-          </div>
-        ) : null}
-
       </AnimatePresence>
+
+      <FileShareModal
+        error={usersQuery.error}
+        file={shareTargetFile}
+        isOpen={Boolean(shareTargetFile)}
+        isSharing={Boolean(sharingUserId)}
+        level={shareLevel}
+        loading={usersQuery.loading}
+        onClose={closeFileShareModal}
+        onLevelChange={setShareLevel}
+        onRetry={usersQuery.refetch}
+        onSelect={(user) => {
+          void shareFileWithUser(user);
+        }}
+        selectedUserId={sharingUserId}
+        users={usersQuery.data ?? []}
+      />
     </div>
   );
 }

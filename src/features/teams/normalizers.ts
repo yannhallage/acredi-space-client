@@ -14,9 +14,10 @@ export function normalizeTeam(team: TeamResponse): Team {
     color: team.teamColor ?? "#6366F1",
     avatarUrl: team.avatarUrl ?? null,
     ownerId: team.ownerId,
+    ownerName: team.ownerName ?? null,
     membersCount: team.membersCount ?? 0,
     createdAt: new Date(team.createdAt),
-    updatedAt: new Date(team.updatedAt),
+    updatedAt: new Date(team.updatedAt ?? team.createdAt),
   };
 }
 

@@ -5,7 +5,17 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { ClipLoader } from "react-spinners";
+import {
+  useDownloadFileUrl,
+  useFiles,
+  useShareFile,
+  useSharedFiles,
+  type FilePermissionLevel,
+  type WorkspaceFile,
+} from "../../shared/api/files";
 import {
   useCreateFolder,
   useDeleteFolder,
@@ -13,10 +23,12 @@ import {
   useUpdateFolder,
   type Folder,
 } from "../../shared/api/folders";
-import { useSharedFiles } from "../../shared/api/files";
+import { useUsersQuery } from "../../shared/api/users";
+import { useAuth } from "../../shared/context";
 import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
+import type { User } from "../../shared/types";
 import Toast from "../../components/app/Toast/Toast";
-import { EmptyState, Icon } from "../../shared/ui";
+import { Avatar, EmptyState, FileIcon, Icon } from "../../shared/ui";
 
 const folderSkeletons = [
   "folder-skeleton-1",
@@ -32,14 +44,489 @@ const folderSkeletons = [
 ];
 
 const emptyFolders: Folder[] = [];
+const emptyFiles: WorkspaceFile[] = [];
+
+const folderShareLevels: Array<{
+  description: string;
+  label: string;
+  value: FilePermissionLevel;
+}> = [
+  {
+    description: "Lecture et telechargement",
+    label: "Lecture",
+    value: "READ",
+  },
+  {
+    description: "Acces avec modification",
+    label: "Ecriture",
+    value: "WRITE",
+  },
+];
 
 type ToastState = {
   show: boolean;
   intent: "success" | "info" | "warning" | "error";
   message: string;
 };
+
+type PreviewState = {
+  error: string | null;
+  fileId: string | null;
+  loading: boolean;
+  url: string | null;
+};
 function pluralizeFolder(count: number) {
   return `${count} dossier${count > 1 ? "s" : ""}`;
+}
+
+function pluralizeFile(count: number) {
+  return `${count} fichier${count > 1 ? "s" : ""}`;
+}
+
+function getFileExtension(file: WorkspaceFile) {
+  const nameExtension = file.name.includes(".")
+    ? file.name.split(".").pop()
+    : null;
+  const mimeExtension = file.contentType?.split("/").pop();
+  const extension = nameExtension || mimeExtension || "file";
+
+  return extension.slice(0, 4).toUpperCase();
+}
+
+function getFileColor(file: WorkspaceFile) {
+  const extension = getFileExtension(file).toLowerCase();
+
+  if (extension === "pdf") {
+    return "#ff5c75";
+  }
+
+  if (["xls", "xlsx", "csv"].includes(extension)) {
+    return "#29c36a";
+  }
+
+  if (["png", "jpg", "jpeg", "webp", "gif"].includes(extension)) {
+    return "#8b7fff";
+  }
+
+  if (["zip", "rar", "7z"].includes(extension)) {
+    return "#f3a712";
+  }
+
+  return "#6f7bff";
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function getFolderBranchIds(rootFolderId: string, folders: Folder[]) {
+  const branchIds = new Set([rootFolderId]);
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+
+    folders.forEach((folder) => {
+      if (
+        folder.parentId &&
+        branchIds.has(folder.parentId) &&
+        !branchIds.has(folder.id)
+      ) {
+        branchIds.add(folder.id);
+        changed = true;
+      }
+    });
+  }
+
+  return branchIds;
+}
+
+function formatFileSize(size: number | null) {
+  if (size === null) {
+    return "taille inconnue";
+  }
+
+  if (size < 1024) {
+    return `${size} o`;
+  }
+
+  const units = ["Ko", "Mo", "Go", "To"];
+  let value = size / 1024;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function formatFileDate(date: Date | null) {
+  if (!date) {
+    return "date inconnue";
+  }
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function getPreviewKind(file: WorkspaceFile) {
+  const contentType = file.contentType?.toLowerCase() ?? "";
+  const extension = getFileExtension(file).toLowerCase();
+
+  if (
+    contentType.startsWith("image/") ||
+    ["gif", "jpeg", "jpg", "png", "webp"].includes(extension)
+  ) {
+    return "image";
+  }
+
+  if (contentType === "application/pdf" || extension === "pdf") {
+    return "pdf";
+  }
+
+  if (contentType.startsWith("video/")) {
+    return "video";
+  }
+
+  if (contentType.startsWith("audio/")) {
+    return "audio";
+  }
+
+  if (
+    contentType.startsWith("text/") ||
+    contentType === "application/json" ||
+    ["csv", "json", "md", "txt", "xml"].includes(extension)
+  ) {
+    return "text";
+  }
+
+  return "unsupported";
+}
+
+function FilePreviewContent({
+  file,
+  preview,
+}: {
+  file: WorkspaceFile;
+  preview: PreviewState;
+}) {
+  const kind = getPreviewKind(file);
+
+  if (preview.loading) {
+    return (
+      <div className="files-preview-loading" aria-live="polite">
+        <span className="skeleton-line files-preview-skeleton-large" />
+        <span className="skeleton-line files-preview-skeleton-small" />
+      </div>
+    );
+  }
+
+  if (preview.error) {
+    return (
+      <div className="files-preview-empty">
+        <Icon name="alert" size={34} />
+        <strong>Apercu indisponible</strong>
+        <p>{preview.error}</p>
+      </div>
+    );
+  }
+
+  if (!preview.url || kind === "unsupported") {
+    return (
+      <div className="files-preview-empty">
+        <FileIcon
+          ext={getFileExtension(file)}
+          color={getFileColor(file)}
+          size={62}
+        />
+        <strong>Apercu indisponible</strong>
+        <p>Ce format ne peut pas encore etre affiche dans la fenetre.</p>
+      </div>
+    );
+  }
+
+  if (kind === "image") {
+    return (
+      <img
+        className="files-preview-media"
+        src={preview.url}
+        alt={file.name}
+      />
+    );
+  }
+
+  if (kind === "video") {
+    return (
+      <video className="files-preview-media" src={preview.url} controls />
+    );
+  }
+
+  if (kind === "audio") {
+    return (
+      <div className="files-preview-audio">
+        <FileIcon
+          ext={getFileExtension(file)}
+          color={getFileColor(file)}
+          size={62}
+        />
+        <audio src={preview.url} controls />
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      className="files-preview-frame"
+      src={preview.url}
+      title={file.name}
+    />
+  );
+}
+
+function FolderShareModal({
+  error,
+  fileCount,
+  filesLoading,
+  folder,
+  isOpen,
+  isSharing,
+  level,
+  loading,
+  onClose,
+  onLevelChange,
+  onRetry,
+  onSelect,
+  selectedUserId,
+  users,
+}: {
+  error: Error | null;
+  fileCount: number;
+  filesLoading: boolean;
+  folder: Folder | null;
+  isOpen: boolean;
+  isSharing: boolean;
+  level: FilePermissionLevel;
+  loading: boolean;
+  onClose: () => void;
+  onLevelChange: (level: FilePermissionLevel) => void;
+  onRetry: () => Promise<User[]>;
+  onSelect: (user: User) => void;
+  selectedUserId: string | null;
+  users: User[];
+}) {
+  const { user: currentUser } = useAuth();
+  const [query, setQuery] = useState("");
+
+  const visibleUsers = useMemo(() => {
+    const normalizedQuery = normalizeSearch(query.trim());
+
+    return users
+      .filter((person) => person.id !== currentUser?.id)
+      .filter((person) => {
+        if (!normalizedQuery) {
+          return true;
+        }
+
+        const searchable = normalizeSearch(
+          [person.name, person.email, person.role, person.team, person.status]
+            .filter(Boolean)
+            .join(" "),
+        );
+
+        return searchable.includes(normalizedQuery);
+      });
+  }, [currentUser?.id, query, users]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setQuery("");
+      return undefined;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isSharing) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, isSharing, onClose]);
+
+  return (
+    <AnimatePresence>
+      {isOpen ? (
+        <motion.div
+          className="dm-new-conversation-overlay folder-share-overlay"
+          role="presentation"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.14 }}
+          onMouseDown={() => {
+            if (!isSharing) onClose();
+          }}
+        >
+          <motion.section
+            className="dm-new-conversation-modal folder-share-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="folder-share-title"
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header className="dm-new-conversation-header">
+              <div>
+                <h2 id="folder-share-title">Partager le dossier</h2>
+                <small>
+                  {folder ? folder.name : "Selectionnez un utilisateur"}
+                </small>
+              </div>
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="Fermer"
+                onClick={onClose}
+                disabled={isSharing}
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </header>
+
+            <label className="dm-new-conversation-search">
+              <Icon name="search" size={16} />
+              <input
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Rechercher un utilisateur..."
+                disabled={isSharing}
+              />
+            </label>
+
+            <div className="folder-share-access" aria-label="Niveau d'acces">
+              {folderShareLevels.map((option) => (
+                <button
+                  key={option.value}
+                  className={level === option.value ? "active" : ""}
+                  type="button"
+                  onClick={() => onLevelChange(option.value)}
+                  disabled={isSharing}
+                >
+                  <strong>{option.label}</strong>
+                  <span>{option.description}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="dm-new-conversation-list">
+              <p>Utilisateurs</p>
+              {loading
+                ? ["folder-share-loading-1", "folder-share-loading-2"].map(
+                    (item) => (
+                      <div
+                        className="dm-new-conversation-user team-picker-row-skeleton"
+                        key={item}
+                      >
+                        <span className="skeleton-dot" />
+                        <span className="skeleton-avatar" />
+                        <span>
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line skeleton-short" />
+                        </span>
+                        <span className="skeleton-pill" />
+                      </div>
+                    ),
+                  )
+                : error ? (
+                    <div className="dm-new-conversation-empty">
+                      <Icon name="alert" size={18} />
+                      <strong>Chargement impossible</strong>
+                      <span>{error.message}</span>
+                      <button
+                        className="button ghost mini"
+                        type="button"
+                        onClick={() => {
+                          onRetry().catch(() => undefined);
+                        }}
+                        disabled={isSharing}
+                      >
+                        Reessayer
+                      </button>
+                    </div>
+                  )
+                : visibleUsers.map((person) => {
+                    const isSelected = selectedUserId === person.id;
+
+                    return (
+                      <button
+                        key={person.id}
+                        className="dm-new-conversation-user folder-share-user"
+                        type="button"
+                        disabled={isSharing || filesLoading}
+                        onClick={() => onSelect(person)}
+                      >
+                        {isSelected ? (
+                          <ClipLoader size={14} color="currentColor" />
+                        ) : (
+                          <Icon name="send" size={16} />
+                        )}
+                        <Avatar
+                          name={person.name}
+                          presence={person.presence}
+                          size={34}
+                        />
+                        <span>
+                          <strong>{person.name}</strong>
+                          <small>
+                            {person.role} - {person.team}
+                          </small>
+                        </span>
+                        <em
+                          className={`dm-new-conversation-status presence-${person.presence}`}
+                        >
+                          {person.status}
+                        </em>
+                      </button>
+                    );
+                  })}
+
+              {!loading && !error && visibleUsers.length === 0 ? (
+                <div className="dm-new-conversation-empty">
+                  <Icon name="users" size={18} />
+                  <strong>Aucun utilisateur trouve</strong>
+                  <span>Essayez un autre nom, email ou role.</span>
+                </div>
+              ) : null}
+            </div>
+
+            <footer className="dm-new-conversation-footer">
+              <span>
+                <Icon name="folder" size={14} />
+                Dossier partage
+              </span>
+              <small>
+                {filesLoading
+                  ? "Chargement des fichiers"
+                  : pluralizeFile(fileCount)}
+              </small>
+            </footer>
+          </motion.section>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
 }
 
 function buildFolderTrail(
@@ -154,9 +641,20 @@ export function FilesPage() {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+  const [shareTargetFolder, setShareTargetFolder] = useState<Folder | null>(null);
+  const [shareLevel, setShareLevel] = useState<FilePermissionLevel>("READ");
+  const [sharingUserId, setSharingUserId] = useState<string | null>(null);
   const [folderName, setFolderName] = useState("");
   
   const [openMenuFolderId, setOpenMenuFolderId] = useState<string | null>(null);
+  const [openSharedFileMenuId, setOpenSharedFileMenuId] = useState<string | null>(null);
+  const [selectedSharedFileId, setSelectedSharedFileId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<PreviewState>({
+    error: null,
+    fileId: null,
+    loading: false,
+    url: null,
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [toast, setToast] = useState<ToastState>({
     show: false,
@@ -166,6 +664,17 @@ export function FilesPage() {
   const createFolderMutation = useCreateFolder();
   const updateFolderMutation = useUpdateFolder();
   const deleteFolderMutation = useDeleteFolder();
+  const shareFileMutation = useShareFile();
+  const previewSharedFileUrlMutation = useDownloadFileUrl();
+  const downloadSharedFileUrlMutation = useDownloadFileUrl();
+  const {
+    data: filesData,
+    error: filesError,
+    isError: isFilesError,
+    isFetching: isFilesFetching,
+    isLoading: isFilesLoading,
+    isPending: isFilesPending,
+  } = useFiles();
   const {
     data: foldersData,
     error,
@@ -174,10 +683,26 @@ export function FilesPage() {
     isLoading,
     isPending,
   } = useFolders();
-  const { data: sharedFiles = [] } = useSharedFiles();
+  const {
+    data: sharedFilesData,
+    error: sharedFilesError,
+    isError: isSharedFilesError,
+    isFetching: isSharedFilesFetching,
+    isLoading: isSharedFilesLoading,
+    isPending: isSharedFilesPending,
+  } = useSharedFiles();
+  const usersQuery = useUsersQuery({ enabled: Boolean(shareTargetFolder) });
   const folders = foldersData ?? emptyFolders;
+  const files = filesData ?? emptyFiles;
+  const sharedFiles = sharedFilesData ?? emptyFiles;
   const isFoldersInitialLoading =
     isPending || isLoading || (isFetching && !foldersData && !isError);
+  const isSharedFilesInitialLoading =
+    isSharedFilesPending ||
+    isSharedFilesLoading ||
+    (isSharedFilesFetching && !sharedFilesData && !isSharedFilesError);
+  const isFilesInitialLoading =
+    isFilesPending || isFilesLoading || (isFilesFetching && !filesData && !isFilesError);
 
   const folderById = useMemo(
     () => new Map(folders.map((folder) => [folder.id, folder])),
@@ -204,6 +729,18 @@ export function FilesPage() {
       return isInCurrentFolder && matchesSearch;
     });
   }, [currentFolder, folders, searchTerm]);
+  const selectedSharedFile = selectedSharedFileId
+    ? (sharedFiles.find((file) => file.id === selectedSharedFileId) ?? null)
+    : null;
+  const shareTargetFiles = useMemo(() => {
+    if (!shareTargetFolder) {
+      return emptyFiles;
+    }
+
+    const branchIds = getFolderBranchIds(shareTargetFolder.id, folders);
+
+    return files.filter((file) => file.folderId && branchIds.has(file.folderId));
+  }, [files, folders, shareTargetFolder]);
 
   useEffect(() => {
     if (currentFolderId && !folderById.has(currentFolderId)) {
@@ -234,6 +771,57 @@ export function FilesPage() {
       window.removeEventListener("keydown", closeMenuOnEscape);
     };
   }, [openMenuFolderId]);
+
+  useEffect(() => {
+    if (!openSharedFileMenuId) {
+      return undefined;
+    }
+
+    function closeMenu() {
+      setOpenSharedFileMenuId(null);
+    }
+
+    function closeMenuOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    }
+
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("keydown", closeMenuOnEscape);
+
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("keydown", closeMenuOnEscape);
+    };
+  }, [openSharedFileMenuId]);
+
+  useEffect(() => {
+    if (!selectedSharedFileId) {
+      return undefined;
+    }
+
+    function closePreviewOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSelectedSharedFileId(null);
+      }
+    }
+
+    window.addEventListener("keydown", closePreviewOnEscape);
+
+    return () => {
+      window.removeEventListener("keydown", closePreviewOnEscape);
+    };
+  }, [selectedSharedFileId]);
+
+  useEffect(() => {
+    if (
+      selectedSharedFileId &&
+      !sharedFiles.some((file) => file.id === selectedSharedFileId)
+    ) {
+      setSelectedSharedFileId(null);
+    }
+  }, [selectedSharedFileId, sharedFiles]);
 
   const isFolderSaving =
     createFolderMutation.isPending || updateFolderMutation.isPending;
@@ -299,13 +887,162 @@ export function FilesPage() {
     );
   }, [error, isError, showToast]);
 
-  function handleShareFolder(folder: Folder) {
-    setOpenMenuFolderId(null);
+  useEffect(() => {
+    if (!isSharedFilesError) {
+      return;
+    }
+
     showToast(
-      "info",
-      `Partage du dossier "${folder.name}" pas encore disponible cote API.`,
+      "error",
+      sharedFilesError instanceof Error
+        ? sharedFilesError.message
+        : "Impossible de charger les fichiers partages.",
       5000,
     );
+  }, [isSharedFilesError, sharedFilesError, showToast]);
+
+  function handleShareFolder(folder: Folder) {
+    setOpenMenuFolderId(null);
+    setShareLevel("READ");
+    setSharingUserId(null);
+    setShareTargetFolder(folder);
+  }
+
+  function closeFolderShareModal() {
+    if (sharingUserId) {
+      return;
+    }
+
+    setShareTargetFolder(null);
+    setShareLevel("READ");
+    setSharingUserId(null);
+  }
+
+  async function shareFolderWithUser(user: User) {
+    if (!shareTargetFolder || sharingUserId) {
+      return;
+    }
+
+    if (isFilesInitialLoading) {
+      showToast("info", "Chargement des fichiers du dossier...", 4000);
+      return;
+    }
+
+    if (isFilesError) {
+      showToast(
+        "error",
+        filesError instanceof Error
+          ? filesError.message
+          : "Impossible de charger les fichiers du dossier.",
+        5000,
+      );
+      return;
+    }
+
+    if (shareTargetFiles.length === 0) {
+      showToast(
+        "warning",
+        `Aucun fichier a partager dans "${shareTargetFolder.name}".`,
+        5000,
+      );
+      return;
+    }
+
+    setSharingUserId(user.id);
+
+    try {
+      await Promise.all(
+        shareTargetFiles.map((file) =>
+          shareFileMutation.mutateAsync({
+            id: file.id,
+            request: {
+              level: shareLevel,
+              userId: user.id,
+            },
+          }),
+        ),
+      );
+
+      showToast(
+        "success",
+        `${pluralizeFile(shareTargetFiles.length)} partage${shareTargetFiles.length > 1 ? "s" : ""} avec ${user.name}.`,
+      );
+      setShareTargetFolder(null);
+      setShareLevel("READ");
+    } catch (caughtError) {
+      showToast(
+        "error",
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Impossible de partager ce dossier.",
+        5000,
+      );
+    } finally {
+      setSharingUserId(null);
+    }
+  }
+
+  async function handleOpenSharedFilePreview(file: WorkspaceFile) {
+    setOpenSharedFileMenuId(null);
+    setSelectedSharedFileId(file.id);
+    setPreview({
+      error: null,
+      fileId: file.id,
+      loading: true,
+      url: null,
+    });
+
+    try {
+      const url = await previewSharedFileUrlMutation.mutateAsync(file.id);
+
+      setPreview((current) =>
+        current.fileId === file.id
+          ? {
+              error: null,
+              fileId: file.id,
+              loading: false,
+              url,
+            }
+          : current,
+      );
+    } catch (caughtError) {
+      setPreview((current) =>
+        current.fileId === file.id
+          ? {
+              error:
+                caughtError instanceof Error
+                  ? caughtError.message
+                  : "Impossible de charger l'apercu.",
+              fileId: file.id,
+              loading: false,
+              url: null,
+            }
+          : current,
+      );
+    }
+  }
+
+  async function handleDownloadSharedFile(file: WorkspaceFile) {
+    setOpenSharedFileMenuId(null);
+
+    try {
+      const url = await downloadSharedFileUrlMutation.mutateAsync(file.id);
+
+      if (!url) {
+        showToast("error", "Lien de telechargement introuvable.", 5000);
+        return;
+      }
+
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (caughtError) {
+      showToast(
+        "error",
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Impossible d'ouvrir ce fichier.",
+        5000,
+      );
+    }
   }
 
   async function handleDeleteFolder(folder: Folder) {
@@ -405,7 +1142,13 @@ export function FilesPage() {
   }
 
   return (
-    <div className="files-page folders-only">
+    <div
+      className={
+        selectedSharedFile
+          ? "files-page folders-only files-folder-detail preview-open"
+          : "files-page folders-only"
+      }
+    >
       {toast.show ? <Toast intent={toast.intent} message={toast.message} /> : null}
       <section className="files-explorer">
         <header className="files-manager-header">
@@ -623,62 +1366,123 @@ export function FilesPage() {
           </div>
         )}
 
-
-        <section className="files-shared-activity">
-          <div className="files-shared-header">
-            <div>
-              <h2>Activité des fichiers partagés</h2>
-              <p>Historique des derniers partages de fichiers.</p>
-            </div>
-
-            <span>{sharedFiles.length} partage{sharedFiles.length > 1 ? "s" : ""}</span>
+        <section
+          className="files-shared-section"
+          aria-labelledby="files-shared-title"
+        >
+          <div className="">
+            <h2 id="files-shared-title">Fichiers partages</h2>
+            <span className="">{pluralizeFile(sharedFiles.length)}</span>
           </div>
 
-          {sharedFiles.length > 0 ? (
-            <div className="files-shared-list">
-              {sharedFiles.map((share) => (
-                <article key={share.id} className="files-shared-item">
-                  <div className="files-shared-avatar">
-                    {getInitials(share.sharedByName)}
-                  </div>
+          {isSharedFilesInitialLoading ? (
+            <div
+              className="files-file-grid"
+              aria-busy="true"
+              aria-label="Chargement des fichiers partages"
+            >
+              {folderSkeletons.slice(0, 5).map((item) => (
+                <article
+                  className="files-file-card files-file-card-skeleton"
+                  key={`shared-${item}`}
+                >
+                  <span className="files-file-preview files-file-skeleton-preview" />
+                  <span className="skeleton-line files-file-skeleton-name" />
+                  <span className="skeleton-line files-file-skeleton-meta" />
+                </article>
+              ))}
+            </div>
+          ) : isSharedFilesError ? (
+            <div className="files-inline-state">
+              <Icon name="alert" size={28} />
+              <div>
+                <strong>Fichiers partages indisponibles</strong>
+                <p>
+                  {sharedFilesError instanceof Error
+                    ? sharedFilesError.message
+                    : "Impossible de charger les fichiers partages."}
+                </p>
+              </div>
+            </div>
+          ) : sharedFiles.length > 0 ? (
+            <div className="files-file-grid">
+              {sharedFiles.map((file) => (
+                <article
+                  key={file.id}
+                  className={
+                    [
+                      "files-file-card",
+                      openSharedFileMenuId === file.id ? "menu-open" : "",
+                      selectedSharedFileId === file.id ? "active" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")
+                  }
+                >
+                  <button
+                    className="files-file-open"
+                    type="button"
+                    onClick={() => {
+                      void handleOpenSharedFilePreview(file);
+                    }}
+                  >
+                    <span className="files-file-preview">
+                      <FileIcon
+                        ext={getFileExtension(file)}
+                        color={getFileColor(file)}
+                        size={46}
+                      />
+                    </span>
+                    <strong>{file.name}</strong>
+                    <small>
+                      <span  className="text-sm">{formatFileSize(file.size)}</span>
+                      <span className="text-sm">{formatFileDate(file.updatedAt)}</span>
+                    </small>
+                  </button>
 
-                  <div className="files-shared-content">
-                    <p>
-                      <strong>{share.sharedByName}</strong>
-                      {" a partagé "}
-                      <strong>{share.fileName}</strong>
-                      {share.folderName ? (
-                        <>
-                          {" du dossier "}
-                          <strong>{share.folderName}</strong>
-                        </>
-                      ) : null}
-                      {" à "}
-                      <strong>{share.sharedWithName}</strong>
-                    </p>
+                  <button
+                    className="files-file-menu-button"
+                    type="button"
+                    aria-label={`Actions ${file.name}`}
+                    aria-haspopup="menu"
+                    aria-expanded={openSharedFileMenuId === file.id}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setOpenSharedFileMenuId((current) =>
+                        current === file.id ? null : file.id,
+                      );
+                    }}
+                  >
+                    <Icon name="moreH" size={14} />
+                  </button>
 
-                    <div className="files-shared-meta">
-                      <span className="files-shared-badge">
-                        {formatPermission(share.permission)}
-                      </span>
-                      <span>•</span>
-                      <span>{formatRelativeDate(share.sharedAt)}</span>
+                  {openSharedFileMenuId === file.id ? (
+                    <div
+                      className="files-file-dropdown"
+                      role="menu"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={downloadSharedFileUrlMutation.isPending}
+                        onClick={() => {
+                          void handleDownloadSharedFile(file);
+                        }}
+                      >
+                        <Icon name="download" size={13} />
+                        Telecharger
+                      </button>
                     </div>
-                  </div>
-
-                  <div className="files-shared-icon" aria-hidden="true">
-                    <Icon name="file" size={18} />
-                  </div>
+                  ) : null}
                 </article>
               ))}
             </div>
           ) : (
-            <div className="files-shared-empty">
-              <Icon name="users" size={24} />
-              <div>
-                <strong>Aucun partage récent</strong>
-                <p>Les fichiers partagés apparaîtront ici.</p>
-              </div>
+            <div className="files-empty-state files-shared-empty">
+              <Icon name="file" size={38} />
+              <strong>Aucun fichier partage</strong>
+              <p>Les fichiers que l'on vous partage apparaitront ici.</p>
             </div>
           )}
         </section>
@@ -738,6 +1542,72 @@ export function FilesPage() {
         )}
         */}
       </section>
+
+      <AnimatePresence>
+        {selectedSharedFile ? (
+          <motion.aside
+            className="files-preview-drawer"
+            key={selectedSharedFile.id}
+            initial={{ opacity: 0, x: 360 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 360 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            aria-label={`Apercu ${selectedSharedFile.name}`}
+          >
+            <header className="files-preview-header">
+              <div>
+                <span>Fichier partage</span>
+                <h2>{selectedSharedFile.name}</h2>
+              </div>
+              <button
+                className="files-preview-close"
+                type="button"
+                aria-label="Fermer l'apercu"
+                onClick={() => setSelectedSharedFileId(null)}
+              >
+                <Icon name="x" size={15} />
+              </button>
+            </header>
+
+            <div className="files-preview-surface">
+              <FilePreviewContent file={selectedSharedFile} preview={preview} />
+            </div>
+
+            <div className="files-preview-actions">
+              <button
+                className="button primary"
+                type="button"
+                disabled={downloadSharedFileUrlMutation.isPending}
+                onClick={() => {
+                  void handleDownloadSharedFile(selectedSharedFile);
+                }}
+              >
+                <Icon name="download" size={13} />
+                Telecharger
+              </button>
+            </div>
+
+            <dl className="files-preview-details">
+              <div>
+                <dt>Type</dt>
+                <dd>{getFileExtension(selectedSharedFile)}</dd>
+              </div>
+              <div>
+                <dt>Taille</dt>
+                <dd>{formatFileSize(selectedSharedFile.size)}</dd>
+              </div>
+              <div>
+                <dt>Modifie</dt>
+                <dd>{formatFileDate(selectedSharedFile.updatedAt)}</dd>
+              </div>
+              <div>
+                <dt>Chemin</dt>
+                <dd>/Acredi Space/Fichiers partages</dd>
+              </div>
+            </dl>
+          </motion.aside>
+        ) : null}
+      </AnimatePresence>
 
       {/* Panneau d'apercu fichier masque pendant la vue dossiers uniquement.
       <aside className="file-preview">
@@ -853,6 +1723,25 @@ export function FilesPage() {
           </form>
         </div>
       ) : null}
+
+      <FolderShareModal
+        error={usersQuery.error}
+        fileCount={shareTargetFiles.length}
+        filesLoading={isFilesInitialLoading}
+        folder={shareTargetFolder}
+        isOpen={Boolean(shareTargetFolder)}
+        isSharing={Boolean(sharingUserId)}
+        level={shareLevel}
+        loading={usersQuery.loading}
+        onClose={closeFolderShareModal}
+        onLevelChange={setShareLevel}
+        onRetry={usersQuery.refetch}
+        onSelect={(user) => {
+          void shareFolderWithUser(user);
+        }}
+        selectedUserId={sharingUserId}
+        users={usersQuery.data ?? []}
+      />
     </div>
   );
 }
