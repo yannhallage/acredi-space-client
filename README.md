@@ -14,3 +14,14 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+## Notifications temps reel
+
+Configure the API and optional SockJS endpoint in `.env`:
+
+```env
+VITE_API_BASE_URL=http://localhost:8080/api
+VITE_WS_URL=http://localhost:8080/ws
+```
+
+The app uses STOMP over SockJS, sends the JWT in the STOMP `Authorization` header, and subscribes to `/user/queue/notifications`. The backend stores notifications in the database first; the socket only pushes the small `NotificationResponse` payload in real time.

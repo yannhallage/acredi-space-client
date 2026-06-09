@@ -1,0 +1,15 @@
+export const userEndpoints = {
+  activate: (id: string) => `/users/${id}/activate`,
+  changeMyPassword: "/users/me/password",
+  create: "/users",
+  deactivate: (id: string) => `/users/${id}/deactivate`,
+  delete: (id: string) => `/users/${id}`,
+  findAll: "/users",
+  findById: (id: string) => `/users/${id}`,
+  invite: "/users/invite",
+  me: "/users/me",
+  myPermissions: "/users/me/permissions",
+  uploadAvatar: "/users/me/avatar",
+  update: (id: string) => `/users/${id}`,
+  updateProfile: "/users/me",
+} as const;
