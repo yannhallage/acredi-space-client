@@ -3256,6 +3256,42 @@ a {
   white-space: nowrap;
 }
 
+.discussion-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.dm-nav .discussion-dot {
+  justify-self: center;
+}
+
+.chat-nav-item.static {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 8px;
+  gap: 8px;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  color: var(--muted-soft);
+  font-size: 13px;
+}
+
+.chat-sidebar-empty,
+.workspace-empty,
+.workspace-error {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.workspace-skeleton {
+  display: block;
+  height: 28px;
+  margin: 4px 12px;
+}
+
 .chat-nav a.active,
 .conversation-link.active {
   background: var(--surface-2);
@@ -3286,6 +3322,114 @@ a {
 
 .chat-nav small.danger {
   background: var(--red);
+}
+
+.chat-page-skeleton {
+  pointer-events: none;
+}
+
+.chat-sidebar-skeleton .chat-skeleton-search,
+.chat-skeleton-composer-input {
+  display: block;
+  width: 100%;
+  border-radius: 8px;
+  background:
+    linear-gradient(
+      90deg,
+      var(--surface-2) 0%,
+      var(--surface-3) 48%,
+      var(--surface-2) 100%
+    );
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.15s ease-in-out infinite;
+}
+
+.chat-sidebar-skeleton .chat-skeleton-search {
+  height: 34px;
+  margin-bottom: 18px;
+}
+
+.chat-skeleton-section-label {
+  width: 42%;
+  margin-bottom: 12px;
+}
+
+.chat-nav-item-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+}
+
+.chat-nav-item-skeleton .skeleton-avatar {
+  width: 20px;
+  height: 20px;
+}
+
+.chat-skeleton-nav-name {
+  flex: 1;
+}
+
+.chat-thread-skeleton .thread-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-skeleton-header-title {
+  width: 140px;
+}
+
+.chat-skeleton-header-subtitle {
+  width: 96px;
+}
+
+.chat-message-skeleton {
+  pointer-events: none;
+}
+
+.chat-skeleton-message-meta {
+  width: 120px;
+}
+
+.chat-skeleton-message-short {
+  width: 68%;
+}
+
+.chat-composer-skeleton {
+  display: grid;
+  gap: 12px;
+}
+
+.chat-skeleton-composer-input {
+  height: 72px;
+}
+
+.chat-skeleton-composer-button {
+  width: 42px;
+  justify-self: end;
+}
+
+.chat-details-skeleton {
+  display: grid;
+  gap: 14px;
+}
+
+.chat-skeleton-details-title {
+  width: 72%;
+}
+
+.chat-refresh-hint {
+  margin: 8px 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.chat-send-error {
+  color: var(--red);
 }
 
 .conversation-link {
