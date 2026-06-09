@@ -697,7 +697,7 @@ export default function MeetingPage() {
 
             <button
               onClick={() => openCreateModal()}
-              className="rounded-full bg-black px-4 py-2 text-[11px] font-semibold text-white shadow-sm hover:bg-[#222] dark:bg-white dark:text-black dark:hover:bg-[#e8e8e8]"
+              className="rounded-full bg-black px-4 py-2 text-[11px] cursor-pointer font-semibold text-white shadow-sm hover:bg-[#222] dark:bg-white dark:text-black dark:hover:bg-[#e8e8e8]"
               type="button"
             >
               Créer une réunion

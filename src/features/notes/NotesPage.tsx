@@ -84,7 +84,7 @@ function normalizeSearch(value: string) {
 
 function isUuidLike(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
+    value,
   );
 }
 
@@ -558,7 +558,7 @@ function NoteShareModal({
         const searchable = normalizeSearch(
           [person.name, person.email, person.role, person.team, person.status]
             .filter(Boolean)
-            .join(" ")
+            .join(" "),
         );
 
         return searchable.includes(normalizedQuery);
@@ -652,7 +652,7 @@ function NoteShareModal({
                         </span>
                         <span className="skeleton-pill" />
                       </div>
-                    )
+                    ),
                   )
                 : visibleUsers.map((person) => {
                     const isSelected = selectedUserId === person.id;
@@ -768,7 +768,7 @@ export function NotesPage() {
 
   const notes = useMemo(
     () => (apiNotes ? apiNotes.map(mapApiNoteToCard) : []),
-    [apiNotes]
+    [apiNotes],
   );
   const isNotesInitialLoading =
     isPending || isLoading || (isFetching && !apiNotes);
@@ -797,7 +797,7 @@ export function NotesPage() {
       .sort((a, b) =>
         sortMode === "newest"
           ? a.updatedMinutes - b.updatedMinutes
-          : b.updatedMinutes - a.updatedMinutes
+          : b.updatedMinutes - a.updatedMinutes,
       );
   }, [contentFilter, notes, sortMode, titleFilter]);
 
@@ -819,7 +819,7 @@ export function NotesPage() {
   function showToast(
     intent: ToastState["intent"],
     message: string,
-    timeout = 4000
+    timeout = 4000,
   ) {
     setToast({ show: true, intent, message });
 
@@ -913,7 +913,7 @@ export function NotesPage() {
           : editingNote
             ? "Error while updating the note."
             : "Error while creating the note.",
-        5000
+        5000,
       );
     }
   }
@@ -940,7 +940,7 @@ export function NotesPage() {
         caughtError instanceof Error
           ? caughtError.message
           : "Error while sharing the note.",
-        5000
+        5000,
       );
     } finally {
       setSharingUserId(null);
@@ -959,7 +959,7 @@ export function NotesPage() {
         caughtError instanceof Error
           ? caughtError.message
           : "Error while deleting the note.",
-        5000
+        5000,
       );
     } finally {
       setDeletingIds((current) => {
@@ -1064,7 +1064,7 @@ export function NotesPage() {
             type="button"
             onClick={() =>
               setSortMode((current) =>
-                current === "newest" ? "oldest" : "newest"
+                current === "newest" ? "oldest" : "newest",
               )
             }
           >
@@ -1106,7 +1106,7 @@ export function NotesPage() {
                     deleteNote(noteId).catch(() => undefined);
                   }}
                 />
-              )
+              ),
             )}
 
         {isError && !isNotesLoading && visibleNotes.length === 0 ? (
@@ -1264,8 +1264,10 @@ export function NotesPage() {
                       <ClipLoader size={12} color="#fff" />
                       {isEditing ? "Saving..." : "Creating..."}
                     </>
+                  ) : isEditing ? (
+                    "Save"
                   ) : (
-                    isEditing ? "Save" : "Create"
+                    "Create"
                   )}
                 </button>
               </footer>
