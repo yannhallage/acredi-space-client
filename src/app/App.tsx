@@ -67,9 +67,9 @@ export default function App() {
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="files" element={<FilesPage />} />
                   <Route path="files/:folderId" element={<FolderFilesPage />} />
-                  <Route path="chat" element={<Navigate to="/app/chat/general" replace />} />
+                  <Route path="chat" element={<ChatPage />} />
                   <Route path="chat/:channelId" element={<ChatPage />} />
-                  <Route path="dm" element={<Navigate to="/app/dm/dm-yann" replace />} />
+                  <Route path="dm" element={<DirectMessagesPage />} />
                   <Route path="dm/:conversationId" element={<DirectMessagesPage />} />
                   <Route path="calendar" element={<CalendarPage />} />
                   <Route path="meeting" element={<Navigate to="/app/meeting/meet-daily" replace />} />
