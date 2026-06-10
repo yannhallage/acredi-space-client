@@ -10,6 +10,7 @@ import { DirectMessagesPage } from '../features/dm/DirectMessagesPage';
 import { FolderFilesPage } from '../features/files/FolderFilesPage';
 import { FilesPage } from '../features/files/FilesPage';
 import MeetingPage from '../features/meeting/MeetingPage';
+import { MeetingRoom } from '../features/meeting/MeetingRoom';
 import { NotesPage } from '../features/notes/NotesPage';
 import { PreviewPage } from '../features/preview/PreviewPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
@@ -58,13 +59,14 @@ export default function App() {
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="files" element={<FilesPage />} />
                   <Route path="files/:folderId" element={<FolderFilesPage />} />
-                  <Route path="chat" element={<Navigate to="/app/chat/general" replace />} />
+                  <Route path="chat" element={<ChatPage />} />
                   <Route path="chat/:channelId" element={<ChatPage />} />
-                  <Route path="dm" element={<Navigate to="/app/dm/dm-yann" replace />} />
+                  <Route path="dm" element={<DirectMessagesPage />} />
                   <Route path="dm/:conversationId" element={<DirectMessagesPage />} />
                   <Route path="calendar" element={<CalendarPage />} />
                   <Route path="meeting" element={<Navigate to="/app/meeting/meet-daily" replace />} />
                   <Route path="meeting/:meetingId" element={<MeetingPage />} />
+                  <Route path="meeting-room/:roomName" element={<MeetingRoom />} />
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="admin" element={<AdminPage />} />
                   <Route path="my-team" element={<MyTeamsPage />} />
