@@ -131,44 +131,30 @@ export function NewDirectConversationModal({
             aria-label="Fermer"
             onClick={onClose}
           >
-            <Icon name="x" size={16} />
-          </button>
-        </header>
+            <header className="dm-new-conversation-header">
+              <div>
+                <h2 id="dm-new-conversation-title">Nouvelle conversations</h2>
+                <small>{visibleUsers.length} contacts disponibles</small>
+              </div>
+              <button className="icon-button" type="button" aria-label="Fermer" onClick={onClose}>
+                <Icon name="x" size={16} />
+              </button>
+            </header>
 
-        <label className="dm-new-conversation-search">
-          <Icon name="search" size={16} />
-          <input
-            autoFocus
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Rechercher un utilisateur..."
-          />
-        </label>
+            <label className="dm-new-conversation-search">
+              <Icon name="search" size={16} />
+              <input
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Rechercher un utilisateur..."
+              />
+            </label>
 
-        <div className="dm-new-conversation-list">
-          <p>Utilisateurs</p>
-
-          {usersQuery.loading
-            ? ["dm-user-loading-1", "dm-user-loading-2", "dm-user-loading-3"].map(
-                (item) => (
-                  <div
-                    className="dm-new-conversation-user team-picker-row-skeleton"
-                    key={item}
-                  >
-                    <span className="skeleton-dot" />
-                    <span className="skeleton-avatar" />
-                    <span>
-                      <span className="skeleton-line" />
-                      <span className="skeleton-line skeleton-short" />
-                    </span>
-                    <span className="skeleton-pill" />
-                  </div>
-                )
-              )
-            : visibleUsers.map((person) => {
-                const unread =
-                  unreadByUserName.get(person.name.toLowerCase()) ?? 0;
-                const isCreatingThisUser = creatingUserId === person.id;
+            <div className="dm-new-conversation-list">
+              <p>Utilisateurs</p>
+              {visibleUsers.map((person) => {
+                const conversation = conversationByUserId.get(person.id);
 
                 return (
                   <button
