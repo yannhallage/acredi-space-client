@@ -116,7 +116,7 @@ export function AppLayout() {
   const { user: authenticatedUser, logout } = useAuth();
   const queryClient = useQueryClient();
   const { hasAnyPermission } = usePermissions();
-  const { counts } = useWorkspace();
+  const { activeWorkspace, counts } = useWorkspace();
   const { dark, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
