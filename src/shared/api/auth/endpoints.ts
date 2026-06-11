@@ -1,8 +1,8 @@
 export const authEndpoints = {
-  forgotPassword: "/auth/forgot-password",
-  login: "/auth/login",
-  refresh: "/auth/refresh",
   register: "/auth/register",
-  resetPassword: "/auth/reset-password",
+  login: "/auth/login",
   verifyOtp: "/auth/verify-otp",
+  refresh: "/auth/refresh",
+  forgotPassword: "/auth/forgot-password",
+  resetPassword: "/auth/reset-password",
 } as const;

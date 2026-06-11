@@ -582,8 +582,62 @@ function FilesPageSkeleton() {
   );
 }
 
+
+function formatRelativeDate(date: string) {
+  const target = new Date(date);
+
+  if (Number.isNaN(target.getTime())) {
+    return "date inconnue";
+  }
+
+  const now = new Date();
+  const diff = now.getTime() - target.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+
+  if (minutes < 1) {
+    return "à l'instant";
+  }
+
+  if (minutes < 60) {
+    return `il y a ${minutes} min`;
+  }
+
+  if (hours < 24) {
+    return `il y a ${hours} h`;
+  }
+
+  return target.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function formatPermission(permission: string) {
+  const normalized = permission.toUpperCase();
+
+  if (["WRITE", "EDITOR", "EDIT", "ADMIN"].includes(normalized)) {
+    return "Modification";
+  }
+
+  return "Lecture seule";
+}
+
 export function FilesPage() {
   const navigate = useNavigate();
+
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
@@ -591,6 +645,7 @@ export function FilesPage() {
   const [shareLevel, setShareLevel] = useState<FilePermissionLevel>("READ");
   const [sharingUserId, setSharingUserId] = useState<string | null>(null);
   const [folderName, setFolderName] = useState("");
+  
   const [openMenuFolderId, setOpenMenuFolderId] = useState<string | null>(null);
   const [openSharedFileMenuId, setOpenSharedFileMenuId] = useState<string | null>(null);
   const [selectedSharedFileId, setSelectedSharedFileId] = useState<string | null>(null);
@@ -771,7 +826,9 @@ export function FilesPage() {
   const isFolderSaving =
     createFolderMutation.isPending || updateFolderMutation.isPending;
   const isFolderModalOpen = createModalOpen || Boolean(editingFolder);
-  const folderModalTitle = editingFolder ? "Modifier le dossier" : "Creer un dossier";
+  const folderModalTitle = editingFolder
+    ? "Modifier le dossier"
+    : "Creer un dossier";
   const folderSubmitLabel = editingFolder ? "Modifier" : "Creer";
   const folderSavingLabel = editingFolder ? "Modification..." : "Creation...";
 

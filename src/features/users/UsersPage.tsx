@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { useInviteUserMutation, useUsersQuery } from "../../shared/api/users";
+import { useInviteUserMutation, useUsersQuery, useActivateUserMutation, useDeactivateUserMutation } from "../../shared/api/users";
 import {
   PermissionGate,
   USERS_INVITE_PERMISSIONS,
@@ -90,6 +90,99 @@ function getInviteErrorMessage(error: unknown) {
   return "Failed to invite user";
 }
 
+function UserActionsDropdown({
+  user,
+  onChanged,
+  onToast,
+}: {
+  user: User;
+  onChanged: () => Promise<unknown>;
+  onToast: (toast: {
+    intent: "success" | "info" | "warning" | "error";
+    message: string;
+  }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const activateMutation = useActivateUserMutation();
+  const deactivateMutation = useDeactivateUserMutation();
+
+  const isActive = user.enabled !== false;
+  const isPending =
+    activateMutation.isPending || deactivateMutation.isPending;
+
+  async function handleToggleStatus(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+
+    if (isPending) return;
+
+    try {
+      if (isActive) {
+        await deactivateMutation.mutateAsync(user.id);
+        onToast({
+          intent: "success",
+          message: "Utilisateur désactivé avec succès",
+        });
+      } else {
+        await activateMutation.mutateAsync(user.id);
+        onToast({
+          intent: "success",
+          message: "Utilisateur activé avec succès",
+        });
+      }
+
+      setOpen(false);
+      await onChanged();
+    } catch (error) {
+      onToast({
+        intent: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Impossible de modifier le statut de l'utilisateur",
+      });
+    }
+  }
+
+  return (
+    <div
+      className="users-actions-dropdown"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        className="icon-button users-more"
+        type="button"
+        aria-label={`Options ${user.name}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((current) => !current);
+        }}
+      >
+        <Icon name="moreH" size={19} />
+      </button>
+
+      {open ? (
+        <div className="users-actions-menu">
+          <button
+            type="button"
+            className={
+              isActive
+                ? "users-actions-item danger"
+                : "users-actions-item success"
+            }
+            disabled={isPending}
+            onClick={handleToggleStatus}
+          >
+            {isPending
+              ? "Traitement..."
+              : isActive
+                ? "Désactiver utilisateur"
+                : "Activer utilisateur"}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 export function UsersPage() {
   const navigate = useNavigate();
   const { hasAnyPermission, loading: authLoading } = usePermissions();
@@ -312,52 +405,71 @@ export function UsersPage() {
         {loading
           ? userSkeletons.map((item) => <UserRowSkeleton key={item} />)
           : visibleUsers.map((user) => (
-              <motion.article
-                className="users-row"
-                key={user.id}
-                role="button"
-                tabIndex={0}
-                layout
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.16 }}
-                onClick={() =>
-                  navigate(`/app/users/${user.id}`, { state: { user } })
+            <motion.article
+              className="users-row"
+              key={user.id}
+              role="button"
+              tabIndex={0}
+              layout
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.16 }}
+              onClick={() =>
+                navigate(`/app/users/${user.id}`, { state: { user } })
+              }
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  navigate(`/app/users/${user.id}`, { state: { user } });
                 }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    navigate(`/app/users/${user.id}`, { state: { user } });
-                  }
-                }}
+              }}
+            >
+              <span className="users-initial">{initialsFor(user.name)}</span>
+              <div className="users-person">
+                <strong>{user.name}</strong>
+                <span>{user.email}</span>
+              </div>
+              <span className="users-status">
+                {user.enabled === false ? "Désactivé" : "Activé"}
+                {user.invitationStatus ? ` • ${user.invitationStatus}` : ""}
+              </span>
+              <button
+                className="users-role"
+                type="button"
+                onClick={(event) => event.stopPropagation()}
               >
-                <span className="users-initial">{initialsFor(user.name)}</span>
-                <div className="users-person">
-                  <strong>{user.name}</strong>
-                  <span>{user.email}</span>
-                </div>
-                <span className="users-status">
-                  {user.enabled === false ? "Désactivé" : "Activé"}
-                  {user.invitationStatus ? ` • ${user.invitationStatus}` : ""}
-                </span>
-                <button
-                  className="users-role"
-                  type="button"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <Icon name={roleIcon(user)} size={15} />
-                  {roleLabel(user)}
-                </button>
-                <button
-                  className="icon-button users-more"
-                  type="button"
-                  aria-label={`Options ${user.name}`}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <Icon name="moreH" size={15} />
-                </button>
-              </motion.article>
-            ))}
+                <Icon name={roleIcon(user)} size={15} />
+                {roleLabel(user)}
+              </button>
+              {/* <button
+                className="icon-button users-more"
+                type="button"
+                aria-label={`Options ${user.name}`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <Icon name="moreH" size={19} />
+              </button> */}
+
+              <UserActionsDropdown
+                user={user}
+                onChanged={usersQuery.refetch}
+                onToast={({ intent, message }) => {
+                  setToast({
+                    show: true,
+                    intent,
+                    message,
+                  });
+
+                  setTimeout(() => {
+                    setToast((prev) => ({
+                      ...prev,
+                      show: false,
+                    }));
+                  }, 4000);
+                }}
+              />
+            </motion.article>
+          ))}
         {!loading && visibleUsers.length === 0 ? (
           <NotUsers
             hasFilters={hasFilters}

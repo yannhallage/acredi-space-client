@@ -194,6 +194,16 @@ function getErrorMessage(error: unknown) {
   return "Une erreur est survenue.";
 }
 
+// grisage des reunions passées
+function isPastMeeting(meeting: Meeting) {
+  const meetingEnd = new Date(`${meeting.date}T${meeting.end}:00`).getTime();
+  return meetingEnd < Date.now();
+}
+
+function isPastDateTime(date: string, time: string) {
+  return new Date(`${date}T${time}:00`).getTime() < Date.now();
+}
+
 export default function MeetingPage() {
   const navigate = useNavigate();
   const [view, setView] = useState<ViewMode>("week");
@@ -403,6 +413,17 @@ export default function MeetingPage() {
       return;
     }
 
+
+
+
+    if (isPastDateTime(form.date, form.start)) {
+  setFormError("Impossible de créer ou modifier une réunion à une date déjà passée.");
+  return;
+}
+
+
+
+
     setIsSaving(true);
     setFormError("");
 
@@ -592,10 +613,60 @@ export default function MeetingPage() {
     };
   }, [openMenuId]);
 
-  const renderMeetingCard = (meeting: Meeting, absolute = true) => (
+  // const renderMeetingCard = (meeting: Meeting, absolute = true) => (
+  //   <div
+  //     key={meeting.id}
+  //     className={`${absolute ? "absolute left-[8px] right-[8px] z-20" : "relative"} cursor-pointer overflow-hidden rounded-[7px] px-2 py-[6px] pr-8 text-left shadow-sm ${meeting.color}`}
+  //     style={
+  //       absolute
+  //         ? {
+  //             top: getTop(meeting.start),
+  //             height: getHeight(meeting.start, meeting.end),
+  //           }
+  //         : undefined
+  //     }
+  //   >
+  //     <button
+  //       onClick={() => openMeetingRoom(meeting)}
+  //       className="block w-full text-left"
+  //       type="button"
+  //     >
+  //       <div className="truncate text-[12px] font-bold leading-[15px] text-[#171717]">
+  //         {meeting.title}
+  //       </div>
+  //       <div className="truncate text-[11px] font-semibold leading-[14px] text-[#171717]">
+  //         {meeting.start} - {meeting.end} · {meeting.mode}
+  //         {meeting.joinUrl ? " · Rejoindre" : ""}
+  //       </div>
+  //       {meeting.description && (
+  //         <div className="mt-[2px] truncate text-[11px] font-medium leading-[14px] text-[#171717]">
+  //           {meeting.description}
+  //         </div>
+  //       )}
+  //     </button>
+
+  //     <button
+  //       onClick={(event) => toggleMeetingMenu(event, meeting.id)}
+  //       className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-[16px] leading-none text-[#171717] hover:bg-black/10"
+  //       aria-label="Options de la réunion"
+  //       type="button"
+  //     >
+  //       ⋮
+  //     </button>
+  //   </div>
+  // );
+
+const renderMeetingCard = (meeting: Meeting, absolute = true) => {
+  const past = isPastMeeting(meeting);
+
+  return (
     <div
       key={meeting.id}
-      className={`${absolute ? "absolute left-[8px] right-[8px] z-20" : "relative"} cursor-pointer overflow-hidden rounded-[7px] px-2 py-[6px] pr-8 text-left shadow-sm ${meeting.color}`}
+      className={`${absolute ? "absolute left-[8px] right-[8px] z-20" : "relative"} overflow-hidden rounded-[7px] px-2 py-[6px] pr-8 text-left shadow-sm ${
+        past
+          ? "cursor-not-allowed bg-gray-200 text-gray-500 opacity-70 grayscale dark:bg-[#303036] dark:text-gray-400"
+          : `cursor-pointer ${meeting.color}`
+      }`}
       style={
         absolute
           ? {
@@ -606,39 +677,64 @@ export default function MeetingPage() {
       }
     >
       <button
-        onClick={() => openMeetingRoom(meeting)}
-        className="block w-full text-left"
+        onClick={() => {
+          if (past) return;
+          openMeetingRoom(meeting);
+        }}
+        disabled={past}
+        className={`block w-full text-left ${
+          past ? "cursor-not-allowed" : ""
+        }`}
         type="button"
       >
-        <div className="truncate text-[12px] font-bold leading-[15px] text-[#171717]">
+        <div
+          className={`truncate text-[12px] font-bold leading-[15px] ${
+            past ? "text-gray-500 dark:text-gray-400" : "text-[#171717]"
+          }`}
+        >
           {meeting.title}
         </div>
-        <div className="truncate text-[11px] font-semibold leading-[14px] text-[#171717]">
+
+        <div
+          className={`truncate text-[11px] font-semibold leading-[14px] ${
+            past ? "text-gray-500 dark:text-gray-400" : "text-[#171717]"
+          }`}
+        >
           {meeting.start} - {meeting.end} · {meeting.mode}
-          {meeting.joinUrl ? " · Rejoindre" : ""}
+          {meeting.joinUrl && !past ? " · Rejoindre" : ""}
+          {past ? " · Terminée" : ""}
         </div>
+
         {meeting.description && (
-          <div className="mt-[2px] truncate text-[11px] font-medium leading-[14px] text-[#171717]">
+          <div
+            className={`mt-[2px] truncate text-[11px] font-medium leading-[14px] ${
+              past ? "text-gray-500 dark:text-gray-400" : "text-[#171717]"
+            }`}
+          >
             {meeting.description}
           </div>
         )}
       </button>
 
-      <button
-        onClick={(event) => toggleMeetingMenu(event, meeting.id)}
-        className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-[16px] leading-none text-[#171717] hover:bg-black/10"
-        aria-label="Options de la réunion"
-        type="button"
-      >
-        ⋮
-      </button>
+      {!past && (
+        <button
+          onClick={(event) => toggleMeetingMenu(event, meeting.id)}
+          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-[16px] leading-none text-[#171717] hover:bg-black/10"
+          aria-label="Options de la réunion"
+          type="button"
+        >
+          ⋮
+        </button>
+      )}
     </div>
   );
+};
+
 
   return (
-    <div className="min-h-screen bg-[#f6f6f6] p-3 text-[13px] text-[#111827] dark:bg-[#0f0f12] dark:text-[#f5f5f5] sm:p-4">
-      <div className="mx-auto flex h-[calc(100vh-24px)] w-full max-w-none flex-col overflow-hidden rounded-[18px] bg-white px-4 py-4 shadow-[0_14px_35px_rgba(0,0,0,0.14)] dark:bg-[#18181b] dark:shadow-[0_14px_35px_rgba(0,0,0,0.35)] sm:h-[calc(100vh-32px)] sm:px-6 sm:py-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex h-full min-h-0 w-full bg-[#f6f6f6] p-3 text-[13px] text-[#111827] dark:bg-[#0f0f12] dark:text-[#f5f5f5] sm:p-4">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden rounded-[18px] bg-white px-4 py-4 shadow-[0_14px_35px_rgba(0,0,0,0.14)] dark:bg-[#18181b] dark:shadow-[0_14px_35px_rgba(0,0,0,0.35)] sm:px-6 sm:py-5">
+        <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={goToday}
@@ -694,25 +790,27 @@ export default function MeetingPage() {
                 </button>
               ))}
             </div>
-
             <button
-              onClick={() => openCreateModal()}
-              className="rounded-full bg-black px-4 py-2 text-[11px] cursor-pointer font-semibold text-white shadow-sm hover:bg-[#222] dark:bg-white dark:text-black dark:hover:bg-[#e8e8e8]"
-              type="button"
-            >
+            onClick={() => {
+              if (isPastDateTime(selectedDateKey, "09:00")) {
+                showToast("warning", "Sélectionne une date future pour créer une réunion.");
+                return;}
+                openCreateModal();}}
+                className="rounded-full bg-black px-4 py-2 text-[11px] font-semibold text-white shadow-sm hover:bg-[#222] dark:bg-white dark:text-black dark:hover:bg-[#e8e8e8]"
+                type="button">
               Créer une réunion
             </button>
           </div>
         </div>
 
         {meetingsQuery.isLoading && (
-          <div className="mt-4 rounded-[12px] border border-[#eeeeee] px-4 py-3 text-[12px] font-medium text-[#6b7280] dark:border-[#2a2a2e] dark:text-[#c9c9cf]">
+          <div className="mt-4 shrink-0 rounded-[12px] border border-[#eeeeee] px-4 py-3 text-[12px] font-medium text-[#6b7280] dark:border-[#2a2a2e] dark:text-[#c9c9cf]">
             Chargement des réunions...
           </div>
         )}
 
         {view === "month" ? (
-          <div className="mt-5 grid flex-1 grid-rows-[36px_1fr] overflow-hidden border-t border-l border-[#e5e7eb] dark:border-[#2a2a2e]">
+          <div className="mt-5 grid min-h-0 flex-1 grid-rows-[36px_minmax(0,1fr)] overflow-hidden border-t border-l border-[#e5e7eb] dark:border-[#2a2a2e]">
             <div className="grid grid-cols-7 border-b border-[#e5e7eb] dark:border-[#2a2a2e]">
               {weekDays.map((day) => (
                 <div
@@ -760,8 +858,11 @@ export default function MeetingPage() {
                       {dayMeetings.slice(0, 3).map((meeting) => (
                         <div
                           key={meeting.id}
-                          className={`truncate rounded px-2 py-1 text-[11px] font-semibold text-[#171717] ${meeting.color}`}
-                        >
+                          className={`truncate rounded px-2 py-1 text-[11px] font-semibold ${
+                            isPastMeeting(meeting)
+                            ? "bg-gray-200 text-gray-500 opacity-70 grayscale dark:bg-[#303036] dark:text-gray-400"
+                            : `text-[#171717] ${meeting.color}`
+                              }`}>
                           <button
                             onClick={(event) => {
                               event.stopPropagation();
@@ -786,7 +887,7 @@ export default function MeetingPage() {
             </div>
           </div>
         ) : view === "list" ? (
-          <div className="mt-5 flex-1 overflow-y-auto border-t border-[#e5e7eb] pt-4 dark:border-[#2a2a2e]">
+          <div className="mt-5 min-h-0 flex-1 overflow-y-auto border-t border-[#e5e7eb] pt-4 dark:border-[#2a2a2e]">
             <div className="space-y-2">
               {meetings.length === 0 ? (
                 <div className="rounded-[12px] border border-dashed border-[#d1d5db] p-8 text-center text-[13px] font-medium text-[#6b7280] dark:border-[#2a2a2e] dark:text-[#c9c9cf]">
@@ -802,15 +903,24 @@ export default function MeetingPage() {
                   .map((meeting) => (
                     <div
                       key={meeting.id}
-                      className="relative rounded-[12px] border border-[#eeeeee] px-4 py-3 pr-12 dark:border-[#2a2a2e]"
-                    >
+                     className={`relative rounded-[12px] border px-4 py-3 pr-12 ${
+                      isPastMeeting(meeting)
+                      ? "border-gray-200 bg-gray-100 text-gray-500 opacity-75 grayscale dark:border-[#303036] dark:bg-[#242428] dark:text-gray-400"
+                      : "border-[#eeeeee] dark:border-[#2a2a2e]"
+                      }`}>
                       <button
                         onClick={() => openMeetingRoom(meeting)}
                         className="block w-full text-left hover:opacity-80"
                         type="button"
                       >
                         <p className="text-[13px] font-bold">{meeting.title}</p>
-                        <p className="text-[12px] font-medium text-gray-600 dark:text-gray-300">
+                        <p
+                        className={`text-[12px] font-medium ${
+                          isPastMeeting(meeting)
+                          ? "text-gray-500 dark:text-gray-400"
+                          : "text-gray-600 dark:text-gray-300"
+}`}
+>
                           {meeting.date} · {meeting.start} - {meeting.end} ·{" "}
                           {meeting.mode}
                           {meeting.joinUrl ? " · Cliquer pour rejoindre" : ""}
@@ -832,7 +942,7 @@ export default function MeetingPage() {
             </div>
           </div>
         ) : (
-          <div className="mt-5 flex flex-1 flex-col overflow-hidden border-t border-[#cfcfcf] dark:border-[#2a2a2e]">
+          <div className="mt-5 flex min-h-0 flex-1 flex-col overflow-hidden border-t border-[#cfcfcf] dark:border-[#2a2a2e]">
             <div
               className={`grid ${calendarGridClass} border-b border-[#cfcfcf] dark:border-[#2a2a2e]`}
             >
@@ -864,7 +974,7 @@ export default function MeetingPage() {
             </div>
 
             <div
-              className={`relative grid flex-1 ${calendarGridClass} overflow-auto`}
+              className={`relative grid min-h-0 flex-1 ${calendarGridClass} overflow-auto`}
             >
               <div className="border-r border-[#eeeeee] dark:border-[#2a2a2e]">
                 {hours.map((hour) => (
@@ -889,12 +999,25 @@ export default function MeetingPage() {
                     className="relative min-w-[132px] border-r border-[#eeeeee] last:border-r-0 dark:border-[#2a2a2e]"
                   >
                     {hours.map((hour) => (
-                      <button
-                        key={hour}
-                        onClick={() => openCreateModal(dateKey, hour)}
-                        className="block h-[72px] w-full cursor-pointer border-b border-[#eeeeee] text-left hover:bg-[#fafafa] dark:border-[#2a2a2e] dark:hover:bg-[#222226]"
-                        type="button"
-                      />
+                      // <button
+                      //   key={hour}
+                      //   onClick={() => openCreateModal(dateKey, hour)}
+                      //   className="block h-[72px] w-full cursor-pointer border-b border-[#eeeeee] text-left hover:bg-[#fafafa] dark:border-[#2a2a2e] dark:hover:bg-[#222226]"
+                      //   type="button"
+                      // />
+                      <button key={hour}onClick={() => {
+                        if (isPastDateTime(dateKey, hour)) {
+                          showToast("warning", "Impossible de créer une réunion à une date déjà passée.");
+                          return;
+                        }
+                        openCreateModal(dateKey, hour);
+                      }}
+                      className={`block h-[72px] w-full border-b border-[#eeeeee] text-left dark:border-[#2a2a2e] ${
+                        isPastDateTime(dateKey, hour)
+                        ? "cursor-not-allowed bg-gray-50 dark:bg-[#151519]"
+                        : "cursor-pointer hover:bg-[#fafafa] dark:hover:bg-[#222226]"
+                        }`}
+                        type="button"/>
                     ))}
 
                     {dayMeetings.map((meeting) => renderMeetingCard(meeting))}
@@ -991,11 +1114,9 @@ export default function MeetingPage() {
                 className="w-full rounded-[10px] border border-[#e5e5e5] bg-white px-4 py-3 text-[13px] outline-none focus:border-[#168cf0] dark:border-[#2a2a2e] dark:bg-[#111114]"
               />
 
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="w-full rounded-[10px] border border-[#e5e5e5] bg-white px-4 py-3 text-[13px] outline-none focus:border-[#168cf0] dark:border-[#2a2a2e] dark:bg-[#111114]"
+            <input type="date" min={toDateKey(new Date())}
+            value={form.date}
+            onChange={(e) => setForm({ ...form, date: e.target.value })}className="w-full rounded-[10px] border border-[#e5e5e5] bg-white px-4 py-3 text-[13px] outline-none focus:border-[#168cf0] dark:border-[#2a2a2e] dark:bg-[#111114]"
               />
 
               <div className="grid grid-cols-2 gap-3">

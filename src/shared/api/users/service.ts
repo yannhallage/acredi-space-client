@@ -21,6 +21,7 @@ export const userService = {
     const response = await http.post<ApiResponse<UserResponse>>(
       userEndpoints.activate(id)
     );
+
     return normalizeUser(unwrapApiResponse(response));
   },
 
@@ -29,6 +30,7 @@ export const userService = {
       userEndpoints.changeMyPassword,
       request
     );
+
     return normalizeUser(unwrapApiResponse(response));
   },
 
@@ -37,6 +39,7 @@ export const userService = {
       userEndpoints.create,
       request
     );
+
     return normalizeUser(unwrapApiResponse(response));
   },
 
@@ -44,6 +47,7 @@ export const userService = {
     const response = await http.post<ApiResponse<UserResponse>>(
       userEndpoints.deactivate(id)
     );
+
     return normalizeUser(unwrapApiResponse(response));
   },
 
@@ -55,6 +59,7 @@ export const userService = {
     const response = await http.get<ApiResponse<UserResponse[]>>(
       userEndpoints.findAll
     );
+
     return normalizeUsers(unwrapApiResponse(response));
   },
 
@@ -62,6 +67,7 @@ export const userService = {
     const response = await http.get<ApiResponse<UserResponse>>(
       userEndpoints.findById(id)
     );
+
     return normalizeUser(unwrapApiResponse(response));
   },
 
@@ -70,18 +76,24 @@ export const userService = {
       userEndpoints.invite,
       request
     );
+
     return normalizeUser(unwrapApiResponse(response));
   },
 
   async me() {
-    const response = await http.get<ApiResponse<UserResponse>>(userEndpoints.me);
+    const response = await http.get<ApiResponse<UserResponse>>(
+      userEndpoints.me
+    );
+
     return normalizeUser(unwrapApiResponse(response));
   },
 
-  myPermissions() {
-    return http
-      .get<ApiResponse<RolePermissionsResponse>>(userEndpoints.myPermissions)
-      .then(unwrapApiResponse);
+  async myPermissions() {
+    const response = await http.get<ApiResponse<RolePermissionsResponse>>(
+      userEndpoints.myPermissions
+    );
+
+    return unwrapApiResponse(response);
   },
 
   async update(id: string, request: UpdateUserRequest) {
@@ -89,6 +101,7 @@ export const userService = {
       userEndpoints.update(id),
       request
     );
+
     return normalizeUser(unwrapApiResponse(response));
   },
 
@@ -97,6 +110,7 @@ export const userService = {
       userEndpoints.updateProfile,
       request
     );
+
     return normalizeUser(unwrapApiResponse(response));
   },
 

@@ -238,17 +238,17 @@ function TeamCard({
         </div>
       </header>
 
-      <div className="team-card-meta">
+      { <div className="team-card-meta">
         <span>
           <Icon name="users" size={14} />
           {membersCount} membre{membersCount > 1 ? "s" : ""}
         </span>
 
-        <span>
+        {/* <span>
           <Icon name="message" size={14} />
           {team.slug ? `#${team.slug}` : "#team"}
-        </span>
-      </div>
+        </span> */}
+      </div> }
 
       <div className="team-card-footer">
         <div className="team-avatars" aria-label={`${membersCount} membres`}>
