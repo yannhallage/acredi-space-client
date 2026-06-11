@@ -116,7 +116,9 @@ export function AppLayout() {
   const { user: authenticatedUser, logout } = useAuth();
   const queryClient = useQueryClient();
   const { hasAnyPermission } = usePermissions();
-  const { counts } = useWorkspace();
+  // const { counts } = useWorkspace();
+  const workspace = useWorkspace();
+  const { counts } = workspace;
   const { dark, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -390,6 +392,15 @@ export function AppLayout() {
 
     markNotificationReadMutation.mutate(notification.id);
   }
+
+
+  const workspaceName =
+  "activeWorkspace" in workspace &&
+  workspace.activeWorkspace &&
+  typeof workspace.activeWorkspace === "object" &&
+  "name" in workspace.activeWorkspace
+    ? String(workspace.activeWorkspace.name)
+    : "Acredi Space";
 
   return (
     <>
@@ -792,12 +803,19 @@ export function AppLayout() {
 
       <AnimatePresence>
         {openSetting ? (
+          // <ModalSetting
+          //   userName={user.name}
+          //   userEmail={user.email}
+          //   workspaceName={activeWorkspace.name}
+          //   onClose={() => setOpenSetting(false)}
+          // />
+
           <ModalSetting
-            userName={user.name}
-            userEmail={user.email}
-            workspaceName={activeWorkspace.name}
-            onClose={() => setOpenSetting(false)}
-          />
+          userName={user.name}
+          userEmail={user.email}
+          workspaceName={workspaceName}
+          onClose={() => setOpenSetting(false)}
+/>
         ) : null}
       </AnimatePresence>
     </>

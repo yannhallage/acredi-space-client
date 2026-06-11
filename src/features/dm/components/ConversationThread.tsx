@@ -13,6 +13,13 @@ import { useAuth } from "../../../shared/context";
 import type { Presence } from "../../../shared/types";
 import { Avatar, Icon } from "../../../shared/ui";
 
+
+type LocalMessage = MessageResponse & {
+  pending?: boolean;
+  failed?: boolean;
+};
+
+
 interface DirectConversationThreadProps {
   channelId: string;
   title: string;
@@ -156,13 +163,24 @@ function DateSeparator({ label }: { label: string }) {
   );
 }
 
+// function DirectMessageRow({
+//   message,
+//   isMine,
+//   senderLabel,
+//   presence,
+// }: {
+//   message: MessageResponse;
+//   isMine: boolean;
+//   senderLabel: string;
+//   presence?: Presence;
+// }) {
 function DirectMessageRow({
   message,
   isMine,
   senderLabel,
   presence,
 }: {
-  message: MessageResponse;
+  message: LocalMessage;
   isMine: boolean;
   senderLabel: string;
   presence?: Presence;
@@ -204,13 +222,28 @@ function DirectMessageRow({
           {message.content}
         </div>
 
-        <div
+        {/* <div
           className={`mt-1.5 text-xs text-slate-400 ${
             isMine ? "text-right" : "text-left"
           }`}
         >
           {isMine ? `${time} - envoyé` : `${time} - vu`}
-        </div>
+        </div> */}
+        <div className={`mt-1.5 text-xs ${
+          message.failed
+          ? "text-red-500"
+          : message.pending
+          ? "text-slate-400"
+          : "text-slate-400"
+          } ${isMine ? "text-right" : "text-left"}`}>
+  {isMine
+    ? message.failed
+      ? `${time} - échec`
+      : message.pending
+        ? `${time} - envoi...`
+        : `${time} - envoyé`
+    : `${time} - vu`}
+</div>
       </div>
 
       {isMine && <Avatar name={senderLabel} size={34} />}
@@ -233,35 +266,133 @@ export function DirectConversationThread({
   const sendMessageMutation = useSendMessageMutation();
   const messageListRef = useRef<HTMLElement>(null);
 
-  const messageGroups = useMemo(() => groupMessagesByDay(messages), [messages]);
+  const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
+
+  // const messageGroups = useMemo(() => groupMessagesByDay(messages), [messages]);
+  const messageGroups = useMemo(
+  () => groupMessagesByDay(localMessages),
+  [localMessages],
+);
+
+
+useEffect(() => {
+  setLocalMessages((currentMessages) => {
+    const pendingMessages = currentMessages.filter(
+      (message) => message.pending || message.failed,
+    );
+
+    const pendingWithoutDuplicate = pendingMessages.filter(
+      (pendingMessage) =>
+        !messages.some(
+          (message) =>
+            message.content === pendingMessage.content &&
+            message.senderId === pendingMessage.senderId &&
+            Math.abs(
+              new Date(message.createdAt).getTime() -
+                new Date(pendingMessage.createdAt).getTime(),
+            ) < 10000,
+        ),
+    );
+
+    return [...messages, ...pendingWithoutDuplicate];
+  });
+}, [messages]);
+
+
+
+  // useEffect(() => {
+  //   const list = messageListRef.current;
+
+  //   if (!list) return;
+
+  //   list.scrollTop = list.scrollHeight;
+  // }, [messages, channelId]);
 
   useEffect(() => {
-    const list = messageListRef.current;
+  const list = messageListRef.current;
 
-    if (!list) return;
+  if (!list) return;
 
-    list.scrollTop = list.scrollHeight;
-  }, [messages, channelId]);
+  list.scrollTop = list.scrollHeight;
+}, [localMessages, channelId]);
+
+
+
+
+  // function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  //   event.preventDefault();
+
+  //   const value = content.trim();
+
+  //   if (!value || sendMessageMutation.isPending) return;
+
+  //   sendMessageMutation.mutate(
+  //     {
+  //       channelId,
+  //       content: value,
+  //     },
+  //     {
+  //       onSuccess: () => {
+  //         setContent("");
+  //       },
+  //     },
+  //   );
+  // }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  event.preventDefault();
 
-    const value = content.trim();
+  const value = content.trim();
 
-    if (!value || sendMessageMutation.isPending) return;
+  if (!value || !user?.id) return;
 
-    sendMessageMutation.mutate(
-      {
-        channelId,
-        content: value,
+  const temporaryId = `temp-${channelId}-${Date.now()}`;
+
+  const temporaryMessage: LocalMessage = {
+    id: temporaryId,
+    channelId,
+    senderId: user.id,
+    senderName: user.name || "Vous",
+    content: value,
+    createdAt: new Date().toISOString(),
+    pending: true,
+  };
+
+  setLocalMessages((currentMessages) => [...currentMessages, temporaryMessage]);
+  setContent("");
+
+  sendMessageMutation.mutate(
+    {
+      channelId,
+      content: value,
+    },
+    {
+      onSuccess: (savedMessage) => {
+        setLocalMessages((currentMessages) =>
+          currentMessages.map((message) =>
+            message.id === temporaryId ? savedMessage : message,
+          ),
+        );
       },
-      {
-        onSuccess: () => {
-          setContent("");
-        },
+      onError: () => {
+        setLocalMessages((currentMessages) =>
+          currentMessages.map((message) =>
+            message.id === temporaryId
+              ? {
+                  ...message,
+                  pending: false,
+                  failed: true,
+                }
+              : message,
+          ),
+        );
       },
-    );
-  }
+    },
+  );
+}
+
+
+
 
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -378,7 +509,7 @@ export function DirectConversationThread({
           onKeyDown={handleComposerKeyDown}
           placeholder={`Écrire à ${title}...`}
           rows={2}
-          disabled={sendMessageMutation.isPending}
+          // disabled={sendMessageMutation.isPending}
           className="min-h-[70px] w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500"
         />
 
@@ -416,7 +547,8 @@ export function DirectConversationThread({
 
             <button
               type="submit"
-              disabled={!content.trim() || sendMessageMutation.isPending}
+              // disabled={!content.trim() || sendMessageMutation.isPending}
+              disabled={!content.trim()}
               aria-label="Envoyer"
               className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
