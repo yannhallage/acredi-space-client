@@ -80,14 +80,14 @@ export function useUpdateNote() {
     },
   });
 }
-
 export function useDeleteNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: string) => noteService.delete(id),
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: noteKeys.lists() });
+      queryClient.removeQueries({ queryKey: noteKeys.detail(id) });
     },
   });
 }

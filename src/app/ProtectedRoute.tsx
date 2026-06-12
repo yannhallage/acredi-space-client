@@ -8,7 +8,7 @@ export function ProtectedRoute() {
   const location = useLocation();
 
   if (loading) {
-    return <LoadingState label="Verification de la session..." />;
+    return <LoadingState label="Vérification de la session..." />;
   }
 
   if (!isAuthenticated) {
@@ -17,11 +17,15 @@ export function ProtectedRoute() {
 
   if (user?.enabled === false) {
     logout();
+
     return (
       <Navigate
         to="/login"
         replace
-        state={{ from: location, message: 'Compte desactive. Contactez l administrateur.' }}
+        state={{
+          from: location,
+          message: "Compte désactivé. Contactez l'administrateur.",
+        }}
       />
     );
   }
@@ -40,6 +44,4 @@ export function ProtectedRoute() {
   }
 
   return <Outlet />;
-
-  
 }

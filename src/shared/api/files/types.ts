@@ -54,3 +54,14 @@ export interface WorkspaceFile {
   updatedAt: Date | null;
   raw: FileResponse;
 }
+
+export interface SharedFile {
+  id: string;
+  fileId: string;
+  fileName: string;
+  folderName: string | null;
+  sharedByName: string;
+  sharedWithName: string;
+  permission: string;
+  sharedAt: string;
+}

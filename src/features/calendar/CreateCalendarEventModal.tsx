@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Icon } from "../../shared/ui";
 
@@ -9,6 +9,8 @@ type CreateCalendarEventForm = {
 };
 
 type CreateCalendarEventModalProps = {
+  initialEndsAt?: string;
+  initialStartsAt?: string;
   open: boolean;
   onClose: () => void;
   onCreate: (event: CreateCalendarEventForm) => void;
@@ -21,11 +23,23 @@ const initialForm: CreateCalendarEventForm = {
 };
 
 export function CreateCalendarEventModal({
+  initialEndsAt = "",
+  initialStartsAt = "",
   open,
   onClose,
   onCreate,
 }: CreateCalendarEventModalProps) {
   const [form, setForm] = useState<CreateCalendarEventForm>(initialForm);
+
+  useEffect(() => {
+    if (!open) return;
+
+    setForm((current) => ({
+      ...current,
+      startsAt: initialStartsAt,
+      endsAt: initialEndsAt,
+    }));
+  }, [initialEndsAt, initialStartsAt, open]);
 
   const canSubmit =
     form.title.trim().length >= 2 &&
@@ -79,11 +93,11 @@ export function CreateCalendarEventModal({
             className="note-modal calendar-note-modal"
             role="dialog"
             aria-modal="true"
-            onMouseDown={(event) => event.stopPropagation()}
+            onMouseDown={(mouseEvent) => mouseEvent.stopPropagation()}
           >
             <header>
               <div>
-                <h2>Créer un événement</h2>
+                <h2>Creer un evenement</h2>
                 <span>Calendrier</span>
               </div>
 
@@ -101,8 +115,10 @@ export function CreateCalendarEventModal({
                 <span>Titre</span>
                 <input
                   value={form.title}
-                  onChange={(event) => updateField("title", event.target.value)}
-                  placeholder="Ex: Réunion produit"
+                  onChange={(inputEvent) =>
+                    updateField("title", inputEvent.target.value)
+                  }
+                  placeholder="Ex: Reunion produit"
                   maxLength={180}
                   autoFocus
                 />
@@ -110,12 +126,12 @@ export function CreateCalendarEventModal({
 
               <div className="calendar-form-grid">
                 <label className="calendar-field">
-                  <span>Début</span>
+                  <span>Debut</span>
                   <input
                     type="datetime-local"
                     value={form.startsAt}
-                    onChange={(event) =>
-                      updateField("startsAt", event.target.value)
+                    onChange={(inputEvent) =>
+                      updateField("startsAt", inputEvent.target.value)
                     }
                   />
                 </label>
@@ -125,8 +141,8 @@ export function CreateCalendarEventModal({
                   <input
                     type="datetime-local"
                     value={form.endsAt}
-                    onChange={(event) =>
-                      updateField("endsAt", event.target.value)
+                    onChange={(inputEvent) =>
+                      updateField("endsAt", inputEvent.target.value)
                     }
                   />
                 </label>
@@ -147,7 +163,7 @@ export function CreateCalendarEventModal({
                   disabled={!canSubmit}
                 >
                   <Icon name="plus" size={14} />
-                  Créer
+                  Creer
                 </button>
               </footer>
             </form>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useMyDiscussions } from "../shared/api/discussions";
 import { useAuth, useWorkspace } from "../shared/context";
 import { canAccessAllTeams, canAccessMyTeams } from "../features/teams/access";
 import {
@@ -115,8 +116,9 @@ export function AppLayout() {
   const { user: authenticatedUser, logout } = useAuth();
   const queryClient = useQueryClient();
   const { hasAnyPermission } = usePermissions();
-  const { counts, workspaces, activeWorkspace, setActiveWorkspaceId } =
-    useWorkspace();
+  // const { counts } = useWorkspace();
+  const workspace = useWorkspace();
+  const { counts } = workspace;
   const { dark, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -131,13 +133,6 @@ export function AppLayout() {
   const knownNotificationIdsRef = useRef<Set<string> | null>(null);
   const user = authenticatedUser!;
   const notificationReadStorageKey = `acredi-read-notifications:${user.id}`;
-  const workspaceChannel: Record<string, string> = {
-    direction: "general",
-    product: "sprint-18",
-    sales: "incidents-prod",
-    design: "design-acredi",
-  };
-
   const navItems: NavItem[] = [
     {
       to: "/app/dashboard",
@@ -205,6 +200,7 @@ export function AppLayout() {
     (item) => item.canShow !== false && hasAnyPermission(item.permissions)
   );
   const canUseChat = hasAnyPermission(FEATURE_PERMISSION_REQUIREMENTS.chat);
+  const myDiscussionsQuery = useMyDiscussions({ enabled: canUseChat });
   const canUseSettings = hasAnyPermission(
     FEATURE_PERMISSION_REQUIREMENTS.settings
   );
@@ -397,6 +393,15 @@ export function AppLayout() {
     markNotificationReadMutation.mutate(notification.id);
   }
 
+
+  const workspaceName =
+  "activeWorkspace" in workspace &&
+  workspace.activeWorkspace &&
+  typeof workspace.activeWorkspace === "object" &&
+  "name" in workspace.activeWorkspace
+    ? String(workspace.activeWorkspace.name)
+    : "Acredi Space";
+
   return (
     <>
       <div className="app-layout">
@@ -451,29 +456,41 @@ export function AppLayout() {
             <div className="workspace-list">
               <div className="eyebrow-row">
                 <span>Equipes</span>
-                {/* <span>Espaces</span> */}
                 <Icon name="plus" size={12} />
               </div>
-              {workspaces.map((workspace) => (
-                <button
-                  key={workspace.id}
-                  className={
-                    workspace.id === activeWorkspace.id
-                      ? "workspace active"
-                      : "workspace"
-                  }
-                  type="button"
-                  onClick={() => {
-                    setActiveWorkspaceId(workspace.id);
-                    navigate(
-                      `/app/chat/${workspaceChannel[workspace.id] ?? "general"}`,
-                    );
-                  }}
-                >
-                  <span style={{ background: workspace.color }} />
-                  {workspace.name}
-                </button>
-              ))}
+              {myDiscussionsQuery.isLoading ? (
+                notificationSkeletons.map((item) => (
+                  <span className="skeleton-line workspace-skeleton" key={item} />
+                ))
+              ) : myDiscussionsQuery.isError ? (
+                <p className="muted workspace-error">Discussions indisponibles</p>
+              ) : (myDiscussionsQuery.data ?? []).length ? (
+                (myDiscussionsQuery.data ?? []).map((discussion) => {
+                  const isActive = location.pathname.startsWith(
+                    `/app/chat/${discussion.id}`
+                  );
+
+                  return (
+                    <button
+                      key={discussion.id}
+                      className={isActive ? "workspace active" : "workspace"}
+                      type="button"
+                      onClick={() => {
+                        navigate(`/app/chat/${discussion.id}`);
+                      }}
+                    >
+                      <span
+                        style={{
+                          background: discussion.teamColor ?? "#6366F1",
+                        }}
+                      />
+                      {discussion.name}
+                    </button>
+                  );
+                })
+              ) : (
+                <p className="muted workspace-empty">Aucune discussion</p>
+              )}
             </div>
           ) : null}
         </aside>
@@ -786,12 +803,19 @@ export function AppLayout() {
 
       <AnimatePresence>
         {openSetting ? (
+          // <ModalSetting
+          //   userName={user.name}
+          //   userEmail={user.email}
+          //   workspaceName={activeWorkspace.name}
+          //   onClose={() => setOpenSetting(false)}
+          // />
+
           <ModalSetting
-            userName={user.name}
-            userEmail={user.email}
-            workspaceName={activeWorkspace.name}
-            onClose={() => setOpenSetting(false)}
-          />
+          userName={user.name}
+          userEmail={user.email}
+          workspaceName={workspaceName}
+          onClose={() => setOpenSetting(false)}
+/>
         ) : null}
       </AnimatePresence>
     </>
