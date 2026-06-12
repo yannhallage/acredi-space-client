@@ -319,9 +319,9 @@ export function UsersPage() {
           </div> */}
         <div className="notes-titlebar">
           <span>Utilisateurs</span>
-          <Icon name="list" size={14} />
+          {/* <Icon name="list" size={14} /> */}
           {/* <strong>Notes View</strong> */}
-          <Icon name="chevDown" size={14} />
+          {/* <Icon name="chevDown" size={14} /> */}
         </div>
         <PermissionGate permissions={USERS_INVITE_PERMISSIONS}>
           <button
@@ -372,10 +372,10 @@ export function UsersPage() {
           >
             <Icon name="refresh" size={14} />
           </button>
-          <button className="button ghost" type="button">
+          {/* <button className="button ghost" type="button">
             <Icon name="filter" size={14} />
             Filter
-          </button>
+          </button> */}
           <button
             className="button ghost"
             type="button"
@@ -384,13 +384,13 @@ export function UsersPage() {
             <Icon name="sort" size={14} />
             Sort
           </button>
-          <button
+          {/* <button
             className="icon-button bordered"
             type="button"
             aria-label="More actions"
           >
             <Icon name="moreH" size={14} />
-          </button>
+          </button> */}
         </div>
       </section>
 

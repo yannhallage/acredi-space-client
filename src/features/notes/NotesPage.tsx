@@ -987,12 +987,12 @@ export function NotesPage() {
       {toast.show && <Toast intent={toast.intent} message={toast.message} />}
 
       <section className="notes-toolbar">
-        <div className="notes-titlebar">
+        {/* <div className="notes-titlebar">
           <span>Notes</span>
           <Icon name="list" size={14} />
           <strong>Notes View</strong>
           <Icon name="chevDown" size={14} />
-        </div>
+        </div> */}
 
         <PermissionGate permission={PERMISSIONS.CREATE_NOTES}>
           <button
@@ -1054,10 +1054,10 @@ export function NotesPage() {
             )}
           </button>
 
-          <button className="button ghost" type="button">
+          {/* <button className="button ghost" type="button">
             <Icon name="filter" size={14} />
             Filter
-          </button>
+          </button> */}
 
           <button
             className="button ghost"
@@ -1072,13 +1072,13 @@ export function NotesPage() {
             Sort
           </button>
 
-          <button
+          {/* <button
             className="icon-button bordered"
             type="button"
             aria-label="More actions"
           >
             <Icon name="moreH" size={14} />
-          </button>
+          </button> */}
         </div>
       </section>
 

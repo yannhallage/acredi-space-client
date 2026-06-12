@@ -4262,6 +4262,7 @@ a {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+/* Ancien code commenté : il cassait les div internes de emoji-picker-react.
 .composer div {
   display: flex;
   align-items: center;
@@ -4269,6 +4270,17 @@ a {
 }
 
 .composer div > span {
+  flex: 1;
+}
+*/
+
+.composer > div {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.composer > div > span {
   flex: 1;
 }
 
@@ -9887,4 +9899,163 @@ a {
 .users-actions-item:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* Ancien code emoji commenté : gardé pour référence, mais il créait des conflits avec emoji-picker-react.
+.composer-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.emoji-action-wrapper {
+  position: relative;
+}
+
+.emoji-picker-popover {
+  position: absolute;
+  left: 0;
+  bottom: 38px;
+  z-index: 9999;
+  width: 340px;
+  height: 360px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+}
+
+.emoji-picker-popover .EmojiPickerReact {
+  border: 0 !important;
+  width: 340px !important;
+  height: 360px !important;
+}
+
+
+.emoji-action-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.emoji-picker-popover {
+  position: absolute;
+  left: 0;
+  bottom: 42px;
+  z-index: 999999;
+  width: 340px;
+  height: 380px;
+  overflow: visible;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+}
+
+.emoji-picker-popover .EmojiPickerReact {
+  width: 340px !important;
+  height: 380px !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  --epr-bg-color: #ffffff;
+  --epr-category-label-bg-color: #ffffff;
+  --epr-text-color: #111827;
+  --epr-search-input-bg-color: #f9fafb;
+  --epr-picker-border-color: #e5e7eb;
+}
+
+.emoji-picker-popover .epr-body {
+  height: 285px !important;
+  overflow-y: auto !important;
+}
+
+.emoji-picker-popover .epr-emoji-category-content {
+  display: grid !important;
+  grid-template-columns: repeat(8, 1fr) !important;
+  gap: 4px !important;
+}
+
+.emoji-picker-popover .epr-emoji-category-content button,
+.emoji-picker-popover button.epr-emoji {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
+  color: #111827 !important;
+  background: transparent !important;
+}
+
+.emoji-picker-popover img.epr-emoji-img {
+  display: inline-block !important;
+  width: 24px !important;
+  height: 24px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+*/
+
+/* Emoji picker - ChatPage : version corrigée */
+.thread-panel,
+.composer {
+  overflow: visible;
+}
+
+.composer-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.emoji-action-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.emoji-picker-popover {
+  position: absolute;
+  left: 0;
+  bottom: 42px;
+  z-index: 999999;
+  width: 340px;
+  height: 380px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+}
+
+.emoji-picker-popover .EmojiPickerReact {
+  width: 340px !important;
+  height: 380px !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  --epr-bg-color: #ffffff;
+  --epr-category-label-bg-color: #ffffff;
+  --epr-text-color: #111827;
+  --epr-search-input-bg-color: #f9fafb;
+  --epr-picker-border-color: #e5e7eb;
+  --epr-category-icon-active-color: var(--accent);
+  --epr-hover-bg-color: #f3f4f6;
+  --epr-focus-bg-color: #eef2ff;
+}
+
+.emoji-picker-popover .epr-body {
+  overflow-y: auto !important;
+}
+
+.emoji-picker-popover button.epr-emoji {
+  opacity: 1 !important;
+  visibility: visible !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
 }

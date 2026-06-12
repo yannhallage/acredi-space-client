@@ -15,7 +15,11 @@ import {
 } from "react";
 
 import { NavLink, useNavigate, useParams } from "react-router-dom";
-
+import EmojiPicker, {
+  EmojiClickData,
+  EmojiStyle,
+  Theme,
+} from "emoji-picker-react";
 import {
 
   formatDiscussionMemberName,
@@ -394,7 +398,7 @@ export function ChatPage() {
 
   const [draft, setDraft] = useState("");
 
-
+  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const [localMessages, setLocalMessages] = useState<LocalGroupMessage[]>([]);
 
@@ -412,9 +416,8 @@ export function ChatPage() {
 
   } = useMyDiscussions();
 
-
-
-  const activeDiscussion = useMemo(() => {
+const activeDiscussion = useMemo(() => {
+    
 
     if (!discussions.length) {
 
@@ -449,10 +452,8 @@ export function ChatPage() {
   });
 
 
-
-  const members = discussionDetail?.members ?? activeDiscussion?.members ?? [];
-
-
+const members = discussionDetail?.members ?? activeDiscussion?.members ?? [];
+  
 
   const {
 
@@ -593,6 +594,12 @@ export function ChatPage() {
   //   }
 
   // }
+
+
+  function handleEmojiClick(emojiData: EmojiClickData) {
+  setDraft((currentDraft) => currentDraft + emojiData.emoji);
+  setEmojiOpen(false);
+}
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
   event.preventDefault();
@@ -863,11 +870,11 @@ export function ChatPage() {
 
           </span>
 
-          <button className="icon-button" type="button" aria-label="Lancer une reunion">
+          {/* <button className="icon-button" type="button" aria-label="Lancer une reunion">
 
             <Icon name="video" size={16} />
 
-          </button>
+          </button> */}
 
           <button className="icon-button" type="button" aria-label="Rechercher">
 
@@ -1009,7 +1016,7 @@ export function ChatPage() {
 
           />
 
-          <div>
+          {/* <div>
 
             <button className="icon-button" type="button" aria-label="Joindre">
 
@@ -1051,7 +1058,56 @@ export function ChatPage() {
 
             </button>
 
-          </div>
+          </div> */}
+
+
+
+
+          <div className="composer-actions">
+  <div className="emoji-action-wrapper">
+    <button
+      className="icon-button"
+      type="button"
+      aria-label="Emoji"
+      onClick={() => setEmojiOpen((value) => !value)}
+    >
+      <Icon name="smile" size={15} />
+    </button>
+
+    {emojiOpen ? (
+      <div className="emoji-picker-popover">
+       <EmojiPicker
+  onEmojiClick={handleEmojiClick}
+  width={340}
+  height={360}
+  theme={Theme.LIGHT}
+  emojiStyle={EmojiStyle.NATIVE}
+  lazyLoadEmojis={false}
+  searchPlaceholder="Rechercher un emoji..."
+  previewConfig={{
+    showPreview: false,
+  }}
+/>
+      </div>
+    ) : null}
+  </div>
+
+  <span />
+
+  {sendError ? <small className="chat-send-error">{sendError}</small> : null}
+
+  <small>Entree envoyer</small>
+
+  <button
+    className="button primary"
+    type="submit"
+    disabled={!draft.trim()}
+    aria-label="Envoyer"
+  >
+    <Icon name="send" size={14} />
+  </button>
+</div>
+
 
         </form>
 
@@ -1095,8 +1151,10 @@ export function ChatPage() {
 
                       <strong>{memberName}</strong>
 
-                      <small>{isCurrentUser ? "Vous" : member.roleName ?? "Collaborateur"}</small>
-
+                      {/* <small>{isCurrentUser ? "Vous" : member.roleName ?? "Collaborateur"}</small> */}
+                      <small>
+                        {isCurrentUser ? "Vous" : member.roleName || member.email || "Collaborateur"}
+                      </small>
                     </span>
 
                   </li>
