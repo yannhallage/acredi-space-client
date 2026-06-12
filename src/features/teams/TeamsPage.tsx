@@ -82,7 +82,7 @@ function normalizeSearch(value: string) {
 
 function getErrorMessage(
   error: unknown,
-  fallback = "Une erreur est survenue."
+  fallback = "Une erreur est survenue.",
 ) {
   if (error && typeof error === "object") {
     const maybeError = error as {
@@ -238,24 +238,21 @@ function TeamCard({
         </div>
       </header>
 
-      <div className="team-card-meta">
+      { <div className="team-card-meta">
         <span>
           <Icon name="users" size={14} />
           {membersCount} membre{membersCount > 1 ? "s" : ""}
         </span>
 
-        <span>
+        {/* <span>
           <Icon name="message" size={14} />
           {team.slug ? `#${team.slug}` : "#team"}
-        </span>
-      </div>
+        </span> */}
+      </div> }
 
       <div className="team-card-footer">
         <div className="team-avatars" aria-label={`${membersCount} membres`}>
-          <TeamAvatarStack
-            loading={membersQuery.isLoading}
-            members={members}
-          />
+          <TeamAvatarStack loading={membersQuery.isLoading} members={members} />
         </div>
 
         <div className="team-card-actions">
@@ -273,12 +270,13 @@ function TeamCard({
           </PermissionGate>
 
           <button
-            className="button ghost"
+            className="icon-button bordered"
             type="button"
+            aria-label={`Voir ${team.name}`}
+            title="Voir"
             onClick={() => onOpenDetails(team)}
           >
-            Ouvrir
-            <Icon name="arrowRight" size={14} />
+            <Icon name="eye" size={16} />
           </button>
         </div>
       </div>
@@ -318,7 +316,7 @@ function TeamUserPickerModal({
         }
 
         const searchable = normalizeSearch(
-          [user.name, user.email, user.role, user.team, user.status].join(" ")
+          [user.name, user.email, user.role, user.team, user.status].join(" "),
         );
 
         return searchable.includes(normalizedQuery);
@@ -406,7 +404,7 @@ function TeamUserPickerModal({
                         </span>
                         <span className="skeleton-pill" />
                       </div>
-                    )
+                    ),
                   )
                 : visibleUsers.map((person) => (
                     <button
@@ -525,7 +523,7 @@ function TeamDetailsModal({
             <i style={{ background: team.color }} />
             <div>
               <h2 id="team-details-title">{team.name}</h2>
-              <small>{team.slug ? `#${team.slug}` : "#team"}</small>
+              {/* <small>{team.slug ? `#${team.slug}` : "#team"}</small> */}
             </div>
           </div>
 
@@ -618,7 +616,11 @@ function TeamDetailsModal({
         </section>
 
         <footer>
-          <button className="button primary notes-submit" type="button" onClick={onClose}>
+          <button
+            className="button primary notes-submit"
+            type="button"
+            onClick={onClose}
+          >
             Fermer
           </button>
         </footer>
@@ -760,7 +762,8 @@ export function TeamsPage() {
   });
   const usersQuery = useUsersQuery({ enabled: isDrawerOpen });
   const teams = teamsQuery.data ?? [];
-  const isSubmitting = createTeamMutation.isPending || addMemberMutation.isPending;
+  const isSubmitting =
+    createTeamMutation.isPending || addMemberMutation.isPending;
   const isDeletingTeam = deleteTeamMutation.isPending;
   const isTeamsInitialLoading =
     authLoading ||
@@ -776,7 +779,7 @@ export function TeamsPage() {
 
   const selectedUserIds = useMemo(
     () => new Set(form.members.map((member) => member.user.id)),
-    [form.members]
+    [form.members],
   );
 
   const closeDrawer = useCallback(() => {
@@ -826,7 +829,7 @@ export function TeamsPage() {
 
   function updateField<K extends keyof TeamFormState>(
     key: K,
-    value: TeamFormState[K]
+    value: TeamFormState[K],
   ) {
     setForm((current) => ({
       ...current,
@@ -858,7 +861,7 @@ export function TeamsPage() {
     setForm((current) => ({
       ...current,
       members: current.members.map((member) =>
-        member.user.id === userId ? { ...member, roleName } : member
+        member.user.id === userId ? { ...member, roleName } : member,
       ),
     }));
   }
@@ -871,7 +874,7 @@ export function TeamsPage() {
         setToast((current) => ({ ...current, show: false }));
       }, timeout);
     },
-    []
+    [],
   );
 
   function openDeleteTeamModal(team: Team) {
@@ -918,7 +921,7 @@ export function TeamsPage() {
     } catch (error) {
       const message = getErrorMessage(
         error,
-        "Impossible de supprimer cette equipe."
+        "Impossible de supprimer cette equipe.",
       );
 
       setDeleteError(message);
@@ -957,7 +960,7 @@ export function TeamsPage() {
       closeDrawer();
     } catch (error) {
       setFormError(
-        getErrorMessage(error, "Une erreur est survenue pendant la creation.")
+        getErrorMessage(error, "Une erreur est survenue pendant la creation."),
       );
     }
   }
@@ -977,7 +980,9 @@ export function TeamsPage() {
 
   return (
     <div className="teams-page">
-      {toast.show ? <Toast intent={toast.intent} message={toast.message} /> : null}
+      {toast.show ? (
+        <Toast intent={toast.intent} message={toast.message} />
+      ) : null}
 
       <section className="notes-toolbar">
         <div className="notes-titlebar">
@@ -1190,7 +1195,7 @@ export function TeamsPage() {
                                     onChange={(event) =>
                                       updateDraftMemberRole(
                                         member.user.id,
-                                        event.target.value as TeamMemberRole
+                                        event.target.value as TeamMemberRole,
                                       )
                                     }
                                   >

@@ -1,183 +1,534 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { users } from '../../../shared/api/mockData';
-import { useAuth } from '../../../shared/context';
-import type { Conversation, Presence } from '../../../shared/types';
-import { Avatar, Icon } from '../../../shared/ui';
+// import { useEffect, useMemo, useState } from "react";
+// import { ClipLoader } from "react-spinners";
 
-const presenceLabels: Record<Presence, string> = {
-  online: 'Disponible',
-  busy: 'Occupe',
-  dnd: 'Concentration',
-  offline: 'Hors ligne'
-};
+// import { useCreateDirectChannelMutation } from "../../../shared/api/dm/hooks";
+// import type { ChannelResponse } from "../../../shared/api/dm/types";
+// import { useUsersQuery } from "../../../shared/api/users";
+// import { useAuth } from "../../../shared/context";
+// import type { User } from "../../../shared/types";
+// import { Avatar, Icon } from "../../../shared/ui";
 
-interface NewConversationModalProps {
-  isOpen: boolean;
-  conversations: Conversation[];
-  onClose: () => void;
-  onSelectConversation: (conversationId: string) => void;
-}
+// function normalizeSearch(value: string) {
+//   return value
+//     .normalize("NFD")
+//     .replace(/[\u0300-\u036f]/g, "")
+//     .toLowerCase();
+// }
+
+// interface NewDirectConversationModalProps {
+//   open: boolean;
+//   conversations: ChannelResponse[];
+//   onClose: () => void;
+//   onCreated: (channel: ChannelResponse) => void;
+// }
+
+// export function NewDirectConversationModal({
+//   open,
+//   conversations,
+//   onClose,
+//   onCreated,
+// }: NewDirectConversationModalProps) {
+//   const { user: currentUser } = useAuth();
+//   const usersQuery = useUsersQuery({ enabled: open });
+//   const createDirectChannelMutation = useCreateDirectChannelMutation();
+
+//   const [query, setQuery] = useState("");
+//   const [creatingUserId, setCreatingUserId] = useState<string | null>(null);
+
+//   const directConversations = useMemo(
+//     () => conversations.filter((channel) => channel.privateChannel),
+//     [conversations]
+//   );
+
+//   const unreadByUserName = useMemo(() => {
+//     const map = new Map<string, number>();
+
+//     directConversations.forEach((channel) => {
+//       if (!channel.displayName || !channel.unreadCount) return;
+//       map.set(channel.displayName.toLowerCase(), channel.unreadCount);
+//     });
+
+//     return map;
+//   }, [directConversations]);
+
+//   const visibleUsers = useMemo(() => {
+//     const users = (usersQuery.data ?? []).filter(
+//       (user) => user.id !== currentUser?.id
+//     );
+//     const normalizedQuery = normalizeSearch(query.trim());
+
+//     if (!normalizedQuery) return users;
+
+//     return users.filter((user) => {
+//       const searchable = normalizeSearch(
+//         [user.name, user.email, user.role, user.team, user.status].join(" ")
+//       );
+
+//       return searchable.includes(normalizedQuery);
+//     });
+//   }, [currentUser?.id, query, usersQuery.data]);
+
+//   useEffect(() => {
+//     if (!open) {
+//       setQuery("");
+//       setCreatingUserId(null);
+//       return undefined;
+//     }
+
+//     const onKeyDown = (event: KeyboardEvent) => {
+//       if (event.key === "Escape") {
+//         onClose();
+//       }
+//     };
+
+//     document.addEventListener("keydown", onKeyDown);
+//     return () => document.removeEventListener("keydown", onKeyDown);
+//   }, [open, onClose]);
+
+//   if (!open) return null;
+
+//   function handleCreateDirectConversation(user: User) {
+//     setCreatingUserId(user.id);
+
+//     createDirectChannelMutation.mutate(
+//       { userId: user.id },
+//       {
+//         onSuccess: (channel) => {
+//           onCreated(channel);
+//           onClose();
+//         },
+//         onSettled: () => {
+//           setCreatingUserId(null);
+//         },
+//       }
+//     );
+//   }
+
+//   const isCreating = createDirectChannelMutation.isPending;
+
+//   return (
+//     <div
+//       className="dm-new-conversation-overlay"
+//       role="presentation"
+//       onMouseDown={onClose}
+//     >
+//       <section
+//         className="dm-new-conversation-modal"
+//         role="dialog"
+//         aria-modal="true"
+//         aria-labelledby="dm-new-conversation-title"
+//         onMouseDown={(event) => event.stopPropagation()}
+//       >
+//         <header className="dm-new-conversation-header">
+//           <div>
+//             <h2 id="dm-new-conversation-title">Nouvelle conversation</h2>
+//             <small>{visibleUsers.length} contacts disponibles</small>
+//           </div>
+
+//           <button
+//             className="icon-button"
+//             type="button"
+//             aria-label="Fermer"
+//             onClick={onClose}
+//           >
+//             <Icon name="x" size={16} />
+//           </button>
+//         </header>
+
+//         <label className="dm-new-conversation-search">
+//           <Icon name="search" size={16} />
+//           <input
+//             autoFocus
+//             value={query}
+//             onChange={(event) => setQuery(event.target.value)}
+//             placeholder="Rechercher un utilisateur..."
+//           />
+//         </label>
+
+//         <div className="dm-new-conversation-list">
+//           <p>Utilisateurs</p>
+
+//           {usersQuery.loading
+//             ? ["dm-user-loading-1", "dm-user-loading-2", "dm-user-loading-3"].map(
+//                 (item) => (
+//                   <div
+//                     className="dm-new-conversation-user team-picker-row-skeleton"
+//                     key={item}
+//                   >
+//                     <span className="skeleton-dot" />
+//                     <span className="skeleton-avatar" />
+//                     <span>
+//                       <span className="skeleton-line" />
+//                       <span className="skeleton-line skeleton-short" />
+//                     </span>
+//                     <span className="skeleton-pill" />
+//                   </div>
+//                 )
+//               )
+//             : visibleUsers.map((person) => {
+//                 const unread =
+//                   unreadByUserName.get(person.name.toLowerCase()) ?? 0;
+//                 const isCreatingThisUser = creatingUserId === person.id;
+
+//                 return (
+//                   <button
+//                     key={person.id}
+//                     className="dm-new-conversation-user"
+//                     type="button"
+//                     disabled={isCreating}
+//                     onClick={() => handleCreateDirectConversation(person)}
+//                   >
+//                     {isCreatingThisUser ? (
+//                       <ClipLoader size={14} color="currentColor" />
+//                     ) : (
+//                       <Icon name="send" size={16} />
+//                     )}
+
+//                     <Avatar
+//                       name={person.name}
+//                       presence={person.presence}
+//                       size={34}
+//                     />
+
+//                     <span>
+//                       <strong>{person.name}</strong>
+//                       <small>
+//                         {person.role} - {person.team}
+//                       </small>
+//                     </span>
+
+//                     <em
+//                       className={`dm-new-conversation-status presence-${person.presence}`}
+//                     >
+//                       {person.status}
+//                     </em>
+
+//                     {unread > 0 ? <b>{unread}</b> : null}
+//                   </button>
+//                 );
+//               })}
+
+//           {!usersQuery.loading && usersQuery.error ? (
+//             <div className="dm-new-conversation-empty">
+//               <Icon name="alert" size={18} />
+//               <strong>Chargement impossible</strong>
+//               <span>{usersQuery.error.message}</span>
+//               <button
+//                 className="button ghost mini"
+//                 type="button"
+//                 onClick={() => {
+//                   usersQuery.refetch().catch(() => undefined);
+//                 }}
+//               >
+//                 Reessayer
+//               </button>
+//             </div>
+//           ) : null}
+
+//           {!usersQuery.loading &&
+//           !usersQuery.error &&
+//           visibleUsers.length === 0 ? (
+//             <div className="dm-new-conversation-empty">
+//               <Icon name="users" size={18} />
+//               <strong>Aucun utilisateur trouve</strong>
+//               <span>Essayez un autre nom, email ou role.</span>
+//             </div>
+//           ) : null}
+//         </div>
+
+//         <footer className="dm-new-conversation-footer">
+//           <span>
+//             <Icon name="message" size={14} />
+//             Message direct
+//           </span>
+//           <small>
+//             {directConversations.length} conversation
+//             {directConversations.length > 1 ? "s" : ""}
+//           </small>
+//         </footer>
+//       </section>
+//     </div>
+//   );
+// }
+
+
+import { useEffect, useMemo, useState } from "react";
+import { ClipLoader } from "react-spinners";
+
+import { useCreateDirectChannelMutation } from "../../../shared/api/dm/hooks";
+import type { ChannelResponse } from "../../../shared/api/dm/types";
+import { useUsersQuery } from "../../../shared/api/users";
+import { useAuth } from "../../../shared/context";
+import type { User } from "../../../shared/types";
+import { Avatar, Icon } from "../../../shared/ui";
 
 function normalizeSearch(value: string) {
   return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
 
-export function NewConversationModal({
-  isOpen,
+interface NewDirectConversationModalProps {
+  open: boolean;
+  conversations: ChannelResponse[];
+  onClose: () => void;
+  onCreated: (channel: ChannelResponse) => void;
+}
+
+export function NewDirectConversationModal({
+  open,
   conversations,
   onClose,
-  onSelectConversation
-}: NewConversationModalProps) {
+  onCreated,
+}: NewDirectConversationModalProps) {
   const { user: currentUser } = useAuth();
-  const [query, setQuery] = useState('');
 
-  const conversationByUserId = useMemo(
-    () => new Map(conversations.map((conversation) => [conversation.userId, conversation])),
-    [conversations]
-  );
+  const usersQuery = useUsersQuery({ enabled: open });
+  const createDirectChannelMutation = useCreateDirectChannelMutation();
+
+  const [query, setQuery] = useState("");
+  const [creatingUserId, setCreatingUserId] = useState<string | null>(null);
+
+  const directConversations = useMemo(() => {
+    return conversations.filter((channel) => channel.privateChannel);
+  }, [conversations]);
+
+  const unreadByUserName = useMemo(() => {
+    const map = new Map<string, number>();
+
+    directConversations.forEach((channel) => {
+      if (!channel.displayName || !channel.unreadCount) return;
+
+      map.set(channel.displayName.toLowerCase(), channel.unreadCount);
+    });
+
+    return map;
+  }, [directConversations]);
 
   const visibleUsers = useMemo(() => {
+    const users = (usersQuery.data ?? []).filter(
+      (user) => user.id !== currentUser?.id
+    );
+
     const normalizedQuery = normalizeSearch(query.trim());
 
-    return users
-      .filter((person) => person.id !== currentUser?.id)
-      .filter((person) => conversationByUserId.has(person.id))
-      .filter((person) => {
-        if (!normalizedQuery) {
-          return true;
-        }
+    if (!normalizedQuery) {
+      return users;
+    }
 
-        const searchable = normalizeSearch([
-          person.name,
-          person.email,
-          person.role,
-          person.team,
-          person.status
-        ].join(' '));
+    return users.filter((user) => {
+      const searchable = normalizeSearch(
+        [
+          user.name,
+          user.email,
+          user.role,
+          user.team,
+          user.status,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
 
-        return searchable.includes(normalizedQuery);
-      });
-  }, [conversationByUserId, currentUser?.id, query]);
+      return searchable.includes(normalizedQuery);
+    });
+  }, [currentUser?.id, query, usersQuery.data]);
 
   useEffect(() => {
-    if (!isOpen) {
-      setQuery('');
-      return undefined;
+    if (!open) {
+      setQuery("");
+      setCreatingUserId(null);
+      return;
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         onClose();
       }
     };
 
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [isOpen, onClose]);
+    document.addEventListener("keydown", onKeyDown);
 
-  function selectUser(userId: string) {
-    const conversation = conversationByUserId.get(userId);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, onClose]);
 
-    if (!conversation) {
-      return;
-    }
-
-    onSelectConversation(conversation.id);
-    onClose();
+  if (!open) {
+    return null;
   }
 
-  return (
-    <AnimatePresence>
-      {isOpen ? (
-        <motion.div
-          className="dm-new-conversation-overlay"
-          role="presentation"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.14 }}
-          onMouseDown={onClose}
+  function handleCreateDirectConversation(user: User) {
+    if (createDirectChannelMutation.isPending) return;
+
+    setCreatingUserId(user.id);
+
+    createDirectChannelMutation.mutate(
+      { userId: user.id },
+      {
+        onSuccess: (channel) => {
+          onCreated(channel);
+          onClose();
+        },
+        onSettled: () => {
+          setCreatingUserId(null);
+        },
+      }
+    );
+  }
+
+  const isCreating = createDirectChannelMutation.isPending;
+  const isLoadingUsers = usersQuery.loading;
+  const hasError = Boolean(usersQuery.error);
+  const hasNoUsers = !isLoadingUsers && !hasError && visibleUsers.length === 0;
+
+return (
+  <div
+    className="dm-new-conversation-overlay"
+    role="presentation"
+    onMouseDown={onClose}
+  >
+    <section
+      className="dm-new-conversation-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dm-new-conversation-title"
+      onMouseDown={(event) => event.stopPropagation()}
+    >
+      <header className="dm-new-conversation-header">
+        <div>
+          <h2 id="dm-new-conversation-title">Nouvelle conversation</h2>
+          <small>{visibleUsers.length} contacts disponibles</small>
+        </div>
+
+        <button
+          className="icon-button"
+          type="button"
+          aria-label="Fermer"
+          onClick={onClose}
         >
-          <motion.section
-            className="dm-new-conversation-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="dm-new-conversation-title"
-            initial={{ opacity: 0, y: 12, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <header className="dm-new-conversation-header">
-              <div>
-                <h2 id="dm-new-conversation-title">Nouvelle conversations</h2>
-                <small>{visibleUsers.length} contacts disponibles</small>
+          <Icon name="x" size={16} />
+        </button>
+      </header>
+
+      <label className="dm-new-conversation-search">
+        <Icon name="search" size={16} />
+
+        <input
+          autoFocus
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Rechercher un utilisateur..."
+        />
+      </label>
+
+      <div className="dm-new-conversation-list">
+        <p>Utilisateurs</p>
+
+        {isLoadingUsers ? (
+          ["dm-user-loading-1", "dm-user-loading-2", "dm-user-loading-3"].map(
+            (item) => (
+              <div
+                className="dm-new-conversation-user team-picker-row-skeleton"
+                key={item}
+              >
+                <span className="skeleton-dot" />
+                <span className="skeleton-avatar" />
+                <span>
+                  <span className="skeleton-line" />
+                  <span className="skeleton-line skeleton-short" />
+                </span>
+                <span className="skeleton-pill" />
               </div>
-              <button className="icon-button" type="button" aria-label="Fermer" onClick={onClose}>
-                <Icon name="x" size={16} />
+            )
+          )
+        ) : (
+          visibleUsers.map((person) => {
+            const unread =
+              unreadByUserName.get(person.name.toLowerCase()) ?? 0;
+
+            const isCreatingThisUser = creatingUserId === person.id;
+
+            return (
+              <button
+                key={person.id}
+                className="dm-new-conversation-user"
+                type="button"
+                disabled={isCreating}
+                onClick={() => handleCreateDirectConversation(person)}
+              >
+                {isCreatingThisUser ? (
+                  <ClipLoader size={14} color="currentColor" />
+                ) : (
+                  <Icon name="send" size={16} />
+                )}
+
+                <Avatar
+                  name={person.name}
+                  presence={person.presence}
+                  size={34}
+                />
+
+                <span>
+                  <strong>{person.name}</strong>
+                  <small>
+                    {person.role} - {person.team}
+                  </small>
+                </span>
+
+                <em
+                  className={`dm-new-conversation-status presence-${person.presence}`}
+                >
+                  {person.status}
+                </em>
+
+                {unread > 0 ? <b>{unread}</b> : null}
               </button>
-            </header>
+            );
+          })
+        )}
 
-            <label className="dm-new-conversation-search">
-              <Icon name="search" size={16} />
-              <input
-                autoFocus
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Rechercher un utilisateur..."
-              />
-            </label>
+        {!isLoadingUsers && usersQuery.error ? (
+          <div className="dm-new-conversation-empty">
+            <Icon name="alert" size={18} />
+            <strong>Chargement impossible</strong>
+            <span>{usersQuery.error.message}</span>
 
-            <div className="dm-new-conversation-list">
-              <p>Utilisateurs</p>
-              {visibleUsers.map((person) => {
-                const conversation = conversationByUserId.get(person.id);
+            {"refetch" in usersQuery ? (
+              <button
+                className="button ghost mini"
+                type="button"
+                onClick={() => {
+                  usersQuery.refetch().catch(() => undefined);
+                }}
+              >
+                Réessayer
+              </button>
+            ) : null}
+          </div>
+        ) : null}
 
-                return (
-                  <button
-                    key={person.id}
-                    className="dm-new-conversation-user"
-                    type="button"
-                    onClick={() => selectUser(person.id)}
-                  >
-                    <Icon name="arrowRight" size={16} />
-                    <Avatar name={person.name} size={34} presence={person.presence} />
-                    <span>
-                      <strong>{person.name}</strong>
-                      <small>{person.role} - {person.team}</small>
-                    </span>
-                    <em className={`dm-new-conversation-status presence-${person.presence}`}>
-                      {presenceLabels[person.presence]}
-                    </em>
-                    {conversation && conversation.unread > 0 ? <b>{conversation.unread}</b> : null}
-                  </button>
-                );
-              })}
+        {hasNoUsers ? (
+          <div className="dm-new-conversation-empty">
+            <Icon name="users" size={18} />
+            <strong>Aucun utilisateur trouvé</strong>
+            <span>Essayez un autre nom, email ou rôle.</span>
+          </div>
+        ) : null}
+      </div>
 
-              {visibleUsers.length === 0 ? (
-                <div className="dm-new-conversation-empty">
-                  <Icon name="users" size={18} />
-                  <strong>Aucun utilisateur trouve</strong>
-                  <span>Essayez un autre nom, email ou role.</span>
-                </div>
-              ) : null}
-            </div>
+      <footer className="dm-new-conversation-footer">
+        <span>
+          <Icon name="message" size={14} />
+          Message direct
+        </span>
 
-            <footer className="dm-new-conversation-footer">
-              <span>
-                <Icon name="message" size={14} />
-                Message direct
-              </span>
-              <small>{conversations.length} conversations</small>
-            </footer>
-          </motion.section>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
-  );
+        <small>
+          {directConversations.length} conversation
+          {directConversations.length > 1 ? "s" : ""}
+        </small>
+      </footer>
+    </section>
+  </div>
+);
 }

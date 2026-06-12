@@ -261,3 +261,72 @@ export function useChangeMyPasswordMutation() {
     reset,
   };
 }
+
+
+export function useActivateUserMutation() {
+  const [state, setState] = useState<MutationState<User>>({
+    data: null,
+    error: null,
+    isPending: false,
+  });
+
+  const reset = useCallback(() => {
+    setState({ data: null, error: null, isPending: false });
+  }, []);
+
+  const mutateAsync = useCallback(async (userId: string) => {
+    setState({ data: null, error: null, isPending: true });
+
+    try {
+      const data = await userService.activate(userId);
+      setState({ data, error: null, isPending: false });
+      return data;
+    } catch (error) {
+      const normalizedError = toError(error);
+      setState({ data: null, error: normalizedError, isPending: false });
+      throw normalizedError;
+    }
+  }, []);
+
+  return {
+    ...state,
+    loading: state.isPending,
+    mutate: mutateAsync,
+    mutateAsync,
+    reset,
+  };
+}
+
+export function useDeactivateUserMutation() {
+  const [state, setState] = useState<MutationState<User>>({
+    data: null,
+    error: null,
+    isPending: false,
+  });
+
+  const reset = useCallback(() => {
+    setState({ data: null, error: null, isPending: false });
+  }, []);
+
+  const mutateAsync = useCallback(async (userId: string) => {
+    setState({ data: null, error: null, isPending: true });
+
+    try {
+      const data = await userService.deactivate(userId);
+      setState({ data, error: null, isPending: false });
+      return data;
+    } catch (error) {
+      const normalizedError = toError(error);
+      setState({ data: null, error: normalizedError, isPending: false });
+      throw normalizedError;
+    }
+  }, []);
+
+  return {
+    ...state,
+    loading: state.isPending,
+    mutate: mutateAsync,
+    mutateAsync,
+    reset,
+  };
+}

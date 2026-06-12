@@ -10,6 +10,7 @@ import { resolveAuthenticatedRedirect } from '../../shared/auth/onboarding';
 import { useAuth } from '../../shared/context';
 import { AcrediLockup, Icon } from '../../shared/ui';
 
+
 export function LoginPage() {
   const { completeAuthSession, isAuthenticated, loading, user } = useAuth();
   const loginMutation = useLoginMutation();
@@ -109,7 +110,13 @@ export function LoginPage() {
             />
             Faire confiance a cet appareil
           </label>
-          <Link to="/login">Mot de passe oublie ?</Link>
+         <button
+  type="button"
+  className="forgot-password-link"
+  onClick={() => navigate("/forgot-password")}
+>
+  Mot de passe oublié ?
+</button>
         </div>
         {message && <p className="auth-error text-red-500 text-sm">{message}</p>}
         <button className="button primary button-wide" type="submit" disabled={isSubmitting}>

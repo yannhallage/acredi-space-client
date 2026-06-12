@@ -34,6 +34,8 @@ type ToastState = {
   message: string;
 };
 
+type MeetingAction = "start" | "end";
+
 type MeetingResponse = {
   id: string;
   title: string;
@@ -59,6 +61,10 @@ const hourHeight = 72;
 const startHour = 7;
 const endHour = 22;
 const dropdownWidth = 220;
+
+function getMeetingActionKey(action: MeetingAction, meetingId: string) {
+  return `${action}:${meetingId}`;
+}
 
 function toDateKey(date: Date) {
   const copy = new Date(date);
@@ -194,6 +200,33 @@ function getErrorMessage(error: unknown) {
   return "Une erreur est survenue.";
 }
 
+// grisage des reunions passées
+function isPastMeeting(meeting: Meeting) {
+  const meetingEnd = new Date(`${meeting.date}T${meeting.end}:00`).getTime();
+  return meetingEnd < Date.now();
+}
+
+function isClosedMeeting(meeting: Meeting) {
+  const status = meeting.status?.toUpperCase();
+  return status === "ENDED" || status === "CANCELLED";
+}
+
+function canStartMeeting(meeting: Meeting) {
+  return (
+    !isPastMeeting(meeting) &&
+    !isClosedMeeting(meeting) &&
+    meeting.status?.toUpperCase() !== "LIVE"
+  );
+}
+
+function canEndMeeting(meeting: Meeting) {
+  return !isPastMeeting(meeting) && !isClosedMeeting(meeting);
+}
+
+function isPastDateTime(date: string, time: string) {
+  return new Date(`${date}T${time}:00`).getTime() < Date.now();
+}
+
 export default function MeetingPage() {
   const navigate = useNavigate();
   const [view, setView] = useState<ViewMode>("week");
@@ -218,6 +251,10 @@ export default function MeetingPage() {
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const meetingsQuery = useMeetingsQuery();
+  const isMeetingsLoading =
+    meetingsQuery.isPending ||
+    meetingsQuery.isLoading ||
+    (!meetingsQuery.isSuccess && meetingsQuery.isFetching);
   const [isSaving, setIsSaving] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -272,6 +309,8 @@ export default function MeetingPage() {
     false,
   );
   const usersError = usersQueryState.error;
+  const isMeetingActionLoading = (action: MeetingAction, meetingId: string) =>
+    actionLoadingId === getMeetingActionKey(action, meetingId);
 
   const mapMeetingResponse = (
     meeting: MeetingResponse,
@@ -403,6 +442,17 @@ export default function MeetingPage() {
       return;
     }
 
+
+
+
+    if (isPastDateTime(form.date, form.start)) {
+  setFormError("Impossible de créer ou modifier une réunion à une date déjà passée.");
+  return;
+}
+
+
+
+
     setIsSaving(true);
     setFormError("");
 
@@ -434,8 +484,25 @@ export default function MeetingPage() {
     }
   };
 
-  const cancelMeeting = async (meetingId: string) => {
-    setActionLoadingId(meetingId);
+  const startMeeting = async (meeting: Meeting) => {
+    setActionLoadingId(getMeetingActionKey("start", meeting.id));
+
+    try {
+      await meetingService.start(meeting.id);
+      await meetingsQuery.refetch?.();
+      setOpenMenuId(null);
+      setMenuPosition(null);
+      showToast("success", "Réunion démarrée.");
+    } catch (error) {
+      console.error("Failed to start meeting", error);
+      showToast("error", getErrorMessage(error));
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const endMeeting = async (meetingId: string) => {
+    setActionLoadingId(getMeetingActionKey("end", meetingId));
 
     try {
       await meetingService.end(meetingId);
@@ -444,8 +511,10 @@ export default function MeetingPage() {
       setMenuPosition(null);
       setOpenModal(false);
       setEditingMeeting(null);
+      showToast("success", "Réunion terminée.");
     } catch (error) {
-      console.error("Failed to cancel meeting", error);
+      console.error("Failed to end meeting", error);
+      showToast("error", getErrorMessage(error));
     } finally {
       setActionLoadingId(null);
     }
@@ -546,6 +615,23 @@ export default function MeetingPage() {
   const currentMeetingForMenu =
     meetings.find((meeting) => meeting.id === openMenuId) ?? null;
 
+  const getLoadingMeetingBlocks = (dayIndex: number) => {
+    const blocks = [
+      { start: "09:00", end: "10:00" },
+      { start: "11:30", end: "12:30" },
+      { start: "14:00", end: "15:30" },
+    ];
+
+    if (view === "day") {
+      return blocks;
+    }
+
+    return blocks.filter((_, index) => (dayIndex + index) % 2 === 0);
+  };
+
+  const getMonthSkeletonCount = (day: Date) =>
+    day.getDate() % 3 === 0 ? 2 : 1;
+
   const toggleMeetingMenu = (
     event: MouseEvent<HTMLButtonElement>,
     meetingId: string,
@@ -592,10 +678,60 @@ export default function MeetingPage() {
     };
   }, [openMenuId]);
 
-  const renderMeetingCard = (meeting: Meeting, absolute = true) => (
+  // const renderMeetingCard = (meeting: Meeting, absolute = true) => (
+  //   <div
+  //     key={meeting.id}
+  //     className={`${absolute ? "absolute left-[8px] right-[8px] z-20" : "relative"} cursor-pointer overflow-hidden rounded-[7px] px-2 py-[6px] pr-8 text-left shadow-sm ${meeting.color}`}
+  //     style={
+  //       absolute
+  //         ? {
+  //             top: getTop(meeting.start),
+  //             height: getHeight(meeting.start, meeting.end),
+  //           }
+  //         : undefined
+  //     }
+  //   >
+  //     <button
+  //       onClick={() => openMeetingRoom(meeting)}
+  //       className="block w-full text-left"
+  //       type="button"
+  //     >
+  //       <div className="truncate text-[12px] font-bold leading-[15px] text-[#171717]">
+  //         {meeting.title}
+  //       </div>
+  //       <div className="truncate text-[11px] font-semibold leading-[14px] text-[#171717]">
+  //         {meeting.start} - {meeting.end} · {meeting.mode}
+  //         {meeting.joinUrl ? " · Rejoindre" : ""}
+  //       </div>
+  //       {meeting.description && (
+  //         <div className="mt-[2px] truncate text-[11px] font-medium leading-[14px] text-[#171717]">
+  //           {meeting.description}
+  //         </div>
+  //       )}
+  //     </button>
+
+  //     <button
+  //       onClick={(event) => toggleMeetingMenu(event, meeting.id)}
+  //       className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-[16px] leading-none text-[#171717] hover:bg-black/10"
+  //       aria-label="Options de la réunion"
+  //       type="button"
+  //     >
+  //       ⋮
+  //     </button>
+  //   </div>
+  // );
+
+const renderMeetingCard = (meeting: Meeting, absolute = true) => {
+  const past = isPastMeeting(meeting);
+
+  return (
     <div
       key={meeting.id}
-      className={`${absolute ? "absolute left-[8px] right-[8px] z-20" : "relative"} cursor-pointer overflow-hidden rounded-[7px] px-2 py-[6px] pr-8 text-left shadow-sm ${meeting.color}`}
+      className={`${absolute ? "absolute left-[8px] right-[8px] z-20" : "relative"} overflow-hidden rounded-[7px] px-2 py-[6px] pr-8 text-left shadow-sm ${
+        past
+          ? "cursor-not-allowed bg-[var(--surface-2)] text-[var(--muted)] opacity-70 grayscale"
+          : `cursor-pointer ${meeting.color}`
+      }`}
       style={
         absolute
           ? {
@@ -606,60 +742,85 @@ export default function MeetingPage() {
       }
     >
       <button
-        onClick={() => openMeetingRoom(meeting)}
-        className="block w-full text-left"
+        onClick={() => {
+          if (past) return;
+          openMeetingRoom(meeting);
+        }}
+        disabled={past}
+        className={`block w-full text-left ${
+          past ? "cursor-not-allowed" : ""
+        }`}
         type="button"
       >
-        <div className="truncate text-[12px] font-bold leading-[15px] text-[#171717]">
+        <div
+          className={`truncate text-[12px] font-bold leading-[15px] ${
+            past ? "text-[var(--muted)]" : "text-[#171717]"
+          }`}
+        >
           {meeting.title}
         </div>
-        <div className="truncate text-[11px] font-semibold leading-[14px] text-[#171717]">
+
+        <div
+          className={`truncate text-[11px] font-semibold leading-[14px] ${
+            past ? "text-[var(--muted)]" : "text-[#171717]"
+          }`}
+        >
           {meeting.start} - {meeting.end} · {meeting.mode}
-          {meeting.joinUrl ? " · Rejoindre" : ""}
+          {meeting.joinUrl && !past ? " · Rejoindre" : ""}
+          {past ? " · Terminée" : ""}
         </div>
+
         {meeting.description && (
-          <div className="mt-[2px] truncate text-[11px] font-medium leading-[14px] text-[#171717]">
+          <div
+            className={`mt-[2px] truncate text-[11px] font-medium leading-[14px] ${
+              past ? "text-[var(--muted)]" : "text-[#171717]"
+            }`}
+          >
             {meeting.description}
           </div>
         )}
       </button>
 
-      <button
-        onClick={(event) => toggleMeetingMenu(event, meeting.id)}
-        className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-[16px] leading-none text-[#171717] hover:bg-black/10"
-        aria-label="Options de la réunion"
-        type="button"
-      >
-        ⋮
-      </button>
+      {!past && (
+        <button
+          onClick={(event) => toggleMeetingMenu(event, meeting.id)}
+          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-[16px] leading-none text-[#171717] hover:bg-black/10"
+          aria-label="Options de la réunion"
+          type="button"
+        >
+          ⋮
+        </button>
+      )}
     </div>
   );
+};
+
 
   return (
-    <div className="min-h-screen bg-[#f6f6f6] p-3 text-[13px] text-[#111827] dark:bg-[#0f0f12] dark:text-[#f5f5f5] sm:p-4">
-      <div className="mx-auto flex h-[calc(100vh-24px)] w-full max-w-none flex-col overflow-hidden rounded-[18px] bg-white px-4 py-4 shadow-[0_14px_35px_rgba(0,0,0,0.14)] dark:bg-[#18181b] dark:shadow-[0_14px_35px_rgba(0,0,0,0.35)] sm:h-[calc(100vh-32px)] sm:px-6 sm:py-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex h-full min-h-0 w-full bg-[var(--bg)] p-3 text-[13px] text-[var(--text)] sm:p-4">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden rounded-[18px] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 shadow-[var(--shadow)] sm:px-6 sm:py-5">
+        <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={goToday}
-              className="rounded-full border border-[#ececec] px-4 py-2 text-[12px] font-semibold shadow-sm hover:bg-[#f7f7f7] dark:border-[#2a2a2e] dark:hover:bg-[#222226]"
+              className="rounded-full border border-[var(--border)] px-4 py-2 text-[12px] font-semibold shadow-sm hover:bg-[var(--surface-2)]"
               type="button"
             >
               Aujourd'hui
             </button>
 
-            <div className="flex overflow-hidden rounded-full border border-[#ececec] shadow-sm dark:border-[#2a2a2e]">
+            <div className="flex overflow-hidden rounded-full border border-[var(--border)] shadow-sm">
               <button
                 onClick={goPrevious}
-                className="px-4 py-2 text-[14px] leading-none hover:bg-[#f7f7f7] dark:hover:bg-[#222226]"
+                className="px-4 py-2 text-[14px] leading-none hover:bg-[var(--surface-2)]"
                 type="button"
               >
                 ‹
               </button>
-              <div className="h-8 w-px bg-[#ececec] dark:bg-[#2a2a2e]" />
+              <div className="h-8 w-px bg-[var(--border)]" />
               <button
                 onClick={goNext}
-                className="px-4 py-2 text-[14px] leading-none hover:bg-[#f7f7f7] dark:hover:bg-[#222226]"
+                className="px-4 py-2 text-[14px] leading-none hover:bg-[var(--surface-2)]"
                 type="button"
               >
                 ›
@@ -672,15 +833,15 @@ export default function MeetingPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center rounded-full border border-[#ececec] p-1 shadow-sm dark:border-[#2a2a2e]">
+            <div className="flex items-center rounded-full border border-[var(--border)] p-1 shadow-sm">
               {(["list", "month", "week", "day"] as ViewMode[]).map((item) => (
                 <button
                   key={item}
                   onClick={() => setView(item)}
                   className={`rounded-full px-3 py-2 text-[11px] font-semibold sm:px-4 ${
                     view === item
-                      ? "bg-[#e9e9e9] shadow-sm dark:bg-[#2b2b31]"
-                      : "hover:bg-[#f7f7f7] dark:hover:bg-[#222226]"
+                      ? "bg-[var(--surface-2)] shadow-sm"
+                      : "hover:bg-[var(--surface-2)]"
                   }`}
                   type="button"
                 >
@@ -694,30 +855,26 @@ export default function MeetingPage() {
                 </button>
               ))}
             </div>
-
             <button
-              onClick={() => openCreateModal()}
-              className="rounded-full bg-black px-4 py-2 text-[11px] font-semibold text-white shadow-sm hover:bg-[#222] dark:bg-white dark:text-black dark:hover:bg-[#e8e8e8]"
-              type="button"
-            >
+            onClick={() => {
+              if (isPastDateTime(selectedDateKey, "09:00")) {
+                showToast("warning", "Sélectionne une date future pour créer une réunion.");
+                return;}
+                openCreateModal();}}
+                className="rounded-full bg-[var(--text)] px-4 py-2 text-[11px] font-semibold text-[var(--bg)] shadow-sm hover:opacity-90"
+                type="button">
               Créer une réunion
             </button>
           </div>
         </div>
 
-        {meetingsQuery.isLoading && (
-          <div className="mt-4 rounded-[12px] border border-[#eeeeee] px-4 py-3 text-[12px] font-medium text-[#6b7280] dark:border-[#2a2a2e] dark:text-[#c9c9cf]">
-            Chargement des réunions...
-          </div>
-        )}
-
         {view === "month" ? (
-          <div className="mt-5 grid flex-1 grid-rows-[36px_1fr] overflow-hidden border-t border-l border-[#e5e7eb] dark:border-[#2a2a2e]">
-            <div className="grid grid-cols-7 border-b border-[#e5e7eb] dark:border-[#2a2a2e]">
+          <div className="mt-5 grid min-h-0 flex-1 grid-rows-[36px_minmax(0,1fr)] overflow-hidden border-l border-t border-[var(--border)]">
+            <div className="grid grid-cols-7 border-b border-[var(--border)] bg-[var(--surface)]">
               {weekDays.map((day) => (
                 <div
                   key={toDateKey(day)}
-                  className="flex items-center justify-center border-r border-[#e5e7eb] text-[12px] font-semibold capitalize last:border-r-0 dark:border-[#2a2a2e]"
+                  className="flex items-center justify-center border-r border-[var(--border)] text-[12px] font-semibold capitalize last:border-r-0"
                 >
                   {formatDayName(day, true)}
                 </div>
@@ -741,7 +898,7 @@ export default function MeetingPage() {
                       setSelectedDate(day);
                       setView("day");
                     }}
-                    className="min-h-[104px] border-r border-b border-[#e5e7eb] p-2 text-left hover:bg-[#fafafa] dark:border-[#2a2a2e] dark:hover:bg-[#222226]"
+                    className="min-h-[104px] border-b border-r border-[var(--border)] p-2 text-left hover:bg-[var(--surface-2)]"
                     type="button"
                   >
                     <span
@@ -749,35 +906,51 @@ export default function MeetingPage() {
                         isSelected
                           ? "bg-[#168cf0] text-white"
                           : isCurrentMonth
-                            ? "text-[#111827] dark:text-[#f5f5f5]"
-                            : "text-[#9ca3af]"
+                            ? "text-[var(--text)]"
+                            : "text-[var(--muted)]"
                       }`}
                     >
                       {formatDayNumber(day)}
                     </span>
 
                     <div className="mt-2 space-y-1">
-                      {dayMeetings.slice(0, 3).map((meeting) => (
-                        <div
-                          key={meeting.id}
-                          className={`truncate rounded px-2 py-1 text-[11px] font-semibold text-[#171717] ${meeting.color}`}
-                        >
-                          <button
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openMeetingRoom(meeting);
-                            }}
-                            className="block w-full truncate text-left"
-                            type="button"
-                          >
-                            {meeting.start} · {meeting.title}
-                          </button>
-                        </div>
-                      ))}
-                      {dayMeetings.length > 3 && (
-                        <p className="text-[11px] font-semibold text-[#6b7280]">
-                          +{dayMeetings.length - 3}
-                        </p>
+                      {isMeetingsLoading ? (
+                        Array.from({ length: getMonthSkeletonCount(day) }).map(
+                          (_, index) => (
+                            <div
+                              key={`${dateKey}-meeting-skeleton-${index}`}
+                              className="h-[24px] animate-pulse rounded bg-[var(--surface-2)]"
+                            />
+                          ),
+                        )
+                      ) : (
+                        <>
+                          {dayMeetings.slice(0, 3).map((meeting) => (
+                            <div
+                              key={meeting.id}
+                              className={`truncate rounded px-2 py-1 text-[11px] font-semibold ${
+                                isPastMeeting(meeting)
+                                ? "bg-[var(--surface-2)] text-[var(--muted)] opacity-70 grayscale"
+                                : `text-[#171717] ${meeting.color}`
+                                  }`}>
+                              <button
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  openMeetingRoom(meeting);
+                                }}
+                                className="block w-full truncate text-left"
+                                type="button"
+                              >
+                                {meeting.start} · {meeting.title}
+                              </button>
+                            </div>
+                          ))}
+                          {dayMeetings.length > 3 && (
+                            <p className="text-[11px] font-semibold text-[var(--muted-soft)]">
+                              +{dayMeetings.length - 3}
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                   </button>
@@ -786,10 +959,22 @@ export default function MeetingPage() {
             </div>
           </div>
         ) : view === "list" ? (
-          <div className="mt-5 flex-1 overflow-y-auto border-t border-[#e5e7eb] pt-4 dark:border-[#2a2a2e]">
+          <div className="mt-5 min-h-0 flex-1 overflow-y-auto border-t border-[var(--border)] pt-4">
             <div className="space-y-2">
-              {meetings.length === 0 ? (
-                <div className="rounded-[12px] border border-dashed border-[#d1d5db] p-8 text-center text-[13px] font-medium text-[#6b7280] dark:border-[#2a2a2e] dark:text-[#c9c9cf]">
+              {isMeetingsLoading ? (
+                Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={`meeting-list-skeleton-${index}`}
+                    className="relative rounded-[12px] border border-[var(--border)] px-4 py-3 pr-12"
+                    aria-hidden="true"
+                  >
+                    <div className="h-4 w-2/5 animate-pulse rounded bg-[var(--surface-3)]" />
+                    <div className="mt-2 h-3 w-3/5 animate-pulse rounded bg-[var(--surface-2)]" />
+                    <div className="absolute right-3 top-3 h-7 w-7 animate-pulse rounded-full bg-[var(--surface-2)]" />
+                  </div>
+                ))
+              ) : meetings.length === 0 ? (
+                <div className="rounded-[12px] border border-dashed border-[var(--border)] p-8 text-center text-[13px] font-medium text-[var(--muted-soft)]">
                   Aucune réunion pour le moment.
                 </div>
               ) : (
@@ -802,15 +987,24 @@ export default function MeetingPage() {
                   .map((meeting) => (
                     <div
                       key={meeting.id}
-                      className="relative rounded-[12px] border border-[#eeeeee] px-4 py-3 pr-12 dark:border-[#2a2a2e]"
-                    >
+                     className={`relative rounded-[12px] border px-4 py-3 pr-12 ${
+                      isPastMeeting(meeting)
+                      ? "border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)] opacity-75 grayscale"
+                      : "border-[var(--border)] bg-[var(--surface)]"
+                      }`}>
                       <button
                         onClick={() => openMeetingRoom(meeting)}
                         className="block w-full text-left hover:opacity-80"
                         type="button"
                       >
                         <p className="text-[13px] font-bold">{meeting.title}</p>
-                        <p className="text-[12px] font-medium text-gray-600 dark:text-gray-300">
+                        <p
+                        className={`text-[12px] font-medium ${
+                          isPastMeeting(meeting)
+                          ? "text-[var(--muted)]"
+                          : "text-[var(--muted-soft)]"
+}`}
+>
                           {meeting.date} · {meeting.start} - {meeting.end} ·{" "}
                           {meeting.mode}
                           {meeting.joinUrl ? " · Cliquer pour rejoindre" : ""}
@@ -820,7 +1014,7 @@ export default function MeetingPage() {
                         onClick={(event) =>
                           toggleMeetingMenu(event, meeting.id)
                         }
-                        className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-[16px] leading-none text-[#171717] hover:bg-black/10 dark:text-[#f5f5f5] dark:hover:bg-white/10"
+                        className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-[16px] leading-none text-[var(--text)] hover:bg-[var(--surface-2)]"
                         aria-label="Options de la réunion"
                         type="button"
                       >
@@ -832,9 +1026,9 @@ export default function MeetingPage() {
             </div>
           </div>
         ) : (
-          <div className="mt-5 flex flex-1 flex-col overflow-hidden border-t border-[#cfcfcf] dark:border-[#2a2a2e]">
+          <div className="mt-5 flex min-h-0 flex-1 flex-col overflow-hidden border-t border-[var(--border)]">
             <div
-              className={`grid ${calendarGridClass} border-b border-[#cfcfcf] dark:border-[#2a2a2e]`}
+              className={`grid ${calendarGridClass} border-b border-[var(--border)] bg-[var(--surface)]`}
             >
               <div className="h-11" />
               {visibleDays.map((day) => {
@@ -845,7 +1039,7 @@ export default function MeetingPage() {
                   <button
                     key={dateKey}
                     onClick={() => setSelectedDate(day)}
-                    className="flex h-11 items-center justify-center gap-2 border-r border-[#eeeeee] text-[12px] font-semibold capitalize last:border-r-0 hover:bg-[#fafafa] dark:border-[#2a2a2e] dark:hover:bg-[#222226]"
+                    className="flex h-11 items-center justify-center gap-2 border-r border-[var(--border)] text-[12px] font-semibold capitalize last:border-r-0 hover:bg-[var(--surface-2)]"
                     type="button"
                   >
                     <span>{formatDayName(day)}</span>
@@ -853,7 +1047,7 @@ export default function MeetingPage() {
                       className={`flex h-[22px] min-w-[22px] items-center justify-center rounded-full px-1 text-[11px] font-bold ${
                         active
                           ? "bg-[#168cf0] text-white"
-                          : "text-[#111827] dark:text-[#f5f5f5]"
+                          : "text-[var(--text)]"
                       }`}
                     >
                       {formatDayNumber(day)}
@@ -864,20 +1058,20 @@ export default function MeetingPage() {
             </div>
 
             <div
-              className={`relative grid flex-1 ${calendarGridClass} overflow-auto`}
+              className={`relative grid min-h-0 flex-1 ${calendarGridClass} overflow-auto`}
             >
-              <div className="border-r border-[#eeeeee] dark:border-[#2a2a2e]">
+              <div className="border-r border-[var(--border)]">
                 {hours.map((hour) => (
                   <div
                     key={hour}
-                    className="h-[72px] pr-3 pt-2 text-right text-[12px] font-medium text-[#4b5563] dark:text-[#c9c9cf]"
+                    className="h-[72px] pr-3 pt-2 text-right text-[12px] font-medium text-[var(--muted-soft)]"
                   >
                     {hour}
                   </div>
                 ))}
               </div>
 
-              {visibleDays.map((day) => {
+              {visibleDays.map((day, dayIndex) => {
                 const dateKey = toDateKey(day);
                 const dayMeetings = meetings.filter(
                   (meeting) => meeting.date === dateKey,
@@ -886,18 +1080,49 @@ export default function MeetingPage() {
                 return (
                   <div
                     key={dateKey}
-                    className="relative min-w-[132px] border-r border-[#eeeeee] last:border-r-0 dark:border-[#2a2a2e]"
+                    className="relative min-w-[132px] border-r border-[var(--border)] last:border-r-0"
                   >
                     {hours.map((hour) => (
-                      <button
-                        key={hour}
-                        onClick={() => openCreateModal(dateKey, hour)}
-                        className="block h-[72px] w-full cursor-pointer border-b border-[#eeeeee] text-left hover:bg-[#fafafa] dark:border-[#2a2a2e] dark:hover:bg-[#222226]"
-                        type="button"
-                      />
+                      // <button
+                      //   key={hour}
+                      //   onClick={() => openCreateModal(dateKey, hour)}
+                      //   className="block h-[72px] w-full cursor-pointer border-b border-[#eeeeee] text-left hover:bg-[#fafafa] dark:border-[#2a2a2e] dark:hover:bg-[#222226]"
+                      //   type="button"
+                      // />
+                      <button key={hour}onClick={() => {
+                        if (isPastDateTime(dateKey, hour)) {
+                          showToast("warning", "Impossible de créer une réunion à une date déjà passée.");
+                          return;
+                        }
+                        openCreateModal(dateKey, hour);
+                      }}
+                      className={`block h-[72px] w-full border-b border-[var(--border)] text-left ${
+                        isPastDateTime(dateKey, hour)
+                        ? "cursor-not-allowed bg-[color-mix(in_srgb,var(--bg)_72%,var(--surface))]"
+                        : "cursor-pointer hover:bg-[var(--surface-2)]"
+                        }`}
+                        type="button"/>
                     ))}
 
-                    {dayMeetings.map((meeting) => renderMeetingCard(meeting))}
+                    {isMeetingsLoading
+                      ? getLoadingMeetingBlocks(dayIndex).map(
+                          (block, index) => (
+                            <div
+                              key={`${dateKey}-timeline-skeleton-${index}`}
+                              className="absolute left-[8px] right-[8px] z-20 overflow-hidden rounded-[7px] border border-[var(--border)] bg-[var(--surface-2)] px-2 py-[7px] shadow-sm"
+                              style={{
+                                top: getTop(block.start),
+                                height: getHeight(block.start, block.end),
+                              }}
+                              aria-hidden="true"
+                            >
+                              <div className="h-3 w-2/3 animate-pulse rounded bg-[var(--surface-3)]" />
+                              <div className="mt-2 h-2.5 w-1/2 animate-pulse rounded bg-[var(--surface)]" />
+                              <div className="mt-2 h-2.5 w-4/5 animate-pulse rounded bg-[var(--surface)]" />
+                            </div>
+                          ),
+                        )
+                      : dayMeetings.map((meeting) => renderMeetingCard(meeting))}
                   </div>
                 );
               })}
@@ -908,7 +1133,7 @@ export default function MeetingPage() {
 
       {openMenuId && menuPosition && currentMeetingForMenu && (
         <motion.div
-          className="fixed z-[9999] w-[220px] overflow-hidden rounded-[12px] border border-[#e5e7eb] bg-white py-1 text-[12px] shadow-[0_16px_40px_rgba(0,0,0,0.18)] dark:border-[#2a2a2e] dark:bg-[#222226]"
+          className="fixed z-[9999] w-[220px] overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--surface)] py-1 text-[12px] text-[var(--text)] shadow-[var(--shadow)]"
           style={{ top: menuPosition.top, left: menuPosition.left }}
           onClick={(event) => event.stopPropagation()}
           initial={{
@@ -934,16 +1159,45 @@ export default function MeetingPage() {
           {currentMeetingForMenu.joinUrl && (
             <button
               onClick={() => openMeetingRoom(currentMeetingForMenu)}
-              className="flex w-full items-center px-4 py-2.5 text-left font-semibold text-[#111827] hover:bg-[#f3f4f6] dark:text-[#f5f5f5] dark:hover:bg-[#2f2f35]"
+              className="flex w-full items-center px-4 py-2.5 text-left font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]"
               type="button"
             >
               Rejoindre la réunion
             </button>
           )}
 
+          {/* {canStartMeeting(currentMeetingForMenu) && (
+            <button
+              onClick={() => startMeeting(currentMeetingForMenu)}
+              disabled={isMeetingActionLoading(
+                "start",
+                currentMeetingForMenu.id,
+              )}
+              className="flex w-full items-center px-4 py-2.5 text-left font-semibold text-[#111827] hover:bg-[#f3f4f6] disabled:opacity-60 dark:text-[#f5f5f5] dark:hover:bg-[#2f2f35]"
+              type="button"
+            >
+              {isMeetingActionLoading("start", currentMeetingForMenu.id)
+                ? "Démarrage..."
+                : "Démarrer la réunion"}
+            </button>
+          )} */}
+
+          {/* {canEndMeeting(currentMeetingForMenu) && (
+            <button
+              onClick={() => endMeeting(currentMeetingForMenu.id)}
+              disabled={isMeetingActionLoading("end", currentMeetingForMenu.id)}
+              className="flex w-full items-center px-4 py-2.5 text-left font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60 dark:hover:bg-red-950/30"
+              type="button"
+            >
+              {isMeetingActionLoading("end", currentMeetingForMenu.id)
+                ? "Fin en cours..."
+                : "Terminer la réunion"}
+            </button>
+          )} */}
+
           <button
             onClick={() => handleAddParticipants(currentMeetingForMenu)}
-            className="flex w-full items-center px-4 py-2.5 text-left font-semibold text-[#111827] hover:bg-[#f3f4f6] dark:text-[#f5f5f5] dark:hover:bg-[#2f2f35]"
+            className="flex w-full items-center px-4 py-2.5 text-left font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]"
             type="button"
           >
             Ajouter un participant
@@ -951,21 +1205,17 @@ export default function MeetingPage() {
 
           <button
             onClick={() => openEditModal(currentMeetingForMenu)}
-            className="flex w-full items-center px-4 py-2.5 text-left font-semibold text-[#111827] hover:bg-[#f3f4f6] dark:text-[#f5f5f5] dark:hover:bg-[#2f2f35]"
+            className="flex w-full items-center px-4 py-2.5 text-left font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]"
             type="button"
           >
             Modifier
           </button>
-
           <button
-            onClick={() => cancelMeeting(currentMeetingForMenu.id)}
-            disabled={actionLoadingId === currentMeetingForMenu.id}
-            className="flex w-full items-center px-4 py-2.5 text-left font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60 dark:hover:bg-red-950/30"
+            onClick={() => openEditModal(currentMeetingForMenu)}
+            className="flex w-full items-center px-4 py-2.5 text-left font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]"
             type="button"
           >
-            {actionLoadingId === currentMeetingForMenu.id
-              ? "Annulation..."
-              : "Annuler la réunion"}
+            Annler
           </button>
         </motion.div>
       )}
@@ -976,7 +1226,7 @@ export default function MeetingPage() {
           onMouseDown={() => setOpenModal(false)}
         >
           <div
-            className="w-full max-w-[460px] rounded-[18px] bg-white p-5 shadow-[0_18px_45px_rgba(0,0,0,0.22)] dark:bg-[#18181b] sm:p-6"
+            className="w-full max-w-[460px] rounded-[18px] border border-[var(--border)] bg-[var(--surface)] p-5 text-[var(--text)] shadow-[var(--shadow)] sm:p-6"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <h2 className="text-[16px] font-semibold">
@@ -988,14 +1238,12 @@ export default function MeetingPage() {
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="Titre"
-                className="w-full rounded-[10px] border border-[#e5e5e5] bg-white px-4 py-3 text-[13px] outline-none focus:border-[#168cf0] dark:border-[#2a2a2e] dark:bg-[#111114]"
+                className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[13px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
               />
 
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="w-full rounded-[10px] border border-[#e5e5e5] bg-white px-4 py-3 text-[13px] outline-none focus:border-[#168cf0] dark:border-[#2a2a2e] dark:bg-[#111114]"
+            <input type="date" min={toDateKey(new Date())}
+            value={form.date}
+            onChange={(e) => setForm({ ...form, date: e.target.value })}className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[13px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
               />
 
               <div className="grid grid-cols-2 gap-3">
@@ -1003,14 +1251,14 @@ export default function MeetingPage() {
                   type="time"
                   value={form.start}
                   onChange={(e) => setForm({ ...form, start: e.target.value })}
-                  className="rounded-[10px] border border-[#e5e5e5] bg-white px-4 py-3 text-[13px] outline-none focus:border-[#168cf0] dark:border-[#2a2a2e] dark:bg-[#111114]"
+                  className="rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[13px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
                 />
 
                 <input
                   type="time"
                   value={form.end}
                   onChange={(e) => setForm({ ...form, end: e.target.value })}
-                  className="rounded-[10px] border border-[#e5e5e5] bg-white px-4 py-3 text-[13px] outline-none focus:border-[#168cf0] dark:border-[#2a2a2e] dark:bg-[#111114]"
+                  className="rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[13px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
                 />
               </div>
 
@@ -1020,7 +1268,7 @@ export default function MeetingPage() {
                   setForm({ ...form, description: e.target.value })
                 }
                 placeholder="Description"
-                className="h-[95px] w-full resize-none rounded-[10px] border border-[#e5e5e5] bg-white px-4 py-3 text-[13px] outline-none focus:border-[#168cf0] dark:border-[#2a2a2e] dark:bg-[#111114]"
+                className="h-[95px] w-full resize-none rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[13px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
               />
 
               <select
@@ -1028,14 +1276,14 @@ export default function MeetingPage() {
                 onChange={(e) =>
                   setForm({ ...form, mode: e.target.value as MeetingMode })
                 }
-                className="w-full rounded-[10px] border border-[#e5e5e5] bg-white px-4 py-3 text-[13px] outline-none focus:border-[#168cf0] dark:border-[#2a2a2e] dark:bg-[#111114]"
+                className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[13px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
               >
                 <option value="Online">Online</option>
                 <option value="On-site">On-site</option>
               </select>
 
               {formError && (
-                <p className="rounded-[10px] bg-red-50 px-3 py-2 text-[12px] font-medium text-red-600 dark:bg-red-950/30">
+                <p className="rounded-[10px] bg-[var(--red-soft)] px-3 py-2 text-[12px] font-medium text-[var(--red)]">
                   {formError}
                 </p>
               )}
@@ -1044,14 +1292,14 @@ export default function MeetingPage() {
             <div className="mt-6 flex flex-wrap justify-between gap-3">
               {editingMeeting ? (
                 <button
-                  onClick={() => cancelMeeting(editingMeeting.id)}
-                  disabled={actionLoadingId === editingMeeting.id}
-                  className="rounded-full border border-red-200 px-5 py-2 text-[13px] font-semibold text-red-600 disabled:opacity-60 dark:border-red-900"
+                  onClick={() => endMeeting(editingMeeting.id)}
+                  disabled={isMeetingActionLoading("end", editingMeeting.id)}
+                  className="rounded-full cursor-pointer border border-[color-mix(in_srgb,var(--red)_30%,var(--border))] px-5 py-2 text-[13px] font-semibold text-[var(--red)] disabled:opacity-60"
                   type="button"
                 >
-                  {actionLoadingId === editingMeeting.id
-                    ? "Annulation..."
-                    : "Annuler"}
+                  {isMeetingActionLoading("end", editingMeeting.id)
+                    ? "Fin en cours..."
+                    : "Terminer"}
                 </button>
               ) : (
                 <div />
@@ -1060,7 +1308,7 @@ export default function MeetingPage() {
               <div className="ml-auto flex gap-3">
                 <button
                   onClick={() => setOpenModal(false)}
-                  className="rounded-full border border-[#e5e5e5] px-5 py-2 text-[13px] font-semibold dark:border-[#2a2a2e]"
+                  className="rounded-full cursor-pointer border border-[var(--border)] px-5 py-2 text-[13px] font-semibold hover:bg-[var(--surface-2)]"
                   type="button"
                 >
                   Fermer
@@ -1069,7 +1317,7 @@ export default function MeetingPage() {
                 <button
                   onClick={saveMeeting}
                   disabled={isSaving}
-                  className="rounded-full bg-black px-5 py-2 text-[13px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black"
+                  className="rounded-full cursor-pointer bg-[var(--text)] px-5 py-2 text-[13px] font-semibold text-[var(--bg)] disabled:cursor-not-allowed disabled:opacity-60"
                   type="button"
                 >
                   {isSaving
@@ -1090,11 +1338,11 @@ export default function MeetingPage() {
           onMouseDown={() => setAddParticipantsOpen(false)}
         >
           <div
-            className="w-full max-w-[460px] rounded-[18px] bg-white p-5 shadow-[0_18px_45px_rgba(0,0,0,0.22)] dark:bg-[#18181b] sm:p-6"
+            className="w-full max-w-[460px] rounded-[18px] border border-[var(--border)] bg-[var(--surface)] p-5 text-[var(--text)] shadow-[var(--shadow)] sm:p-6"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <h2 className="text-[16px] font-semibold">Participants</h2>
-            <p className="mt-1 text-[12px] font-medium text-[#6b7280] dark:text-[#c9c9cf]">
+            <p className="mt-1 text-[12px] font-medium text-[var(--muted-soft)]">
               {selectedMeetingForParticipants.title}
             </p>
 
@@ -1104,12 +1352,12 @@ export default function MeetingPage() {
                 value={participantSearch}
                 onChange={(event) => setParticipantSearch(event.target.value)}
                 placeholder="Chercher un utilisateur..."
-                className="w-full rounded-[10px] border border-[#e5e5e5] bg-white px-4 py-3 text-[13px] outline-none focus:border-[#168cf0] dark:border-[#2a2a2e] dark:bg-[#111114]"
+                className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[13px] text-[var(--text)] outline-none focus:border-[var(--accent)]"
               />
 
-              <div className="max-h-[300px] overflow-y-auto rounded-[12px] border border-[#e5e7eb] dark:border-[#2a2a2e]">
+              <div className="max-h-[300px] overflow-y-auto rounded-[12px] border border-[var(--border)]">
                 {usersLoading ? (
-                  <div className="p-4 text-center text-[12px] font-medium text-[#6b7280] dark:text-[#c9c9cf]">
+                  <div className="p-4 text-center text-[12px] font-medium text-[var(--muted-soft)]">
                     Chargement des utilisateurs...
                   </div>
                 ) : usersError ? (
@@ -1119,14 +1367,14 @@ export default function MeetingPage() {
                     </p>
                     <button
                       onClick={() => void usersQueryState.refetch?.()}
-                      className="rounded-full border border-[#e5e5e5] px-4 py-2 text-[12px] font-semibold dark:border-[#2a2a2e]"
+                      className="rounded-full border border-[var(--border)] px-4 py-2 text-[12px] font-semibold hover:bg-[var(--surface-2)]"
                       type="button"
                     >
                       Réessayer
                     </button>
                   </div>
                 ) : visibleUsers.length === 0 ? (
-                  <div className="p-4 text-center text-[12px] font-medium text-[#6b7280] dark:text-[#c9c9cf]">
+                  <div className="p-4 text-center text-[12px] font-medium text-[var(--muted-soft)]">
                     Aucun utilisateur trouvé.
                   </div>
                 ) : (
@@ -1135,7 +1383,7 @@ export default function MeetingPage() {
                       key={user.id}
                       onClick={() => void handleInviteParticipant(user)}
                       disabled={Boolean(invitingUserId)}
-                      className="flex w-full items-center justify-between gap-3 border-b border-[#eeeeee] px-4 py-3 text-left last:border-b-0 hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-60 dark:border-[#2a2a2e] dark:hover:bg-[#222226]"
+                      className="flex w-full items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3 text-left last:border-b-0 hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
                       type="button"
                     >
                       <span className="min-w-0">
@@ -1143,20 +1391,20 @@ export default function MeetingPage() {
                           {getUserLabel(user)}
                         </span>
                         {user.email && (
-                          <span className="block truncate text-[12px] font-medium text-[#6b7280] dark:text-[#c9c9cf]">
+                          <span className="block truncate text-[12px] font-medium text-[var(--muted-soft)]">
                             {user.email}
                           </span>
                         )}
                       </span>
                       {invitingUserId === user.id ? (
-                        <span className="shrink-0 text-[11px] font-semibold text-[#6b7280] dark:text-[#c9c9cf]">
+                        <span className="shrink-0 text-[11px] font-semibold text-[var(--muted-soft)]">
                           Invitation...
                         </span>
                       ) : (
                         Boolean(
                           (user as User & { role?: string | null }).role,
                         ) && (
-                          <span className="shrink-0 rounded-full bg-[#f3f4f6] px-2 py-1 text-[10px] font-bold dark:bg-[#2b2b31]">
+                          <span className="shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-1 text-[10px] font-bold">
                             {(user as User & { role?: string | null }).role}
                           </span>
                         )
@@ -1175,7 +1423,7 @@ export default function MeetingPage() {
                   setParticipantSearch("");
                   setInvitingUserId(null);
                 }}
-                className="rounded-full border border-[#e5e5e5] px-5 py-2 text-[13px] font-semibold dark:border-[#2a2a2e]"
+                className="rounded-full border border-[var(--border)] px-5 py-2 text-[13px] font-semibold hover:bg-[var(--surface-2)]"
                 type="button"
               >
                 Fermer

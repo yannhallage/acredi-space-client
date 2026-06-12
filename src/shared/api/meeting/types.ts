@@ -21,6 +21,14 @@ export type CreateMeetingRequest = {
   teamId?: string | null;
 };
 
+export type UpdateMeetingRequest = {
+  title?: string;
+  description?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  teamId?: string | null;
+};
+
 export type InviteParticipantRequest = {
   userId: string;
 };

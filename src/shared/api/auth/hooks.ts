@@ -16,6 +16,13 @@ interface MutationState<TData> {
   data: TData | null;
   error: Error | null;
   isPending: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+}
+
+interface MutationOptions<TData> {
+  onSuccess?: (data: TData) => void;
+  onError?: (error: Error) => void;
 }
 
 function toError(error: unknown) {
@@ -31,33 +38,76 @@ function useApiMutation<TVariables, TData>(
     data: null,
     error: null,
     isPending: false,
+    isSuccess: false,
+    isError: false,
   });
 
   const reset = useCallback(() => {
-    setState({ data: null, error: null, isPending: false });
+    setState({
+      data: null,
+      error: null,
+      isPending: false,
+      isSuccess: false,
+      isError: false,
+    });
   }, []);
 
   const mutateAsync = useCallback(
-    async (variables: TVariables) => {
-      setState({ data: null, error: null, isPending: true });
+    async (variables: TVariables, options?: MutationOptions<TData>) => {
+      setState({
+        data: null,
+        error: null,
+        isPending: true,
+        isSuccess: false,
+        isError: false,
+      });
 
       try {
         const data = await mutationFn(variables);
-        setState({ data, error: null, isPending: false });
+
+        setState({
+          data,
+          error: null,
+          isPending: false,
+          isSuccess: true,
+          isError: false,
+        });
+
+        options?.onSuccess?.(data);
+
         return data;
       } catch (error) {
         const normalizedError = toError(error);
-        setState({ data: null, error: normalizedError, isPending: false });
+
+        setState({
+          data: null,
+          error: normalizedError,
+          isPending: false,
+          isSuccess: false,
+          isError: true,
+        });
+
+        options?.onError?.(normalizedError);
+
         throw normalizedError;
       }
     },
     [mutationFn]
   );
 
+  const mutate = useCallback(
+    (variables: TVariables, options?: MutationOptions<TData>) => {
+      mutateAsync(variables, options).catch(() => {
+        // L'erreur est déjà stockée dans le state.
+      });
+    },
+    [mutateAsync]
+  );
+
   return {
     ...state,
     loading: state.isPending,
-    mutate: mutateAsync,
+    mutate,
     mutateAsync,
     reset,
   };
