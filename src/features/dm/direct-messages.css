@@ -983,3 +983,230 @@
   border-top: 1px solid #e5e7eb;
   padding: 14px 28px 18px;
 }
+
+/* Theme overrides: the app theme is driven by CSS variables, not Tailwind dark mode. */
+.dm-page {
+  background: var(--bg);
+  border-top-color: var(--border);
+  color: var(--text);
+}
+
+.dm-sidebar {
+  border-right-color: var(--border);
+  background: var(--bg);
+}
+
+.dm-sidebar-header,
+.dm-thread-header,
+.dm-composer,
+.dm-new-modal-footer,
+.dm-thread-skeleton .dm-composer-skeleton {
+  border-color: var(--border);
+}
+
+.dm-section-label,
+.dm-conversation-top span,
+.dm-conversation-bottom p,
+.dm-list-empty,
+.dm-thread-user p,
+.dm-date-separator p,
+.dm-message-meta span,
+.dm-message-seen,
+.dm-thread-empty,
+.dm-send-area span,
+.dm-empty-card p,
+.dm-new-modal-header p,
+.dm-new-users-section h3,
+.dm-new-arrow,
+.dm-new-user-info p,
+.dm-new-modal-footer span,
+.dm-footer-icon {
+  color: var(--muted);
+}
+
+.dm-sidebar-header h1,
+.dm-panel-title h2,
+.dm-conversation-top strong,
+.dm-thread-user h2,
+.dm-message-meta strong,
+.dm-empty-card h2,
+.dm-new-modal-header h2,
+.dm-new-user-info strong {
+  color: var(--text);
+}
+
+.dm-search,
+.dm-new-search {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.dm-search:focus-within,
+.dm-new-search:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 56%, var(--border));
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.dm-search input,
+.dm-new-search input {
+  color: var(--text);
+}
+
+.dm-search input::placeholder,
+.dm-new-search input::placeholder {
+  color: var(--muted);
+}
+
+.dm-tabs button,
+.dm-thread-actions button,
+.dm-composer-tools button,
+.dm-modal-close {
+  color: var(--muted-soft);
+}
+
+.dm-tabs button.active,
+.dm-conversation-item.active,
+.dm-thread-actions button:hover,
+.dm-thread-actions button:focus-visible,
+.dm-composer-tools button:hover,
+.dm-composer-tools button:focus-visible,
+.dm-modal-close,
+.dm-modal-close:hover,
+.dm-new-user-item:hover,
+.dm-new-user-item:focus-visible {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.dm-conversation-item {
+  color: var(--text);
+}
+
+.dm-conversation-item:hover,
+.dm-conversation-item:focus-visible {
+  outline: 0;
+  background: var(--surface);
+}
+
+.dm-new-button,
+.dm-badge,
+.dm-send-button,
+.dm-new-count {
+  background: var(--accent);
+  color: #fff;
+}
+
+.dm-thread,
+.dm-thread-header,
+.dm-composer,
+.dm-empty-state,
+.dm-empty-card,
+.dm-new-modal,
+.dm-new-modal-footer {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.dm-thread-body {
+  background: color-mix(in srgb, var(--bg) 92%, var(--surface));
+}
+
+.dm-date-separator span {
+  background: var(--border);
+}
+
+.dm-message-bubble {
+  border-color: var(--border-subtle);
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.dm-message-row.mine .dm-message-bubble {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}
+
+.dm-composer textarea {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.dm-composer textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.dm-empty-card,
+.dm-new-modal {
+  border-color: var(--border);
+}
+
+.dm-error {
+  color: var(--red);
+}
+
+.dm-status,
+.dm-status-dot {
+  border-color: var(--bg);
+}
+
+.dm-status.online,
+.dm-status-online,
+.dm-dot,
+.dm-dot-online {
+  background: var(--green);
+}
+
+.dm-status.busy,
+.dm-status-busy,
+.dm-dot-busy {
+  background: var(--amber);
+}
+
+.dm-status.dnd,
+.dm-status-focus,
+.dm-dot-dnd {
+  background: var(--red);
+}
+
+.dm-status.offline,
+.dm-status-offline,
+.dm-dot-offline {
+  background: var(--slate);
+}
+
+.dm-pill-busy {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.dm-pill-online {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.dm-pill-focus {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.dm-pill-offline {
+  background: color-mix(in srgb, var(--slate) 16%, transparent);
+  color: var(--muted-soft);
+}
+
+.dm-skeleton-search,
+.dm-skeleton-composer-input {
+  background:
+    linear-gradient(
+      90deg,
+      var(--surface-2) 0%,
+      var(--surface-3) 48%,
+      var(--surface-2) 100%
+    );
+  background-size: 220% 100%;
+}
