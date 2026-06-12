@@ -4,6 +4,7 @@ import type {
   CreateMeetingRequest,
   InviteParticipantRequest,
   MeetingResponse,
+  UpdateMeetingRequest,
 } from "./types";
 
 function unwrapApiResponse<TData>(response: any): TData {
@@ -29,7 +30,7 @@ export const meetingService = {
     return unwrapApiResponse<MeetingResponse>(response);
   },
 
-  async update(id: string, request: CreateMeetingRequest) {
+  async update(id: string, request: UpdateMeetingRequest) {
     const response = await http.put(meetingEndpoints.meeting(id), request);
     return unwrapApiResponse<MeetingResponse>(response);
   },

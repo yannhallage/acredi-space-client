@@ -1,37 +1,38 @@
-import { FormEvent, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useResetPasswordMutation } from "../../../shared/api/auth/hooks";
+import { FormEvent, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useResetPasswordMutation } from '../../../shared/api/auth/hooks';
+import { AcrediLockup, Icon } from '../../../shared/ui';
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const token = useMemo(() => {
-    return searchParams.get("token") ?? "";
+    return searchParams.get('token') ?? '';
   }, [searchParams]);
 
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [localError, setLocalError] = useState("");
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [localError, setLocalError] = useState('');
 
   const resetPasswordMutation = useResetPasswordMutation();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLocalError("");
+    setLocalError('');
 
     if (!token) {
-      setLocalError("Le lien de réinitialisation est invalide.");
+      setLocalError('Le lien de reinitialisation est invalide.');
       return;
     }
 
     if (newPassword.length < 8) {
-      setLocalError("Le mot de passe doit contenir au moins 8 caractères.");
+      setLocalError('Le mot de passe doit contenir au moins 8 caracteres.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setLocalError("Les mots de passe ne correspondent pas.");
+      setLocalError('Les mots de passe ne correspondent pas.');
       return;
     }
 
@@ -42,10 +43,10 @@ export function ResetPasswordPage() {
       },
       {
         onSuccess: () => {
-          navigate("/login", {
+          navigate('/login', {
             replace: true,
             state: {
-              message: "Mot de passe réinitialisé avec succès.",
+              message: 'Mot de passe reinitialise avec succes.',
             },
           });
         },
@@ -53,81 +54,108 @@ export function ResetPasswordPage() {
     );
   }
 
+  const isSubmitting = resetPasswordMutation.isPending;
+
   if (!token) {
     return (
-      <main className="auth-page">
-        <section className="auth-card">
-          <div className="auth-header">
-            <h1>Lien invalide</h1>
-            <p>
-              Le token de réinitialisation est absent. Demandez un nouveau lien.
-            </p>
-          </div>
+      <div className="login-card">
+        <div className="login-mobile-brand">
+          <AcrediLockup size={30} fontSize={22} />
+        </div>
 
-          <Link className="auth-link" to="/forgot-password">
-            Demander un nouveau lien
-          </Link>
-        </section>
-      </main>
+        <div className="auth-state-badge warning" aria-hidden="true">
+          <Icon name="alert" size={20} />
+        </div>
+
+        <div>
+          <p className="eyebrow">Lien invalide</p>
+          <h1>Demander un nouveau lien</h1>
+          <p className="muted">
+            Le token de reinitialisation est absent ou incomplet. Lancez une
+            nouvelle demande pour securiser l'acces au compte.
+          </p>
+        </div>
+
+        <Link className="button primary button-wide" to="/forgot-password">
+          Demander un nouveau lien
+        </Link>
+
+        <Link className="auth-back-link" to="/login">
+          <Icon name="arrowLeft" size={15} />
+          Retour a la connexion
+        </Link>
+      </div>
     );
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-card">
-        <div className="auth-header">
-          <h1>Nouveau mot de passe</h1>
-          <p>Choisissez un nouveau mot de passe pour votre compte.</p>
-        </div>
+    <div className="login-card">
+      <div className="login-mobile-brand">
+        <AcrediLockup size={30} fontSize={22} />
+      </div>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <label className="auth-field">
-            <span>Nouveau mot de passe</span>
+      <div className="auth-state-badge" aria-hidden="true">
+        <Icon name="shield" size={20} />
+      </div>
+
+      <div>
+        <p className="eyebrow">Securite</p>
+        <h1>Choisir un nouveau mot de passe</h1>
+        <p className="muted">
+          Utilisez au moins 8 caracteres pour proteger votre espace Acredi Space.
+        </p>
+      </div>
+
+      <form className="login-form" onSubmit={handleSubmit}>
+        <label>
+          <span>Nouveau mot de passe</span>
+          <span className="input-wrap">
+            <Icon name="lock" size={16} />
             <input
               type="password"
-              placeholder="Minimum 8 caractères"
+              placeholder="Minimum 8 caracteres"
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
+              disabled={isSubmitting}
               minLength={8}
               required
             />
-          </label>
+          </span>
+        </label>
 
-          <label className="auth-field">
-            <span>Confirmer le mot de passe</span>
+        <label>
+          <span>Confirmer le mot de passe</span>
+          <span className="input-wrap">
+            <Icon name="lock" size={16} />
             <input
               type="password"
               placeholder="Confirmez le mot de passe"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
+              disabled={isSubmitting}
               minLength={8}
               required
             />
-          </label>
-
-          <button
-            className="auth-submit"
-            type="submit"
-            disabled={resetPasswordMutation.isPending}
-          >
-            {resetPasswordMutation.isPending
-              ? "Réinitialisation..."
-              : "Réinitialiser le mot de passe"}
-          </button>
-        </form>
+          </span>
+        </label>
 
         {localError && <p className="auth-error">{localError}</p>}
 
         {resetPasswordMutation.isError && (
           <p className="auth-error">
-            Le lien est invalide, expiré ou déjà utilisé.
+            Le lien est invalide, expire ou deja utilise.
           </p>
         )}
 
-        <Link className="auth-link" to="/login">
-          Retour à la connexion
-        </Link>
-      </section>
-    </main>
+        <button className="button primary button-wide" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Reinitialisation...' : 'Reinitialiser le mot de passe'}
+        </button>
+      </form>
+
+      <Link className="auth-back-link" to="/login">
+        <Icon name="arrowLeft" size={15} />
+        Retour a la connexion
+      </Link>
+    </div>
   );
 }

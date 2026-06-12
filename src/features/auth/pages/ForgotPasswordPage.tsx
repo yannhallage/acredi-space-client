@@ -1,9 +1,10 @@
-import { FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
-import { useForgotPasswordMutation } from "../../../shared/api/auth/hooks";
+import { FormEvent, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useForgotPasswordMutation } from '../../../shared/api/auth/hooks';
+import { AcrediLockup, Icon } from '../../../shared/ui';
 
 export function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const forgotPasswordMutation = useForgotPasswordMutation();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -15,62 +16,66 @@ export function ForgotPasswordPage() {
       },
       {
         onSuccess: () => {
-          setEmail("");
+          setEmail('');
         },
       }
     );
   }
 
-  return (
-    <main className="auth-page">
-      <section className="auth-card">
-        <div className="auth-header">
-          <h1>Mot de passe oublié</h1>
-          <p>
-            Entrez votre adresse email. Si un compte existe, vous recevrez un
-            lien de réinitialisation.
-          </p>
-        </div>
+  const isSubmitting = forgotPasswordMutation.isPending;
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <label className="auth-field">
-            <span>Email</span>
+  return (
+    <div className="login-card">
+      <div className="login-mobile-brand">
+        <AcrediLockup size={30} fontSize={22} />
+      </div>
+
+      <div>
+        <p className="eyebrow">Recuperation</p>
+        <h1>Retrouver votre acces</h1>
+        <p className="muted">
+          Entrez votre email professionnel. Si un compte existe, vous recevrez
+          un lien pour choisir un nouveau mot de passe.
+        </p>
+      </div>
+
+      <form className="login-form" onSubmit={handleSubmit}>
+        <label>
+          <span>Email professionnel</span>
+          <span className="input-wrap">
+            <Icon name="mail" size={16} />
             <input
               type="email"
               placeholder="exemple@email.com"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              disabled={isSubmitting}
               required
             />
-          </label>
-
-          <button
-            className="auth-submit"
-            type="submit"
-            disabled={forgotPasswordMutation.isPending}
-          >
-            {forgotPasswordMutation.isPending
-              ? "Envoi en cours..."
-              : "Envoyer le lien"}
-          </button>
-        </form>
+          </span>
+        </label>
 
         {forgotPasswordMutation.isSuccess && (
           <p className="auth-success">
-            Si cet email existe, un lien de réinitialisation a été envoyé.
+            Si cet email existe, un lien de reinitialisation a ete envoye.
           </p>
         )}
 
         {forgotPasswordMutation.isError && (
           <p className="auth-error">
-            Une erreur est survenue. Réessayez plus tard.
+            Une erreur est survenue. Reessayez dans quelques instants.
           </p>
         )}
 
-        <Link className="auth-link" to="/login">
-          Retour à la connexion
-        </Link>
-      </section>
-    </main>
+        <button className="button primary button-wide" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Envoi en cours...' : 'Envoyer le lien'}
+        </button>
+      </form>
+
+      <Link className="auth-back-link" to="/login">
+        <Icon name="arrowLeft" size={15} />
+        Retour a la connexion
+      </Link>
+    </div>
   );
 }
