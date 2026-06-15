@@ -1,7 +1,11 @@
 import { useMemo, useState } from "react";
 
-import type { ChannelResponse } from "../../../shared/api/dm/types";
-import type { User } from "../../../shared/types";
+import type {
+  ChannelResponse,
+  MessageResponse,
+} from "../../../shared/api/dm/types";
+import type { Presence, User } from "../../../shared/types";
+import { Avatar, Icon } from "../../../shared/ui";
 
 import { NewDirectConversationModal } from "./NewConversationModal";
 
@@ -9,72 +13,128 @@ interface DirectConversationListProps {
   conversations: ChannelResponse[];
   users?: User[];
   activeConversationId: string;
+  activeMessages?: MessageResponse[];
   onSelectConversation: (conversationId: string) => void;
   onConversationCreated: (channel: ChannelResponse) => void;
 }
 
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
+type ConversationFilter = "all" | "unread" | "online";
 
 function getConversationName(conversation: ChannelResponse) {
   return (
     conversation.displayName ||
     conversation.name ||
-    (conversation.privateChannel ? "Discussion privée" : "Conversation")
+    (conversation.privateChannel ? "Discussion privee" : "Conversation")
   );
 }
 
 function formatConversationTime(value?: string) {
   if (!value) return "";
 
-  try {
-    const date = new Date(value);
+  const date = new Date(value);
 
-    if (Number.isNaN(date.getTime())) return "";
+  if (Number.isNaN(date.getTime())) return "";
 
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
 
-    if (isToday) {
-      return new Intl.DateTimeFormat("fr-FR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date);
-    }
-
+  if (date.toDateString() === now.toDateString()) {
     return new Intl.DateTimeFormat("fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
     }).format(date);
-  } catch {
-    return "";
+  }
+
+  if (date.toDateString() === yesterday.toDateString()) {
+    return "Hier";
+  }
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "short",
+  }).format(date);
+}
+
+function getLatestMessage(messages: MessageResponse[]) {
+  return messages.reduce<MessageResponse | null>((latestMessage, message) => {
+    if (!latestMessage) return message;
+
+    return new Date(message.createdAt).getTime() >
+      new Date(latestMessage.createdAt).getTime()
+      ? message
+      : latestMessage;
+  }, null);
+}
+
+function getConversationPreview(
+  conversation: ChannelResponse,
+  latestMessage?: MessageResponse | null
+) {
+  const lastMessage =
+    conversation.lastMessage?.trim() || latestMessage?.content?.trim();
+  const unreadCount = conversation.unreadCount ?? 0;
+
+  if (lastMessage) {
+    return lastMessage;
+  }
+
+  if (latestMessage?.attachments?.length) {
+    return latestMessage.attachments.length === 1
+      ? `Piece jointe : ${latestMessage.attachments[0].name}`
+      : `${latestMessage.attachments.length} pieces jointes`;
+  }
+
+  if (unreadCount > 0) {
+    return "Nouveau message";
+  }
+
+  return "Aucun message";
+}
+
+function getPresenceLabel(presence: Presence) {
+  switch (presence) {
+    case "online":
+      return "En ligne";
+    case "busy":
+      return "Occupe";
+    case "away":
+      return "Absent";
+    case "dnd":
+      return "Concentre";
+    case "offline":
+    default:
+      return "Hors ligne";
   }
 }
 
-function getConversationPreview(conversation: ChannelResponse) {
-  if (conversation.lastMessage?.trim()) {
-    return conversation.lastMessage;
-  }
+function formatRoleLabel(role?: string) {
+  const normalized = role?.trim().toUpperCase();
 
-  return conversation.privateChannel
-    ? "Discussion directe"
-    : "Canal de discussion";
+  switch (normalized) {
+    case "ADMIN":
+      return "Admin";
+    case "COLLABORATOR":
+      return "Collaborateur";
+    case "MANAGER":
+      return "Manager";
+    case "OWNER":
+      return "Owner";
+    default:
+      return role || "";
+  }
 }
 
 export function DirectConversationList({
   conversations,
   users = [],
   activeConversationId,
+  activeMessages = [],
   onSelectConversation,
   onConversationCreated,
 }: DirectConversationListProps) {
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<ConversationFilter>("all");
   const [modalOpen, setModalOpen] = useState(false);
 
   const usersByName = useMemo(() => {
@@ -87,66 +147,126 @@ export function DirectConversationList({
     return map;
   }, [users]);
 
+  const enrichedConversations = useMemo(
+    () =>
+      conversations.map((conversation) => {
+        const name = getConversationName(conversation);
+        const participant = usersByName.get(name.toLowerCase());
+        const latestActiveMessage =
+          conversation.id === activeConversationId
+            ? getLatestMessage(activeMessages)
+            : null;
+
+        return {
+          conversation,
+          name,
+          participant,
+          presence: participant?.presence ?? "offline",
+          preview: getConversationPreview(conversation, latestActiveMessage),
+          time: formatConversationTime(
+            conversation.lastMessageAt || latestActiveMessage?.createdAt
+          ),
+          unreadCount: conversation.unreadCount ?? 0,
+        };
+      }),
+    [activeConversationId, activeMessages, conversations, usersByName]
+  );
+
   const filteredConversations = useMemo(() => {
     const value = search.trim().toLowerCase();
 
-    if (!value) return conversations;
+    return enrichedConversations.filter((item) => {
+      const matchesSearch =
+        !value ||
+        item.name.toLowerCase().includes(value) ||
+        item.preview.toLowerCase().includes(value) ||
+        item.participant?.role.toLowerCase().includes(value);
 
-    return conversations.filter((conversation) =>
-      getConversationName(conversation).toLowerCase().includes(value)
-    );
-  }, [conversations, search]);
+      if (!matchesSearch) {
+        return false;
+      }
+
+      if (filter === "unread") {
+        return item.unreadCount > 0;
+      }
+
+      if (filter === "online") {
+        return (
+          item.presence === "online" ||
+          item.presence === "busy" ||
+          item.presence === "away"
+        );
+      }
+
+      return true;
+    });
+  }, [enrichedConversations, filter, search]);
+
+  const filters: Array<{
+    key: ConversationFilter;
+    label: string;
+  }> = [
+    { key: "all", label: "Toutes" },
+    { key: "unread", label: "Non lues" },
+    { key: "online", label: "Actifs" },
+  ];
 
   return (
     <>
-      <aside className="dm-sidebar">
-        {/* <div className="dm-sidebar-header">
-          <div>
-            <p className="dm-section-label">COLLABORATION</p>
-            <h1>Messages directs</h1>
-          </div>
-        </div> */}
-
+      <aside className="dm-sidebar" aria-label="Conversations directes">
         <div className="dm-panel">
           <div className="dm-panel-title">
-            <h2>Messages</h2>
+            <div>
+              <span className="dm-kicker">Messages directs</span>
+              <h2>Messages</h2>
+            </div>
 
             <button
               className="dm-new-button"
               type="button"
               onClick={() => setModalOpen(true)}
               aria-label="Nouvelle conversation"
+              title="Nouvelle conversation"
             >
-              +
+              <Icon name="plus" size={18} />
             </button>
           </div>
 
-          <div className="dm-search">
-            <span>⌕</span>
+          <label className="dm-search">
+            <Icon name="search" size={16} />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Rechercher une conversation..."
+              placeholder="Rechercher..."
             />
-          </div>
+          </label>
 
-          <div className="dm-tabs">
-            <button className="active" type="button">
-              Toutes
-            </button>
-            <button type="button">Non lues</button>
-            <button type="button">Mentions</button>
+          <div className="dm-tabs" role="tablist" aria-label="Filtrer les DM">
+            {filters.map((item) => (
+              <button
+                key={item.key}
+                className={filter === item.key ? "active" : ""}
+                type="button"
+                role="tab"
+                aria-selected={filter === item.key}
+                onClick={() => setFilter(item.key)}
+              >
+                <span>{item.label}</span>
+              </button>
+            ))}
           </div>
 
           <div className="dm-conversation-list">
             {filteredConversations.length === 0 ? (
-              <div className="dm-list-empty">Aucune conversation trouvée.</div>
+              <div className="dm-list-empty">
+                <Icon name="search" size={18} />
+                <strong>Aucune conversation</strong>
+                <span>Change le filtre ou lance un nouveau DM.</span>
+              </div>
             ) : (
-              filteredConversations.map((conversation) => {
-                const name = getConversationName(conversation);
+              filteredConversations.map((item) => {
+                const { conversation, name, participant, presence } = item;
                 const isActive = conversation.id === activeConversationId;
-                const participant = usersByName.get(name.toLowerCase());
-                const presence = participant?.presence ?? "online";
 
                 return (
                   <button
@@ -157,29 +277,32 @@ export function DirectConversationList({
                     }`}
                     onClick={() => onSelectConversation(conversation.id)}
                   >
-                    <div className="dm-avatar">
-                      {getInitials(name)}
-                      <span className={`dm-status ${presence}`} />
-                    </div>
+                    <Avatar
+                      name={name}
+                      presence={presence}
+                      size={44}
+                      src={participant?.avatarUrl}
+                    />
 
-                    <div className="dm-conversation-content">
-                      <div className="dm-conversation-top">
+                    <span className="dm-conversation-content">
+                      <span className="dm-conversation-top">
                         <strong>{name}</strong>
-                        <span>
-                          {formatConversationTime(conversation.lastMessageAt)}
-                        </span>
-                      </div>
+                        {item.time ? <time>{item.time}</time> : null}
+                      </span>
 
-                      <div className="dm-conversation-bottom">
-                        <p>{getConversationPreview(conversation)}</p>
+                      <small className="dm-conversation-role">
+                        {formatRoleLabel(participant?.role) ||
+                          getPresenceLabel(presence)}
+                      </small>
 
-                        {conversation.unreadCount ? (
-                          <span className="dm-badge">
-                            {conversation.unreadCount}
-                          </span>
+                      <span className="dm-conversation-bottom">
+                        <p>{item.preview}</p>
+
+                        {item.unreadCount > 0 ? (
+                          <b className="dm-badge">{item.unreadCount}</b>
                         ) : null}
-                      </div>
-                    </div>
+                      </span>
+                    </span>
                   </button>
                 );
               })

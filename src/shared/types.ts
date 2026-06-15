@@ -1,4 +1,4 @@
-export type Presence = 'online' | 'busy' | 'dnd' | 'offline';
+export type Presence = 'online' | 'busy' | 'away' | 'dnd' | 'offline';
 
 export type AdminRole =
   | 'admin'

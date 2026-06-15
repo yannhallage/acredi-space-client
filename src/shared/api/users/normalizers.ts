@@ -1,4 +1,5 @@
 import type { AdminRole, Presence, User } from "../../types";
+import { readCachedPresence } from "../presence/store";
 import type { NormalizedUserOptions, UserResponse } from "./types";
 
 const adminRoles: AdminRole[] = [
@@ -9,7 +10,7 @@ const adminRoles: AdminRole[] = [
   "member",
   "guest",
 ];
-const presenceValues: Presence[] = ["online", "busy", "dnd", "offline"];
+const presenceValues: Presence[] = ["online", "busy", "away", "dnd", "offline"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
@@ -54,14 +55,22 @@ function normalizeAdminRole(
 
 function normalizePresence(
   payload: UserResponse,
-  fallback: Presence = "online"
+  fallback: Presence = "offline"
 ): Presence {
-  if (presenceValues.includes(payload.presence as Presence)) {
-    return payload.presence as Presence;
+  const payloadPresence = readString(payload.presence)?.toLowerCase();
+
+  if (presenceValues.includes(payloadPresence as Presence)) {
+    return payloadPresence as Presence;
   }
 
   if (payload.enabled === false) {
     return "offline";
+  }
+
+  const userId = readId(payload.id) ?? readId(payload.userId) ?? readId(payload.uuid);
+  const cachedPresence = readCachedPresence(userId);
+  if (cachedPresence) {
+    return cachedPresence;
   }
 
   return fallback;

@@ -81,9 +81,7 @@ export function DirectMessagesPage() {
   }, [activeConversation, usersByName]);
 
   useEffect(() => {
-    if (conversationId) {
-      setSelectedConversationId(conversationId);
-    }
+    setSelectedConversationId(conversationId ?? "");
   }, [conversationId]);
 
   function handleSelectConversation(nextConversationId: string) {
@@ -94,6 +92,11 @@ export function DirectMessagesPage() {
   function handleConversationCreated(channel: ChannelResponse) {
     setSelectedConversationId(channel.id);
     navigate(`/app/dm/${channel.id}`);
+  }
+
+  function handleCloseConversation() {
+    setSelectedConversationId("");
+    navigate("/app/dm");
   }
 
   function handleRefreshDiscussion() {
@@ -129,6 +132,7 @@ export function DirectMessagesPage() {
         conversations={directChannels}
         users={usersQuery.data ?? []}
         activeConversationId={activeConversationId}
+        activeMessages={messages}
         onSelectConversation={handleSelectConversation}
         onConversationCreated={handleConversationCreated}
       />
@@ -145,6 +149,7 @@ export function DirectMessagesPage() {
           loading={messagesLoading}
           refreshing={isRefreshingDiscussion}
           onRefresh={handleRefreshDiscussion}
+          onClose={handleCloseConversation}
         />
       )}
     </div>

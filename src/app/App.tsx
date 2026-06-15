@@ -26,6 +26,7 @@ import { AppLayout } from '../layouts/AppLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { AuthProvider, WorkspaceProvider } from '../shared/context';
 import { NotificationSocketBridge } from '../shared/notifications/NotificationSocketBridge';
+import { PresenceSocketBridge } from '../shared/presence/PresenceSocketBridge';
 import { getDefaultAllowedAppPath, usePermissions } from '../shared/permissions';
 import { ThemeProvider } from '../shared/theme';
 import { ProtectedRoute } from './ProtectedRoute';
@@ -44,6 +45,7 @@ export default function App() {
         <WorkspaceProvider>
           <Router>
             <NotificationSocketBridge />
+            <PresenceSocketBridge />
 
             <Routes>
               <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
@@ -62,6 +64,8 @@ export default function App() {
               </Route>
 
               <Route element={<ProtectedRoute />}>
+                <Route path="/app/meeting-room/:roomName" element={<MeetingRoom />} />
+
                 <Route path="/app" element={<AppLayout />}>
                   <Route index element={<DefaultAppRoute />} />
                   <Route path="dashboard" element={<DashboardPage />} />
@@ -74,7 +78,6 @@ export default function App() {
                   <Route path="calendar" element={<CalendarPage />} />
                   <Route path="meeting" element={<Navigate to="/app/meeting/meet-daily" replace />} />
                   <Route path="meeting/:meetingId" element={<MeetingPage />} />
-                  <Route path="meeting-room/:roomName" element={<MeetingRoom />} />
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="admin" element={<AdminPage />} />
                   <Route path="my-team" element={<MyTeamsPage />} />
