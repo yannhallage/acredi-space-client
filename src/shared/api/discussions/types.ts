@@ -24,18 +24,26 @@ export interface GroupDiscussionMemberResponse {
   joinedAt?: string | null;
 }
 
+function getMemberDisplayName(member: GroupDiscussionMemberResponse) {
+  const fullName = [member.firstName, member.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 
-
-export interface GroupDiscussionMemberResponse {
-  userId: string;
-  displayName?: string | null;
-  name?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  email?: string | null;
-  roleName?: string | null;
-  joinedAt?: string | null;
+  return member.name || fullName || member.email || "Membre";
 }
+
+
+// export interface GroupDiscussionMemberResponse {
+//   userId: string;
+//   displayName?: string | null;
+//   name?: string | null;
+//   firstName?: string | null;
+//   lastName?: string | null;
+//   email?: string | null;
+//   roleName?: string | null;
+//   joinedAt?: string | null;
+// }
 
 
 

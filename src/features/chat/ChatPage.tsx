@@ -1076,7 +1076,7 @@ const members = discussionDetail?.members ?? activeDiscussion?.members ?? [];
 
     {emojiOpen ? (
       <div className="emoji-picker-popover">
-       <EmojiPicker
+      <EmojiPicker
   onEmojiClick={handleEmojiClick}
   width={340}
   height={360}
