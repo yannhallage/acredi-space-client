@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { motion } from 'framer-motion';
+import { useUploadAvatarMutation } from '../api/users';
+import { useAuth } from '../context';
 import { Avatar, Icon, type IconName } from '../ui';
 import { PERMISSIONS, usePermissions, type PermissionCode } from '../permissions';
 
@@ -52,6 +54,14 @@ const GLOBAL_SETTINGS_UPDATE_PERMISSIONS = [
   PERMISSIONS.UPDATE_SETTINGS,
   PERMISSIONS.MANAGE_SETTINGS,
 ] as const satisfies readonly PermissionCode[];
+
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
+
+function getAvatarErrorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : 'Impossible de mettre a jour la photo.';
+}
 
 const TEAM_SETTINGS_VIEW_PERMISSIONS = [
   PERMISSIONS.VIEW_TEAM_SETTINGS,
@@ -488,8 +498,13 @@ interface ModalSettingProps {
 }
 
 export default function ModalSetting({ userEmail, userName, workspaceName, onClose }: ModalSettingProps) {
+  const { user, updateUser } = useAuth();
   const { hasAnyPermission } = usePermissions();
+  const uploadAvatarMutation = useUploadAvatarMutation();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [activeKey, setActiveKey] = useState<SettingKey>('profile');
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [avatarMessage, setAvatarMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const visibleGroups = useMemo(
     () =>
@@ -509,6 +524,8 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
 
   const activeItem = visibleItems.find((item) => item.key === activeKey) ?? visibleItems[0];
   const canUpdateActiveItem = activeItem ? hasAnyPermission(activeItem.updatePermissions) : false;
+  const isUploadingAvatar = uploadAvatarMutation.isPending;
+  const avatarSrc = avatarPreviewUrl ?? user?.avatarUrl ?? null;
 
   useEffect(() => {
     if (activeItem && activeItem.key !== activeKey) {
@@ -526,6 +543,52 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
+
+  useEffect(() => {
+    if (!avatarPreviewUrl?.startsWith('blob:')) {
+      return undefined;
+    }
+
+    return () => {
+      URL.revokeObjectURL(avatarPreviewUrl);
+    };
+  }, [avatarPreviewUrl]);
+
+  async function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setAvatarMessage(null);
+
+    if (!file.type.startsWith('image/')) {
+      setAvatarMessage({ type: 'error', text: 'Merci de choisir une image valide.' });
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_SIZE) {
+      setAvatarMessage({ type: 'error', text: 'La photo doit faire moins de 5 Mo.' });
+      event.target.value = '';
+      return;
+    }
+
+    setAvatarPreviewUrl(URL.createObjectURL(file));
+
+    try {
+      const updatedUser = await uploadAvatarMutation.mutateAsync(file);
+      updateUser(updatedUser);
+      setAvatarPreviewUrl(null);
+      setAvatarMessage({ type: 'success', text: 'Photo de profil mise a jour.' });
+    } catch (error) {
+      setAvatarPreviewUrl(null);
+      setAvatarMessage({ type: 'error', text: getAvatarErrorMessage(error) });
+    } finally {
+      event.target.value = '';
+    }
+  }
 
   return (
     <motion.div
@@ -583,14 +646,50 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
 
               {activeItem.key === 'profile' ? (
                 <div className="modal-setting-profile">
-                  <Avatar name={userName} size={58} />
+                  <div className="modal-setting-avatar-control">
+                    <Avatar name={userName} size={58} src={avatarSrc} />
+                    {canUpdateActiveItem ? (
+                      <button
+                        className="modal-setting-avatar-button"
+                        type="button"
+                        aria-label="Changer la photo"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingAvatar}
+                      >
+                        <Icon name={isUploadingAvatar ? 'refresh' : 'camera'} size={14} />
+                      </button>
+                    ) : null}
+                    <input
+                      ref={fileInputRef}
+                      className="modal-setting-avatar-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      disabled={!canUpdateActiveItem || isUploadingAvatar}
+                    />
+                  </div>
                   <div>
                     <div className="modal-setting-profile-title">
                       <h3>{userName}</h3>
-                      {canUpdateActiveItem ? <Icon name="edit" size={15} /> : null}
+                      {canUpdateActiveItem ? (
+                        <button
+                          className="modal-setting-photo-action"
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploadingAvatar}
+                        >
+                          <Icon name={isUploadingAvatar ? 'refresh' : 'camera'} size={14} />
+                          {isUploadingAvatar ? 'Import...' : 'Changer photo'}
+                        </button>
+                      ) : null}
                     </div>
                     <p>{userEmail}</p>
                     <small>{workspaceName}</small>
+                    {avatarMessage ? (
+                      <small className={`modal-setting-avatar-message ${avatarMessage.type}`}>
+                        {avatarMessage.text}
+                      </small>
+                    ) : null}
                   </div>
                 </div>
               ) : null}

@@ -1,17 +1,11 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import { channels, files, meetings, notifications, workspaces } from '../api/mockData';
+import { workspaces } from '../api/mockData';
 import type { Workspace } from '../types';
 
 interface WorkspaceContextValue {
   activeWorkspace: Workspace;
   workspaces: Workspace[];
   setActiveWorkspaceId: (workspaceId: string) => void;
-  counts: {
-    files: number;
-    unreadMessages: number;
-    liveMeetings: number;
-    notifications: number;
-  };
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(undefined);
@@ -25,12 +19,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       activeWorkspace,
       workspaces,
       setActiveWorkspaceId,
-      counts: {
-        files: files.length,
-        unreadMessages: channels.reduce((sum, channel) => sum + channel.unread, 0),
-        liveMeetings: meetings.filter((meeting) => meeting.live).length,
-        notifications: notifications.filter((notification) => notification.unread).length
-      }
     };
   }, [activeWorkspaceId]);
 

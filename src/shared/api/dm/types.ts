@@ -21,6 +21,14 @@ export interface CreateDirectChannelRequest {
   userId: string;
 }
 
+export interface ChatAttachmentResponse {
+  id: string;
+  name: string;
+  contentType?: string | null;
+  sizeBytes: number;
+  downloadUrl: string;
+}
+
 export interface MessageResponse {
   id: string;
   channelId: string;
@@ -28,9 +36,11 @@ export interface MessageResponse {
   senderName?: string;
   content: string;
   createdAt: string;
+  attachments?: ChatAttachmentResponse[];
 }
 
 export interface SendMessageRequest {
   channelId: string;
   content: string;
+  files?: globalThis.File[];
 }

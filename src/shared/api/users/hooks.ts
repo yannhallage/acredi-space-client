@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { User } from "../../types";
+import { addPresenceListener, patchUsersPresence, readCachedPresence } from "../presence/store";
 import { userService } from "./service";
 import type {
   ChangePasswordRequest,
@@ -30,6 +31,13 @@ function toError(error: unknown) {
     : new Error("Une erreur inconnue est survenue.");
 }
 
+function applyCachedPresence(users: User[]) {
+  return users.map((user) => {
+    const presence = readCachedPresence(user.id);
+    return presence && presence !== user.presence ? { ...user, presence } : user;
+  });
+}
+
 export function useUsersQuery(options: UseUsersQueryOptions = {}) {
   const { enabled = true } = options;
   const [state, setState] = useState<QueryState<User[]>>({
@@ -47,7 +55,7 @@ export function useUsersQuery(options: UseUsersQueryOptions = {}) {
     setState((current) => ({ ...current, error: null, loading: true }));
 
     try {
-      const data = await userService.findAll();
+      const data = applyCachedPresence(await userService.findAll());
       setState({ data, error: null, loading: false });
       return data;
     } catch (error) {
@@ -70,6 +78,7 @@ export function useUsersQuery(options: UseUsersQueryOptions = {}) {
     setState((current) => ({ ...current, error: null, loading: true }));
     userService
       .findAll()
+      .then(applyCachedPresence)
       .then((data) => {
         if (active) {
           setState({ data, error: null, loading: false });
@@ -84,6 +93,25 @@ export function useUsersQuery(options: UseUsersQueryOptions = {}) {
     return () => {
       active = false;
     };
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled) {
+      return undefined;
+    }
+
+    return addPresenceListener((entry) => {
+      setState((current) => {
+        if (!current.data) {
+          return current;
+        }
+
+        return {
+          ...current,
+          data: patchUsersPresence(current.data, entry),
+        };
+      });
+    });
   }, [enabled]);
 
   return { ...state, refetch };

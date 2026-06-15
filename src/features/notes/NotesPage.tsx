@@ -234,7 +234,7 @@ function NoteCard({
 
   return (
     <article
-      className="note-card"
+      className={isMenuOpen ? "note-card menu-open" : "note-card"}
       style={{
         backgroundColor: note.color ?? undefined,
         borderColor,
@@ -1054,10 +1054,10 @@ export function NotesPage() {
             )}
           </button>
 
-          <button className="button ghost" type="button">
+          {/* <button className="button ghost" type="button">
             <Icon name="filter" size={14} />
             Filter
-          </button>
+          </button> */}
 
           <button
             className="button ghost"
@@ -1071,14 +1071,14 @@ export function NotesPage() {
             <Icon name="sort" size={14} />
             Sort
           </button>
-
+{/*
           <button
             className="icon-button bordered"
             type="button"
             aria-label="More actions"
           >
             <Icon name="moreH" size={14} />
-          </button>
+          </button> */}
         </div>
       </section>
 

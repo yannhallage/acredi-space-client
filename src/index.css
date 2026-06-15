@@ -106,6 +106,7 @@ a {
 
 .presence-online { background: var(--green); }
 .presence-busy { background: var(--amber); }
+.presence-away { background: var(--amber); }
 .presence-dnd { background: var(--red); }
 .presence-offline { background: var(--slate); }
 
@@ -974,14 +975,66 @@ a {
   margin-top: 38px;
 }
 
+.modal-setting-avatar-control {
+  position: relative;
+  flex: none;
+}
+
+.modal-setting-avatar-button {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+  cursor: pointer;
+}
+
+.modal-setting-avatar-button:hover,
+.modal-setting-photo-action:hover {
+  background: var(--surface-2);
+}
+
+.modal-setting-avatar-button:disabled,
+.modal-setting-photo-action:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.modal-setting-avatar-input {
+  display: none;
+}
+
 .modal-setting-profile-title {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .modal-setting-profile-title h3 {
   font-size: 17px;
+}
+
+.modal-setting-photo-action {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 8px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .modal-setting-profile p {
@@ -995,6 +1048,14 @@ a {
   margin-top: 2px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.modal-setting-avatar-message.success {
+  color: #16a34a;
+}
+
+.modal-setting-avatar-message.error {
+  color: var(--red);
 }
 
 .modal-setting-section {
@@ -1120,19 +1181,6 @@ a {
 
 .nav-link span {
   flex: 1;
-}
-
-.nav-count {
-  color: var(--muted);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 10px;
-}
-
-.nav-count-accent {
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
 }
 
 .eyebrow-row {
@@ -3780,6 +3828,11 @@ a {
   color: var(--amber);
 }
 
+.dm-new-conversation-status.presence-away {
+  background: color-mix(in srgb, var(--amber) 18%, transparent);
+  color: var(--amber);
+}
+
 .dm-new-conversation-status.presence-dnd {
   background: color-mix(in srgb, var(--red) 14%, transparent);
   color: var(--red);
@@ -5731,6 +5784,27 @@ a {
   font-size: 13px;
 }
 
+.meeting-room-page {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: #050507;
+  color: #fff;
+}
+
+.meeting-room-page > div,
+.meeting-room-page iframe {
+  width: 100%;
+  height: 100%;
+}
+
+.meeting-room-state {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
 .profile-page .card-header h3 {
   font-size: 14px;
   line-height: 1.15;
@@ -7414,6 +7488,7 @@ a {
 }
 
 .note-card {
+  position: relative;
   width: 100%;
   min-height: 220px;
   height: 220px;
@@ -7421,13 +7496,17 @@ a {
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 12px;
-  overflow: hidden;
+  overflow: visible;
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow);
+}
+
+.note-card.menu-open {
+  z-index: 20;
 }
 
 .note-card header,
@@ -7447,6 +7526,61 @@ a {
   flex: none;
   margin: -6px -6px 0 0;
   color: var(--text);
+}
+
+.note-card-actions {
+  position: relative;
+  z-index: 2;
+  flex: none;
+}
+
+.note-card-menu {
+  position: absolute;
+  top: 32px;
+  right: -6px;
+  z-index: 30;
+  width: 164px;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+}
+
+.note-card-menu button {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 6px;
+  padding: 7px 9px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.note-card-menu button:hover,
+.note-card-menu button:focus-visible {
+  outline: 0;
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+.note-card-menu button.danger {
+  color: var(--red);
+}
+
+.note-card-menu button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .note-card h2 {
@@ -8375,26 +8509,6 @@ a {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .nav-count {
-    position: absolute;
-    top: 4px;
-    right: 6px;
-    min-width: 17px;
-    height: 17px;
-    display: inline-grid;
-    place-items: center;
-    padding: 0 5px;
-    border-radius: 999px;
-    background: var(--surface-2);
-    font-size: 9px;
-    line-height: 1;
-  }
-
-  .nav-count-accent {
-    background: var(--accent);
-    color: #fff;
   }
 
   .workspace-list,

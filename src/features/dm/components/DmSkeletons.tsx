@@ -66,7 +66,6 @@ export function DmThreadSkeleton() {
         <div className="dm-thread-actions">
           <span className="skeleton-pill dm-skeleton-action" />
           <span className="skeleton-pill dm-skeleton-action" />
-          <span className="skeleton-pill dm-skeleton-action" />
         </div>
       </header>
 

@@ -1,13 +1,18 @@
+import { Icon } from "../../../shared/ui";
+
 export function DirectConversationEmpty() {
   return (
     <section className="dm-empty-state">
-      <div className="dm-empty-card">
-        <div className="dm-empty-icon">💬</div>
+      <div className="dm-empty-panel">
+        <div className="dm-empty-mark" aria-hidden="true">
+          <Icon name="message" size={30} />
+        </div>
 
-        <h2>Sélectionne une conversation</h2>
+        <span className="dm-kicker">Messages directs</span>
+        <h2>Choisis une conversation</h2>
 
         <p>
-          Clique sur une discussion à gauche pour afficher les messages.
+          Selectionne une discussion a gauche pour afficher les messages.
         </p>
       </div>
     </section>
