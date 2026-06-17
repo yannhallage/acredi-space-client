@@ -1,9 +1,10 @@
 import { clearAuthSession } from "./auth/session";
 
 // const apiUrl = import.meta.env.VITE_API_URL;
-const apiUrl = "https://api-acredispace.acredigroup.com";
+// const apiUrl = "https://api-acredispace.acredigroup.com";
 
-const DEFAULT_API_BASE_URL = apiUrl || "http://localhost:8080/api";
+const DEFAULT_API_BASE_URL = "https://api-acredispace.acredigroup.com";
+// const DEFAULT_API_BASE_URL = apiUrl || "http://localhost:8080/api";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 type QueryParamValue = boolean | number | string | null | undefined;
