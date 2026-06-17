@@ -1,4 +1,4 @@
-name: Build & Deploy Frontend
+name: Build & Push Frontend
 
 on:
   push:
@@ -7,9 +7,6 @@ on:
 
 env:
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/acredispace-front
-  CONTAINER_NAME: acredispace-front
-  # Port local sur le VPS, expose ensuite en HTTPS par le Nginx systeme
-  HOST_PORT: 8081
 
 jobs:
   build-and-push:
@@ -38,28 +35,3 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  deploy:
-    name: Deploiement sur le VPS
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploiement via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_SSH_PORT || 22 }}
-          script: |
-            set -e
-            docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
-            docker pull ${{ env.IMAGE_NAME }}:latest
-            docker stop ${{ env.CONTAINER_NAME }} 2>/dev/null || true
-            docker rm ${{ env.CONTAINER_NAME }} 2>/dev/null || true
-            docker run -d \
-              --name ${{ env.CONTAINER_NAME }} \
-              --restart unless-stopped \
-              -p 127.0.0.1:${{ env.HOST_PORT }}:80 \
-              ${{ env.IMAGE_NAME }}:latest
-            docker image prune -f
