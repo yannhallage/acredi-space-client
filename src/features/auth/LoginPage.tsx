@@ -82,7 +82,7 @@ export function LoginPage() {
       </div>
       <div className="text-[14px]">
         <p className="eyebrow">Connexion securisee</p>
-        <h1>Yann Hallage.</h1>
+        <h1>Ravi de vous revoir.</h1>
         <p className="muted">Connectez-vous a votre espace pour retrouver fichiers, messages et reunions.</p>
       </div>
 
