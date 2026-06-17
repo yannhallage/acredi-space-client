@@ -23,7 +23,7 @@ function defaultSocketUrl() {
 }
 
 function socketUrl() {
-  return import.meta.env.VITE_WS_URL || defaultSocketUrl();
+  return defaultSocketUrl();
 }
 
 function readPresenceMessage(message: IMessage) {
