@@ -82,6 +82,7 @@ export function ProfileCompletionPage() {
   const updateProfileMutation = useUpdateProfileMutation();
   const uploadAvatarMutation = useUploadAvatarMutation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const initializedUserIdRef = useRef<string | null>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -99,8 +100,18 @@ export function ProfileCompletionPage() {
 
   useEffect(() => {
     if (!user) {
+      initializedUserIdRef.current = null;
       return;
     }
+
+    // N'initialiser le formulaire qu'une fois par utilisateur : les mises a jour
+    // de presence en arriere-plan (usePresenceSocket -> updateUser) recreent
+    // l'objet `user`, ce qui sinon effacerait la selection de profil et l'image.
+    if (initializedUserIdRef.current === user.id) {
+      return;
+    }
+
+    initializedUserIdRef.current = user.id;
 
     const [first = '', ...rest] = (user.name ?? '').split(' ');
     setFirstName(first);
