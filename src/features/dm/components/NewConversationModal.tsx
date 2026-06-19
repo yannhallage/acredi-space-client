@@ -269,6 +269,12 @@ function normalizeSearch(value: string) {
     .toLowerCase();
 }
 
+function userPresenceLabel(user: Pick<User, "enabled" | "presence">) {
+  return user.enabled === false || user.presence === "offline"
+    ? "Inactif"
+    : "Disponible";
+}
+
 interface NewDirectConversationModalProps {
   open: boolean;
   conversations: ChannelResponse[];
@@ -479,7 +485,7 @@ return (
                 <em
                   className={`dm-new-conversation-status presence-${person.presence}`}
                 >
-                  {person.status}
+                  {userPresenceLabel(person)}
                 </em>
 
                 {unread > 0 ? <b>{unread}</b> : null}

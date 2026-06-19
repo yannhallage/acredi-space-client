@@ -3,14 +3,49 @@ export interface ApiResponse<TData = unknown> {
   message: string;
 }
 
+// export interface GroupDiscussionMemberResponse {
+//   userId: string;
+//   name?: string | null;
+//   firstName?: string | null;
+//   lastName?: string | null;
+//   email?: string | null;
+//   roleName?: string | null;
+// }
+
+
 export interface GroupDiscussionMemberResponse {
   userId: string;
+  displayName?: string | null;
   name?: string | null;
   firstName?: string | null;
   lastName?: string | null;
   email?: string | null;
   roleName?: string | null;
+  joinedAt?: string | null;
 }
+
+function getMemberDisplayName(member: GroupDiscussionMemberResponse) {
+  const fullName = [member.firstName, member.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return member.name || fullName || member.email || "Membre";
+}
+
+
+// export interface GroupDiscussionMemberResponse {
+//   userId: string;
+//   displayName?: string | null;
+//   name?: string | null;
+//   firstName?: string | null;
+//   lastName?: string | null;
+//   email?: string | null;
+//   roleName?: string | null;
+//   joinedAt?: string | null;
+// }
+
+
 
 export interface GroupDiscussionResponse {
   id: string;

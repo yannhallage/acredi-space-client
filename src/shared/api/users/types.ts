@@ -1,7 +1,8 @@
 import type { AdminRole, Presence, User } from "../../types";
 
 export type AppThemePreference = "LIGHT" | "DARK";
-export type RoleName = "ADMIN" | "MANAGER" | "USER";
+// export type RoleName = "ADMIN" | "MANAGER" | "USER";
+export type RoleName = "ADMIN" | "MANAGER" | "COLLABORATOR";
 
 export interface ApiResponse<TData = unknown> {
   data: TData;

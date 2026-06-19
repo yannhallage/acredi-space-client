@@ -14,6 +14,7 @@ interface DirectConversationListProps {
   users?: User[];
   activeConversationId: string;
   activeMessages?: MessageResponse[];
+  latestMessagesByChannelId?: Record<string, MessageResponse>;
   onSelectConversation: (conversationId: string) => void;
   onConversationCreated: (channel: ChannelResponse) => void;
 }
@@ -67,12 +68,30 @@ function getLatestMessage(messages: MessageResponse[]) {
   }, null);
 }
 
+function getMessagePreview(message: MessageResponse) {
+  const content = message.content.trim();
+  const preview =
+    content ||
+    (message.attachments?.length
+      ? message.attachments.length === 1
+        ? `Piece jointe : ${message.attachments[0].name}`
+        : `${message.attachments.length} pieces jointes`
+      : "");
+
+  if (!preview) {
+    return "";
+  }
+
+  return preview;
+}
+
 function getConversationPreview(
   conversation: ChannelResponse,
   latestMessage?: MessageResponse | null
 ) {
-  const lastMessage =
-    conversation.lastMessage?.trim() || latestMessage?.content?.trim();
+  const lastMessage = latestMessage
+    ? getMessagePreview(latestMessage)
+    : conversation.lastMessage?.trim();
   const unreadCount = conversation.unreadCount ?? 0;
 
   if (lastMessage) {
@@ -130,6 +149,7 @@ export function DirectConversationList({
   users = [],
   activeConversationId,
   activeMessages = [],
+  latestMessagesByChannelId = {},
   onSelectConversation,
   onConversationCreated,
 }: DirectConversationListProps) {
@@ -156,20 +176,28 @@ export function DirectConversationList({
           conversation.id === activeConversationId
             ? getLatestMessage(activeMessages)
             : null;
+        const latestMessage =
+          latestActiveMessage ?? latestMessagesByChannelId[conversation.id];
 
         return {
           conversation,
           name,
           participant,
           presence: participant?.presence ?? "offline",
-          preview: getConversationPreview(conversation, latestActiveMessage),
+          preview: getConversationPreview(conversation, latestMessage),
           time: formatConversationTime(
-            conversation.lastMessageAt || latestActiveMessage?.createdAt
+            latestMessage?.createdAt || conversation.lastMessageAt
           ),
           unreadCount: conversation.unreadCount ?? 0,
         };
       }),
-    [activeConversationId, activeMessages, conversations, usersByName]
+    [
+      activeConversationId,
+      activeMessages,
+      conversations,
+      latestMessagesByChannelId,
+      usersByName,
+    ]
   );
 
   const filteredConversations = useMemo(() => {
@@ -228,7 +256,7 @@ export function DirectConversationList({
               aria-label="Nouvelle conversation"
               title="Nouvelle conversation"
             >
-              <Icon name="plus" size={18} />
+              <Icon name="plus" size={16} />
             </button>
           </div>
 

@@ -52,10 +52,10 @@
 }
 
 .dm-new-button {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--accent);
   color: #fff;
   display: inline-grid;
@@ -124,11 +124,34 @@
 
 .dm-conversation-list {
   min-height: 0;
-  padding-top: 8px;
+  padding: 8px 6px 0 0;
   overflow-y: auto;
+  scrollbar-color: color-mix(in srgb, var(--muted) 55%, transparent) transparent;
+  scrollbar-width: thin;
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.dm-conversation-list::-webkit-scrollbar,
+.dm-thread-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dm-conversation-list::-webkit-scrollbar-track,
+.dm-thread-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dm-conversation-list::-webkit-scrollbar-thumb,
+.dm-thread-body::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 42%, transparent);
+}
+
+.dm-conversation-list::-webkit-scrollbar-thumb:hover,
+.dm-thread-body::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--muted-soft) 62%, transparent);
 }
 
 .dm-conversation-item {
@@ -398,6 +421,8 @@
   min-height: 0;
   padding: 22px 56px;
   overflow-y: auto;
+  scrollbar-color: color-mix(in srgb, var(--muted) 55%, transparent) transparent;
+  scrollbar-width: thin;
   background: var(--surface);
 }
 

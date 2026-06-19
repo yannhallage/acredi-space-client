@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { chatService } from "./service";
 import type {
   ChannelResponse,
@@ -32,6 +37,17 @@ export function useMessagesQuery(channelId?: string) {
     queryFn: () => chatService.findMessages(channelId!),
     enabled: Boolean(channelId),
     staleTime: 1000 * 10,
+  });
+}
+
+export function useMessagesQueries(channelIds: string[]) {
+  return useQueries({
+    queries: channelIds.map((channelId) => ({
+      queryKey: chatKeys.messages(channelId),
+      queryFn: () => chatService.findMessages(channelId),
+      enabled: Boolean(channelId),
+      staleTime: 1000 * 10,
+    })),
   });
 }
 

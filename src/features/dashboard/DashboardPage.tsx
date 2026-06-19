@@ -898,14 +898,14 @@ export function DashboardPage() {
             {permittedWidgets.length > 1 ? "s" : ""} selon vos permissions.
           </p>
         </div>
-        <button
+        {/* <button
           className="inline-flex h-9 w-max cursor-pointer items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 font-semibold text-[var(--text)] hover:bg-[var(--surface-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5B6CFF]"
           type="button"
           onClick={() => widgetsQuery.refetch()}
         >
           <Icon name="refresh" size={12} />
           {/* Actualiser */}
-        </button>
+        {/* </button> */} 
       </header>
 
       {permittedWidgets.length ? (

@@ -13,18 +13,52 @@ function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
   return response.data;
 }
 
+// export function formatDiscussionMemberName(
+//   member: Pick<
+//     GroupDiscussionMemberResponse,
+//     "name" | "firstName" | "lastName" | "email"
+//   >
+// ) {
+//   if (member.name?.trim()) {
+//     return member.name.trim();
+//   }
+
+//   const firstName = member.firstName?.trim() ?? "";
+//   const lastName = member.lastName?.trim() ?? "";
+
+//   if (firstName && lastName) {
+//     return `${firstName} ${lastName}`;
+//   }
+
+//   if (firstName) {
+//     return firstName;
+//   }
+
+//   if (lastName) {
+//     return lastName;
+//   }
+
+//   return member.email?.trim() || "Membre";
+// }
+
+
 export function formatDiscussionMemberName(
   member: Pick<
     GroupDiscussionMemberResponse,
-    "name" | "firstName" | "lastName" | "email"
+    "displayName" | "name" | "firstName" | "lastName" | "email"
   >
 ) {
+  if (member.displayName?.trim()) {
+    return member.displayName.trim();
+  }
+
   if (member.name?.trim()) {
     return member.name.trim();
   }
 
   const firstName = member.firstName?.trim() ?? "";
   const lastName = member.lastName?.trim() ?? "";
+  
 
   if (firstName && lastName) {
     return `${firstName} ${lastName}`;
@@ -40,6 +74,7 @@ export function formatDiscussionMemberName(
 
   return member.email?.trim() || "Membre";
 }
+
 
 export const discussionService = {
   async findMine() {

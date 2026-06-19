@@ -310,7 +310,7 @@ function NoteCard({
                     </button>
                   </PermissionGate>
 
-                  <PermissionGate permission={PERMISSIONS.SHARE_NOTES}>
+                  {/* <PermissionGate permission={PERMISSIONS.SHARE_NOTES}>
                     <button
                       type="button"
                       role="menuitem"
@@ -322,7 +322,7 @@ function NoteCard({
                       <Icon name="send" size={15} />
                       Partager
                     </button>
-                  </PermissionGate>
+                  </PermissionGate> */}
 
                   <PermissionGate permission={PERMISSIONS.DELETE_NOTES}>
                     <button
@@ -987,12 +987,12 @@ export function NotesPage() {
       {toast.show && <Toast intent={toast.intent} message={toast.message} />}
 
       <section className="notes-toolbar">
-        <div className="notes-titlebar">
+        {/* <div className="notes-titlebar">
           <span>Notes</span>
           <Icon name="list" size={14} />
           <strong>Notes View</strong>
           <Icon name="chevDown" size={14} />
-        </div>
+        </div> */}
 
         <PermissionGate permission={PERMISSIONS.CREATE_NOTES}>
           <button
@@ -1071,8 +1071,8 @@ export function NotesPage() {
             <Icon name="sort" size={14} />
             Sort
           </button>
-{/*
-          <button
+
+          {/* <button
             className="icon-button bordered"
             type="button"
             aria-label="More actions"
