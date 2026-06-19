@@ -83,6 +83,61 @@ function normalizeMeeting(meeting: MeetingResponse): DashboardMeeting {
   };
 }
 
+// export function normalizeNotification(
+//   notification: NotificationResponse
+// ): DashboardNotification {
+//   return {
+//     id: notification.id,
+//     type: notification.type ?? "SYSTEM",
+//     title: notification.title ?? "Notification",
+//     message: notification.message ?? "",
+//     linkUrl: notification.linkUrl ?? null,
+//     readAt: readDate(notification.readAt),
+//     createdAt: readDate(notification.createdAt),
+//   };
+// }
+
+function normalizeNotificationLinkUrl(notification: NotificationResponse) {
+  const rawLink = notification.linkUrl?.trim();
+
+  if (!rawLink) {
+    return null;
+  }
+
+  const title = notification.title?.toLowerCase() ?? "";
+
+  // Ancien mauvais lien DM ou chat :
+  // /app/chat/channels/:id
+  if (rawLink.startsWith("/app/chat/channels/")) {
+    const channelId = rawLink.replace("/app/chat/channels/", "");
+
+    // Cas message direct : "Nouveau message de Yann"
+    if (title.startsWith("nouveau message de")) {
+      return `/app/dm/${channelId}`;
+    }
+
+    // Cas canal/groupe
+    return `/app/chat/${channelId}`;
+  }
+
+  // Ancien mauvais lien discussion groupe :
+  // /app/teams/:teamId/discussions/:discussionId
+  if (rawLink.includes("/discussions/")) {
+    const discussionId = rawLink.split("/discussions/")[1];
+
+    if (discussionId) {
+      return `/app/chat/${discussionId}`;
+    }
+  }
+
+  // Ancien mauvais lien réunion
+  if (rawLink === "/app/meeting") {
+    return "/app/meeting/meet-daily";
+  }
+
+  return rawLink;
+}
+
 export function normalizeNotification(
   notification: NotificationResponse
 ): DashboardNotification {
@@ -91,7 +146,7 @@ export function normalizeNotification(
     type: notification.type ?? "SYSTEM",
     title: notification.title ?? "Notification",
     message: notification.message ?? "",
-    linkUrl: notification.linkUrl ?? null,
+    linkUrl: normalizeNotificationLinkUrl(notification),
     readAt: readDate(notification.readAt),
     createdAt: readDate(notification.createdAt),
   };
