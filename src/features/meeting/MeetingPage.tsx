@@ -206,23 +206,6 @@ function isPastMeeting(meeting: Meeting) {
   return meetingEnd < Date.now();
 }
 
-function isClosedMeeting(meeting: Meeting) {
-  const status = meeting.status?.toUpperCase();
-  return status === "ENDED" || status === "CANCELLED";
-}
-
-function canStartMeeting(meeting: Meeting) {
-  return (
-    !isPastMeeting(meeting) &&
-    !isClosedMeeting(meeting) &&
-    meeting.status?.toUpperCase() !== "LIVE"
-  );
-}
-
-function canEndMeeting(meeting: Meeting) {
-  return !isPastMeeting(meeting) && !isClosedMeeting(meeting);
-}
-
 function isPastDateTime(date: string, time: string) {
   return new Date(`${date}T${time}:00`).getTime() < Date.now();
 }
@@ -481,23 +464,6 @@ export default function MeetingPage() {
       );
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const startMeeting = async (meeting: Meeting) => {
-    setActionLoadingId(getMeetingActionKey("start", meeting.id));
-
-    try {
-      await meetingService.start(meeting.id);
-      await meetingsQuery.refetch?.();
-      setOpenMenuId(null);
-      setMenuPosition(null);
-      showToast("success", "Réunion démarrée.");
-    } catch (error) {
-      console.error("Failed to start meeting", error);
-      showToast("error", getErrorMessage(error));
-    } finally {
-      setActionLoadingId(null);
     }
   };
 

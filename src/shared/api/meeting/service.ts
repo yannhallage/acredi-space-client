@@ -7,8 +7,12 @@ import type {
   UpdateMeetingRequest,
 } from "./types";
 
-function unwrapApiResponse<TData>(response: any): TData {
-  return response?.data?.data ?? response?.data;
+function unwrapApiResponse<TData>(response: unknown): TData {
+  const payload = (response as { data?: unknown })?.data;
+  if (payload && typeof payload === "object" && "data" in payload) {
+    return (payload as { data: TData }).data;
+  }
+  return payload as TData;
 }
 
 export const meetingService = {
