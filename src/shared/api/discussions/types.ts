@@ -24,16 +24,6 @@ export interface GroupDiscussionMemberResponse {
   joinedAt?: string | null;
 }
 
-function getMemberDisplayName(member: GroupDiscussionMemberResponse) {
-  const fullName = [member.firstName, member.lastName]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-
-  return member.name || fullName || member.email || "Membre";
-}
-
-
 // export interface GroupDiscussionMemberResponse {
 //   userId: string;
 //   displayName?: string | null;

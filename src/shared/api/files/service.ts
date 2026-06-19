@@ -5,7 +5,6 @@ import type {
   ApiResponse,
   FileResponse,
   ShareFileRequest,
-  SharedFile,
   UploadFileRequest,
 } from "./types";
 

@@ -64,7 +64,7 @@ jobs:
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: "[AcrediSpace Front] Image prête sur Docker Hub"
-          to: ${{ vars.MAIL_TO }}
+          to: ${{ vars.MAIL_TO || secrets.MAIL_USERNAME }}
           from: AcrediSpace CI <${{ secrets.MAIL_USERNAME }}>
           body: |
             L'image Docker du frontend a été poussée avec succès sur Docker Hub.
@@ -89,7 +89,7 @@ jobs:
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: "[AcrediSpace Front] ÉCHEC du build/push"
-          to: ${{ vars.MAIL_TO }}
+          to: ${{ vars.MAIL_TO || secrets.MAIL_USERNAME }}
           from: AcrediSpace CI <${{ secrets.MAIL_USERNAME }}>
           body: |
             Le workflow de build & push du frontend a échoué.

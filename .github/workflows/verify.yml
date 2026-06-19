@@ -45,7 +45,7 @@ jobs:
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: "[AcrediSpace Front] Déploiement vérifié ✅"
-          to: ${{ vars.MAIL_TO }}
+          to: ${{ vars.MAIL_TO || secrets.MAIL_USERNAME }}
           from: AcrediSpace CI <${{ secrets.MAIL_USERNAME }}>
           body: |
             Le frontend répond correctement (HTTP 200).
@@ -62,7 +62,7 @@ jobs:
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: "[AcrediSpace Front] Vérification déploiement ÉCHEC ❌"
-          to: ${{ vars.MAIL_TO }}
+          to: ${{ vars.MAIL_TO || secrets.MAIL_USERNAME }}
           from: AcrediSpace CI <${{ secrets.MAIL_USERNAME }}>
           body: |
             Le frontend n'a pas répondu HTTP 200 lors de la vérification.

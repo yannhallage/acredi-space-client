@@ -173,7 +173,6 @@ function NoteCard({
   note,
   onDelete,
   onEdit,
-  onShare,
   onView,
 }: {
   isDeleting: boolean;
