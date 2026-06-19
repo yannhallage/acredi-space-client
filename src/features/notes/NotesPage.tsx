@@ -234,7 +234,7 @@ function NoteCard({
 
   return (
     <article
-      className="note-card"
+      className={isMenuOpen ? "note-card menu-open" : "note-card"}
       style={{
         backgroundColor: note.color ?? undefined,
         borderColor,
@@ -310,7 +310,7 @@ function NoteCard({
                     </button>
                   </PermissionGate>
 
-                  <PermissionGate permission={PERMISSIONS.SHARE_NOTES}>
+                  {/* <PermissionGate permission={PERMISSIONS.SHARE_NOTES}>
                     <button
                       type="button"
                       role="menuitem"
@@ -322,7 +322,7 @@ function NoteCard({
                       <Icon name="send" size={15} />
                       Partager
                     </button>
-                  </PermissionGate>
+                  </PermissionGate> */}
 
                   <PermissionGate permission={PERMISSIONS.DELETE_NOTES}>
                     <button

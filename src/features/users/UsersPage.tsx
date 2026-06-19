@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -137,12 +137,16 @@ function roleNameFromAdminRole(
 }
 
 function UserActionsDropdown({
+  isOpen,
+  onOpenChange,
   user,
   onChanged,
   onEdit,
   onDelete,
   onToast,
 }: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   user: User;
   onChanged: () => Promise<unknown>;
   onEdit: (user: User) => void;
@@ -152,13 +156,44 @@ function UserActionsDropdown({
     message: string;
   }) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const activateMutation = useActivateUserMutation();
   const deactivateMutation = useDeactivateUserMutation();
 
   const isActive = user.enabled !== false;
   const isPending =
     activateMutation.isPending || deactivateMutation.isPending;
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        dropdownRef.current &&
+        dropdownRef.current.contains(event.target as Node)
+      ) {
+        return;
+      }
+
+      onOpenChange(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onOpenChange(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onOpenChange]);
 
   async function handleToggleStatus(event: React.MouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
@@ -180,7 +215,7 @@ function UserActionsDropdown({
         });
       }
 
-      setOpen(false);
+      onOpenChange(false);
       await onChanged();
     } catch (error) {
       onToast({
@@ -195,6 +230,7 @@ function UserActionsDropdown({
 
   return (
     <div
+      ref={dropdownRef}
       className="users-actions-dropdown"
       onClick={(event) => event.stopPropagation()}
     >
@@ -202,22 +238,33 @@ function UserActionsDropdown({
         className="icon-button users-more"
         type="button"
         aria-label={`Options ${user.name}`}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
         onClick={(event) => {
           event.stopPropagation();
-          setOpen((current) => !current);
+          onOpenChange(!isOpen);
         }}
       >
         <Icon name="moreH" size={19} />
       </button>
 
-      {open ? (
-        <div className="users-actions-menu">
+      <AnimatePresence>
+        {isOpen ? (
+        <motion.div
+          className="users-actions-menu"
+          role="menu"
+          initial={{ opacity: 0, y: -6, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -4, scale: 0.96 }}
+          transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+        >
           <button
             type="button"
             className="users-actions-item"
+            role="menuitem"
             onClick={(event) => {
               event.stopPropagation();
-              setOpen(false);
+              onOpenChange(false);
               onEdit(user);
             }}
           >
@@ -231,6 +278,7 @@ function UserActionsDropdown({
                 ? "users-actions-item danger"
                 : "users-actions-item success"
             }
+            role="menuitem"
             disabled={isPending}
             onClick={handleToggleStatus}
           >
@@ -244,16 +292,18 @@ function UserActionsDropdown({
           <button
             type="button"
             className="users-actions-item danger"
+            role="menuitem"
             onClick={(event) => {
               event.stopPropagation();
-              setOpen(false);
+              onOpenChange(false);
               onDelete(user);
             }}
           >
             Supprimer utilisateur
           </button>
-        </div>
-      ) : null}
+        </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
@@ -280,6 +330,9 @@ export function UsersPage() {
 
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [openActionsUserId, setOpenActionsUserId] = useState<string | null>(
+    null,
+  );
 
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
@@ -579,6 +632,10 @@ export function UsersPage() {
                 </button>
 
                 <UserActionsDropdown
+                  isOpen={openActionsUserId === user.id}
+                  onOpenChange={(open) =>
+                    setOpenActionsUserId(open ? user.id : null)
+                  }
                   user={user}
                   onChanged={usersQuery.refetch}
                   onEdit={openEditUser}

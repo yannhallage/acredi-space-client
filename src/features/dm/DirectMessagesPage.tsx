@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { useChannelsQuery, useMessagesQuery } from "../../shared/api/dm/hooks";
-import type { ChannelResponse } from "../../shared/api/dm/types";
+import {
+  useChannelsQuery,
+  useMessagesQueries,
+  useMessagesQuery,
+} from "../../shared/api/dm/hooks";
+import type { ChannelResponse, MessageResponse } from "../../shared/api/dm/types";
 import { useUsersQuery } from "../../shared/api/users";
 import type { User } from "../../shared/types";
 
@@ -20,6 +24,17 @@ function getChannelDisplayName(channel?: ChannelResponse | null) {
   if (channel.privateChannel) return "Discussion privée";
 
   return "Conversation";
+}
+
+function getLatestMessage(messages: MessageResponse[]) {
+  return messages.reduce<MessageResponse | null>((latestMessage, message) => {
+    if (!latestMessage) return message;
+
+    return new Date(message.createdAt).getTime() >
+      new Date(latestMessage.createdAt).getTime()
+      ? message
+      : latestMessage;
+  }, null);
 }
 
 export function DirectMessagesPage() {
@@ -44,6 +59,29 @@ export function DirectMessagesPage() {
     () => channels.filter((channel) => channel.privateChannel),
     [channels]
   );
+
+  const directChannelIds = useMemo(
+    () => directChannels.map((channel) => channel.id),
+    [directChannels]
+  );
+
+  const channelMessagesQueries = useMessagesQueries(directChannelIds);
+
+  const latestMessagesByChannelId = useMemo(() => {
+    return channelMessagesQueries.reduce<Record<string, MessageResponse>>(
+      (messagesByChannelId, query, index) => {
+        const channelId = directChannelIds[index];
+        const latestMessage = getLatestMessage(query.data ?? []);
+
+        if (channelId && latestMessage) {
+          messagesByChannelId[channelId] = latestMessage;
+        }
+
+        return messagesByChannelId;
+      },
+      {}
+    );
+  }, [channelMessagesQueries, directChannelIds]);
 
   const usersByName = useMemo(() => {
     const map = new Map<string, User>();
@@ -81,9 +119,7 @@ export function DirectMessagesPage() {
   }, [activeConversation, usersByName]);
 
   useEffect(() => {
-    if (conversationId) {
-      setSelectedConversationId(conversationId);
-    }
+    setSelectedConversationId(conversationId ?? "");
   }, [conversationId]);
 
   function handleSelectConversation(nextConversationId: string) {
@@ -94,6 +130,11 @@ export function DirectMessagesPage() {
   function handleConversationCreated(channel: ChannelResponse) {
     setSelectedConversationId(channel.id);
     navigate(`/app/dm/${channel.id}`);
+  }
+
+  function handleCloseConversation() {
+    setSelectedConversationId("");
+    navigate("/app/dm");
   }
 
   function handleRefreshDiscussion() {
@@ -129,6 +170,8 @@ export function DirectMessagesPage() {
         conversations={directChannels}
         users={usersQuery.data ?? []}
         activeConversationId={activeConversationId}
+        activeMessages={messages}
+        latestMessagesByChannelId={latestMessagesByChannelId}
         onSelectConversation={handleSelectConversation}
         onConversationCreated={handleConversationCreated}
       />
@@ -145,6 +188,7 @@ export function DirectMessagesPage() {
           loading={messagesLoading}
           refreshing={isRefreshingDiscussion}
           onRefresh={handleRefreshDiscussion}
+          onClose={handleCloseConversation}
         />
       )}
     </div>

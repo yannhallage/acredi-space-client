@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Toast, { type ToastIntent } from "../../components/app/Toast/Toast";
 import { useUsersQuery } from "../../shared/api/users";
@@ -44,6 +44,12 @@ const roleLabels: Record<TeamMemberRole, string> = {
   COLLABORATOR: "Collaborateur",
   MANAGER: "Manager",
 };
+
+function userPresenceLabel(user: Pick<User, "enabled" | "presence">) {
+  return user.enabled === false || user.presence === "offline"
+    ? "Inactif"
+    : "Disponible";
+}
 
 type DraftTeamMember = {
   roleName: TeamMemberRole;
@@ -214,18 +220,54 @@ function TeamAvatarStack({
 }
 
 function TeamActionsDropdown({
+  isOpen,
+  onOpenChange,
   onRequestAddMember,
   onRequestEdit,
   team,
 }: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   onRequestAddMember: (team: Team) => void;
   onRequestEdit: (team: Team) => void;
   team: Team;
 }) {
-  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        dropdownRef.current &&
+        dropdownRef.current.contains(event.target as Node)
+      ) {
+        return;
+      }
+
+      onOpenChange(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onOpenChange(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onOpenChange]);
 
   return (
     <div
+      ref={dropdownRef}
       className="team-actions-dropdown"
       onClick={(event) => event.stopPropagation()}
     >
@@ -233,19 +275,30 @@ function TeamActionsDropdown({
         className="icon-button bordered"
         type="button"
         aria-label={`Options ${team.name}`}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
         title="Options"
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => onOpenChange(!isOpen)}
       >
         <span className="team-more-vertical">⋮</span>
       </button>
 
-      {open ? (
-        <div className="team-actions-menu">
+      <AnimatePresence>
+        {isOpen ? (
+        <motion.div
+          className="team-actions-menu"
+          role="menu"
+          initial={{ opacity: 0, y: -6, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -4, scale: 0.96 }}
+          transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+        >
           <button
             type="button"
             className="team-actions-item"
+            role="menuitem"
             onClick={() => {
-              setOpen(false);
+              onOpenChange(false);
               onRequestEdit(team);
             }}
           >
@@ -255,28 +308,34 @@ function TeamActionsDropdown({
           <button
             type="button"
             className="team-actions-item"
+            role="menuitem"
             onClick={() => {
-              setOpen(false);
+              onOpenChange(false);
               onRequestAddMember(team);
             }}
           >
             Ajouter des membres
           </button>
-        </div>
-      ) : null}
+        </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
 
 function TeamCard({
+  isActionsOpen,
   isDeleting,
+  onActionsOpenChange,
   onOpenDetails,
   onRequestAddMember,
   onRequestDelete,
   onRequestEdit,
   team,
 }: {
+  isActionsOpen: boolean;
   isDeleting: boolean;
+  onActionsOpenChange: (open: boolean) => void;
   onOpenDetails: (team: Team) => void;
   onRequestAddMember: (team: Team) => void;
   onRequestDelete: (team: Team) => void;
@@ -298,6 +357,8 @@ function TeamCard({
         </div>
 
         <TeamActionsDropdown
+          isOpen={isActionsOpen}
+          onOpenChange={onActionsOpenChange}
           onRequestAddMember={onRequestAddMember}
           onRequestEdit={onRequestEdit}
           team={team}
@@ -492,7 +553,7 @@ function TeamUserPickerModal({
                       <em
                         className={`dm-new-conversation-status presence-${person.presence}`}
                       >
-                        {person.status}
+                        {userPresenceLabel(person)}
                       </em>
                     </button>
                   ))}
@@ -914,7 +975,7 @@ function AddExistingTeamMemberModal({
       }}
     >
       <motion.section
-        className="dm-new-conversation-modal team-user-picker-modal"
+        className="dm-new-conversation-modal team-user-picker-modal team-add-member-modal"
         role="dialog"
         aria-modal="true"
         aria-label="Ajouter des membres"
@@ -941,7 +1002,7 @@ function AddExistingTeamMemberModal({
           </button>
         </header>
 
-        <label className="note-field">
+        <label className="note-field team-member-role-field">
           <span>Role du membre</span>
           <select
             value={roleName}
@@ -999,7 +1060,7 @@ function AddExistingTeamMemberModal({
                   <small>{person.email}</small>
                 </span>
                 <em className={`dm-new-conversation-status presence-${person.presence}`}>
-                  {person.status}
+                  {userPresenceLabel(person)}
                 </em>
               </button>
             ))
@@ -1166,6 +1227,9 @@ export function TeamsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [editTargetTeam, setEditTargetTeam] = useState<Team | null>(null);
   const [addMemberTargetTeam, setAddMemberTargetTeam] = useState<Team | null>(null);
+  const [openActionsTeamId, setOpenActionsTeamId] = useState<string | null>(
+    null,
+  );
   const [editTeamError, setEditTeamError] = useState<string | null>(null);
   const [isUpdatingTeam, setIsUpdatingTeam] = useState(false);
   const [toast, setToast] = useState<ToastState>({
@@ -1548,8 +1612,12 @@ export function TeamsPage() {
           ? teamSkeletons.map((item) => <TeamCardSkeleton key={item} />)
           : teams.map((team) => (
               <TeamCard
+                isActionsOpen={openActionsTeamId === team.id}
                 isDeleting={isDeletingTeam && deleteTargetTeam?.id === team.id}
                 key={team.id}
+                onActionsOpenChange={(open) =>
+                  setOpenActionsTeamId(open ? team.id : null)
+                }
                 onOpenDetails={setDetailsTeam}
                 onRequestAddMember={openAddMemberModal}
                 onRequestDelete={openDeleteTeamModal}

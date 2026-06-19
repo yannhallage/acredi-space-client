@@ -41,8 +41,6 @@ const pageMeta: Record<string, { title: string; crumb: string }> = {
 
 interface NavItem {
   canShow?: boolean;
-  count?: number;
-  accent?: boolean;
   icon: IconName;
   label: string;
   permissions: readonly PermissionCode[];
@@ -116,9 +114,7 @@ export function AppLayout() {
   const { user: authenticatedUser, logout } = useAuth();
   const queryClient = useQueryClient();
   const { hasAnyPermission } = usePermissions();
-  // const { counts } = useWorkspace();
   const workspace = useWorkspace();
-  const { counts } = workspace;
   const { dark, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -144,23 +140,18 @@ export function AppLayout() {
       to: "/app/files",
       icon: "folder",
       label: "Fichiers",
-      count: counts.files,
       permissions: FEATURE_PERMISSION_REQUIREMENTS.files,
     },
     {
       to: "/app/dm/dm-yann",
       icon: "message",
       label: "Chat",
-      count: counts.unreadMessages,
-      accent: true,
       permissions: FEATURE_PERMISSION_REQUIREMENTS.chat,
     },
     {
       to: "/app/meeting/meet-daily",
       icon: "video",
       label: "Reunions",
-      count: counts.liveMeetings,
-      accent: true,
       permissions: FEATURE_PERMISSION_REQUIREMENTS.meetings,
     },
     {
@@ -426,15 +417,6 @@ export function AppLayout() {
               >
                 <Icon name={item.icon} size={18} />
                 <span>{item.label}</span>
-                {item.count !== undefined ? (
-                  <small
-                    className={
-                      item.accent ? "nav-count nav-count-accent" : "nav-count"
-                    }
-                  >
-                    {item.count}
-                  </small>
-                ) : null}
               </NavLink>
             ))}
 

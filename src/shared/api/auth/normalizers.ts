@@ -1,7 +1,8 @@
 import type { AdminRole, Presence, User } from "../../types";
+import { readCachedPresence } from "../presence/store";
 import type { AuthUserPayload } from "./types";
 
-const presenceValues: Presence[] = ["online", "busy", "dnd", "offline"];
+const presenceValues: Presence[] = ["online", "busy", "away", "dnd", "offline"];
 const adminRoleValues: AdminRole[] = [
   "admin",
   "manager",
@@ -27,8 +28,13 @@ function readId(value: unknown) {
   return readString(value);
 }
 
-function readPresence(value: unknown): Presence {
-  return presenceValues.includes(value as Presence) ? (value as Presence) : "online";
+function readPresence(value: unknown, userId?: string): Presence {
+  const presence = readString(value)?.toLowerCase();
+  if (presenceValues.includes(presence as Presence)) {
+    return presence as Presence;
+  }
+
+  return readCachedPresence(userId) ?? "offline";
 }
 
 function readAdminRole(value: unknown): AdminRole {
@@ -93,15 +99,16 @@ function buildProfile(payload: AuthUserPayload) {
 export function normalizeAuthUser(value: unknown): User {
   const payload = isRecord(value) ? (value as AuthUserPayload) : {};
   const email = readString(payload.email) ?? "";
+  const id = readId(payload.id) ?? readId(payload.userId) ?? readId(payload.uuid) ?? email;
   const name = buildName(payload);
 
   return {
-    id: readId(payload.id) ?? readId(payload.userId) ?? readId(payload.uuid) ?? email,
+    id,
     name,
     email,
     role: readString(payload.role) ?? "Utilisateur",
     team: readString(payload.team) ?? "Acredi Space",
-    presence: readPresence(payload.presence),
+    presence: readPresence(payload.presence, id),
     status: readString(payload.status) ?? "Disponible",
     enabled: payload.enabled !== false,
     onboardingStatus: readString(payload.onboardingStatus),
