@@ -358,3 +358,36 @@ export function useDeactivateUserMutation() {
     reset,
   };
 }
+
+export function useDeleteUserMutation() {
+  const [state, setState] = useState<MutationState<void>>({
+    data: null,
+    error: null,
+    isPending: false,
+  });
+
+  const reset = useCallback(() => {
+    setState({ data: null, error: null, isPending: false });
+  }, []);
+
+  const mutateAsync = useCallback(async (userId: string) => {
+    setState({ data: null, error: null, isPending: true });
+
+    try {
+      await userService.delete(userId);
+      setState({ data: undefined, error: null, isPending: false });
+    } catch (error) {
+      const normalizedError = toError(error);
+      setState({ data: null, error: normalizedError, isPending: false });
+      throw normalizedError;
+    }
+  }, []);
+
+  return {
+    ...state,
+    loading: state.isPending,
+    mutate: mutateAsync,
+    mutateAsync,
+    reset,
+  };
+}

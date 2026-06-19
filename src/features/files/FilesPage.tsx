@@ -1222,7 +1222,7 @@ export function FilesPage() {
           />
         </label>
 
-        <div className="files-filter-row">
+        {/* <div className="files-filter-row">
           <button type="button">
             Type <Icon name="chevDown" size={11} />
           </button>
@@ -1232,7 +1232,7 @@ export function FilesPage() {
           <button type="button">
             Equipe <Icon name="chevDown" size={11} />
           </button>
-        </div>
+        </div> */}
 
         {/* Filtres fichiers masques pendant la vue dossiers uniquement.
         <div className="toolbar-row">

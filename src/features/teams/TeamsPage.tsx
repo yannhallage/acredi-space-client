@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Toast, { type ToastIntent } from "../../components/app/Toast/Toast";
 import { useUsersQuery } from "../../shared/api/users";
+import { teamService } from "../../shared/api/teams/service";
 import { useAuth } from "../../shared/context";
 import {
   PermissionGate,
@@ -43,6 +44,12 @@ const roleLabels: Record<TeamMemberRole, string> = {
   COLLABORATOR: "Collaborateur",
   MANAGER: "Manager",
 };
+
+function userPresenceLabel(user: Pick<User, "enabled" | "presence">) {
+  return user.enabled === false || user.presence === "offline"
+    ? "Inactif"
+    : "Disponible";
+}
 
 type DraftTeamMember = {
   roleName: TeamMemberRole;
@@ -212,15 +219,127 @@ function TeamAvatarStack({
   );
 }
 
-function TeamCard({
-  isDeleting,
-  onOpenDetails,
-  onRequestDelete,
+function TeamActionsDropdown({
+  isOpen,
+  onOpenChange,
+  onRequestAddMember,
+  onRequestEdit,
   team,
 }: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onRequestAddMember: (team: Team) => void;
+  onRequestEdit: (team: Team) => void;
+  team: Team;
+}) {
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        dropdownRef.current &&
+        dropdownRef.current.contains(event.target as Node)
+      ) {
+        return;
+      }
+
+      onOpenChange(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onOpenChange(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onOpenChange]);
+
+  return (
+    <div
+      ref={dropdownRef}
+      className="team-actions-dropdown"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        className="icon-button bordered"
+        type="button"
+        aria-label={`Options ${team.name}`}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        title="Options"
+        onClick={() => onOpenChange(!isOpen)}
+      >
+        <span className="team-more-vertical">⋮</span>
+      </button>
+
+      <AnimatePresence>
+        {isOpen ? (
+        <motion.div
+          className="team-actions-menu"
+          role="menu"
+          initial={{ opacity: 0, y: -6, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -4, scale: 0.96 }}
+          transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <button
+            type="button"
+            className="team-actions-item"
+            role="menuitem"
+            onClick={() => {
+              onOpenChange(false);
+              onRequestEdit(team);
+            }}
+          >
+            Modifier l'équipe
+          </button>
+
+          <button
+            type="button"
+            className="team-actions-item"
+            role="menuitem"
+            onClick={() => {
+              onOpenChange(false);
+              onRequestAddMember(team);
+            }}
+          >
+            Ajouter des membres
+          </button>
+        </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function TeamCard({
+  isActionsOpen,
+  isDeleting,
+  onActionsOpenChange,
+  onOpenDetails,
+  onRequestAddMember,
+  onRequestDelete,
+  onRequestEdit,
+  team,
+}: {
+  isActionsOpen: boolean;
   isDeleting: boolean;
+  onActionsOpenChange: (open: boolean) => void;
   onOpenDetails: (team: Team) => void;
+  onRequestAddMember: (team: Team) => void;
   onRequestDelete: (team: Team) => void;
+  onRequestEdit: (team: Team) => void;
   team: Team;
 }) {
   const membersQuery = useTeamMembers(team.id);
@@ -229,26 +348,29 @@ function TeamCard({
 
   return (
     <article className="team-card">
-      <header>
+      <header className="team-card-header">
         <span style={{ background: team.color }} />
 
-        <div>
+        <div className="team-card-title">
           <h2>{team.name}</h2>
           <p>{team.description || "Equipe Acredi Space"}</p>
         </div>
+
+        <TeamActionsDropdown
+          isOpen={isActionsOpen}
+          onOpenChange={onActionsOpenChange}
+          onRequestAddMember={onRequestAddMember}
+          onRequestEdit={onRequestEdit}
+          team={team}
+        />
       </header>
 
-      { <div className="team-card-meta">
+      <div className="team-card-meta">
         <span>
           <Icon name="users" size={14} />
           {membersCount} membre{membersCount > 1 ? "s" : ""}
         </span>
-
-        {/* <span>
-          <Icon name="message" size={14} />
-          {team.slug ? `#${team.slug}` : "#team"}
-        </span> */}
-      </div> }
+      </div>
 
       <div className="team-card-footer">
         <div className="team-avatars" aria-label={`${membersCount} membres`}>
@@ -431,7 +553,7 @@ function TeamUserPickerModal({
                       <em
                         className={`dm-new-conversation-status presence-${person.presence}`}
                       >
-                        {person.status}
+                        {userPresenceLabel(person)}
                       </em>
                     </button>
                   ))}
@@ -629,6 +751,354 @@ function TeamDetailsModal({
   );
 }
 
+function EditTeamModal({
+  error,
+  isUpdating,
+  onClose,
+  onSubmit,
+  team,
+}: {
+  error: string | null;
+  isUpdating: boolean;
+  onClose: () => void;
+  onSubmit: (request: {
+    description: string;
+    name: string;
+    teamColor: string;
+  }) => Promise<void>;
+  team: Team;
+}) {
+  const [description, setDescription] = useState(team.description ?? "");
+  const [name, setName] = useState(team.name);
+  const [teamColor, setTeamColor] = useState(team.color);
+
+  const canSubmit = name.trim().length >= 2 && !isUpdating;
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isUpdating) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isUpdating, onClose]);
+
+  return (
+    <motion.div
+      className="note-modal-overlay team-edit-overlay"
+      role="presentation"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16 }}
+      onMouseDown={() => {
+        if (!isUpdating) {
+          onClose();
+        }
+      }}
+    >
+      <motion.form
+        className="note-modal team-edit-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Modifier equipe"
+        initial={{ opacity: 0, y: 14, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+        onMouseDown={(event) => event.stopPropagation()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit({ description, name, teamColor }).catch(() => undefined);
+        }}
+      >
+        <header>
+          <div className="team-details-title">
+            <i style={{ background: teamColor }} />
+            <div>
+              <h2>Modifier l'équipe</h2>
+              <small>{team.name}</small>
+            </div>
+          </div>
+
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="Fermer"
+            disabled={isUpdating}
+            onClick={onClose}
+          >
+            <Icon name="x" size={16} />
+          </button>
+        </header>
+
+        {error ? (
+          <div className="team-form-error">
+            <Icon name="alert" size={16} />
+            {error}
+          </div>
+        ) : null}
+
+        <label className="note-field">
+          <span>Nom</span>
+          <input
+            autoFocus
+            maxLength={160}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Nom de l'équipe"
+          />
+        </label>
+
+        <label className="note-field">
+          <span>Description</span>
+          <textarea
+            maxLength={1000}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Description de l'équipe"
+            rows={5}
+          />
+        </label>
+
+        <div className="note-field">
+          <span>Couleur</span>
+          <div className="team-color-picker">
+            {teamColors.map((color) => (
+              <button
+                key={color}
+                type="button"
+                className={teamColor === color ? "selected" : undefined}
+                style={{ background: color }}
+                aria-label={`Couleur ${color}`}
+                onClick={() => setTeamColor(color)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <footer>
+          <button
+            className="button ghost"
+            type="button"
+            disabled={isUpdating}
+            onClick={onClose}
+          >
+            Annuler
+          </button>
+
+          <button
+            className="button primary notes-submit"
+            type="submit"
+            disabled={!canSubmit}
+          >
+            {isUpdating ? "Modification..." : "Modifier"}
+          </button>
+        </footer>
+      </motion.form>
+    </motion.div>
+  );
+}
+
+function AddExistingTeamMemberModal({
+  addMemberPending,
+  error,
+  loading,
+  onAdd,
+  onClose,
+  onRetry,
+  team,
+  users,
+}: {
+  addMemberPending: boolean;
+  error: Error | null;
+  loading: boolean;
+  onAdd: (team: Team, user: User, roleName: TeamMemberRole) => Promise<void>;
+  onClose: () => void;
+  onRetry: () => Promise<User[]>;
+  team: Team;
+  users: User[];
+}) {
+  const membersQuery = useTeamMembers(team.id);
+  const members = membersQuery.data ?? [];
+  const [query, setQuery] = useState("");
+  const [roleName, setRoleName] = useState<TeamMemberRole>("COLLABORATOR");
+
+  const selectedUserIds = useMemo(
+    () => new Set(members.map((member) => member.user?.id ?? member.userId)),
+    [members],
+  );
+
+  const visibleUsers = useMemo(() => {
+    const normalizedQuery = normalizeSearch(query.trim());
+
+    return users
+      .filter((person) => !selectedUserIds.has(person.id))
+      .filter((person) => {
+        if (!normalizedQuery) {
+          return true;
+        }
+
+        const searchable = normalizeSearch(
+          [person.name, person.email, person.role, person.team, person.status].join(" "),
+        );
+
+        return searchable.includes(normalizedQuery);
+      });
+  }, [query, selectedUserIds, users]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !addMemberPending) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [addMemberPending, onClose]);
+
+  return (
+    <motion.div
+      className="dm-new-conversation-overlay team-user-picker-overlay"
+      role="presentation"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.14 }}
+      onMouseDown={() => {
+        if (!addMemberPending) {
+          onClose();
+        }
+      }}
+    >
+      <motion.section
+        className="dm-new-conversation-modal team-user-picker-modal team-add-member-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Ajouter des membres"
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="dm-new-conversation-header">
+          <div>
+            <h2>Ajouter des membres</h2>
+            <small>{team.name}</small>
+          </div>
+
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="Fermer"
+            disabled={addMemberPending}
+            onClick={onClose}
+          >
+            <Icon name="x" size={16} />
+          </button>
+        </header>
+
+        <label className="note-field team-member-role-field">
+          <span>Role du membre</span>
+          <select
+            value={roleName}
+            onChange={(event) =>
+              setRoleName(event.target.value as TeamMemberRole)
+            }
+          >
+            <option value="COLLABORATOR">Collaborateur</option>
+            <option value="MANAGER">Manager</option>
+            <option value="ADMIN">Admin</option>
+          </select>
+        </label>
+
+        <label className="dm-new-conversation-search">
+          <Icon name="search" size={16} />
+          <input
+            autoFocus
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Rechercher un utilisateur..."
+          />
+        </label>
+
+        <div className="dm-new-conversation-list">
+          <p>Utilisateurs disponibles</p>
+
+          {loading || membersQuery.isLoading ? (
+            ["team-member-loading-1", "team-member-loading-2"].map((item) => (
+              <div
+                className="dm-new-conversation-user team-picker-row-skeleton"
+                key={item}
+              >
+                <span className="skeleton-avatar" />
+                <span>
+                  <span className="skeleton-line" />
+                  <span className="skeleton-line skeleton-short" />
+                </span>
+              </div>
+            ))
+          ) : visibleUsers.length > 0 ? (
+            visibleUsers.map((person) => (
+              <button
+                key={person.id}
+                className="dm-new-conversation-user"
+                type="button"
+                disabled={addMemberPending}
+                onClick={() => {
+                  onAdd(team, person, roleName).catch(() => undefined);
+                }}
+              >
+                <Icon name="plus" size={16} />
+                <Avatar name={person.name} presence={person.presence} size={34} />
+                <span>
+                  <strong>{person.name}</strong>
+                  <small>{person.email}</small>
+                </span>
+                <em className={`dm-new-conversation-status presence-${person.presence}`}>
+                  {userPresenceLabel(person)}
+                </em>
+              </button>
+            ))
+          ) : null}
+
+          {!loading && error ? (
+            <div className="dm-new-conversation-empty">
+              <Icon name="alert" size={18} />
+              <strong>Chargement impossible</strong>
+              <span>{error.message}</span>
+              <button
+                className="button ghost mini"
+                type="button"
+                onClick={() => {
+                  onRetry().catch(() => undefined);
+                }}
+              >
+                Reessayer
+              </button>
+            </div>
+          ) : null}
+
+          {!loading &&
+          !error &&
+          !membersQuery.isLoading &&
+          visibleUsers.length === 0 ? (
+            <div className="dm-new-conversation-empty">
+              <Icon name="users" size={18} />
+              <strong>Aucun utilisateur disponible</strong>
+              <span>Tous les utilisateurs sont deja dans cette equipe.</span>
+            </div>
+          ) : null}
+        </div>
+      </motion.section>
+    </motion.div>
+  );
+}
+
 function DeleteTeamConfirmModal({
   error,
   isDeleting,
@@ -755,12 +1225,21 @@ export function TeamsPage() {
   const [detailsTeam, setDetailsTeam] = useState<Team | null>(null);
   const [deleteTargetTeam, setDeleteTargetTeam] = useState<Team | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [editTargetTeam, setEditTargetTeam] = useState<Team | null>(null);
+  const [addMemberTargetTeam, setAddMemberTargetTeam] = useState<Team | null>(null);
+  const [openActionsTeamId, setOpenActionsTeamId] = useState<string | null>(
+    null,
+  );
+  const [editTeamError, setEditTeamError] = useState<string | null>(null);
+  const [isUpdatingTeam, setIsUpdatingTeam] = useState(false);
   const [toast, setToast] = useState<ToastState>({
     show: false,
     intent: "success",
     message: "",
   });
-  const usersQuery = useUsersQuery({ enabled: isDrawerOpen });
+  const usersQuery = useUsersQuery({
+    enabled: isDrawerOpen || Boolean(addMemberTargetTeam),
+  });
   const teams = teamsQuery.data ?? [];
   const isSubmitting =
     createTeamMutation.isPending || addMemberMutation.isPending;
@@ -897,6 +1376,116 @@ export function TeamsPage() {
     deleteTeamMutation.reset();
   }
 
+  function openEditTeamModal(team: Team) {
+    if (isUpdatingTeam) {
+      return;
+    }
+
+    setEditTeamError(null);
+    setEditTargetTeam(team);
+  }
+
+  function closeEditTeamModal() {
+    if (isUpdatingTeam) {
+      return;
+    }
+
+    setEditTargetTeam(null);
+    setEditTeamError(null);
+  }
+
+  function openAddMemberModal(team: Team) {
+    if (addMemberMutation.isPending) {
+      return;
+    }
+
+    addMemberMutation.reset();
+    setAddMemberTargetTeam(team);
+  }
+
+  function closeAddMemberModal() {
+    if (addMemberMutation.isPending) {
+      return;
+    }
+
+    setAddMemberTargetTeam(null);
+    addMemberMutation.reset();
+  }
+
+  async function handleUpdateTeam(request: {
+    description: string;
+    name: string;
+    teamColor: string;
+  }) {
+    if (!editTargetTeam || isUpdatingTeam) {
+      return;
+    }
+
+    const nextName = request.name.trim();
+
+    if (nextName.length < 2) {
+      setEditTeamError("Le nom de l'équipe doit contenir au moins 2 caractères.");
+      return;
+    }
+
+    setEditTeamError(null);
+    setIsUpdatingTeam(true);
+
+    try {
+      await teamService.update(editTargetTeam.id, {
+        description: request.description.trim() || undefined,
+        name: nextName,
+        teamColor: request.teamColor,
+      });
+
+      await teamsQuery.refetch();
+      setEditTargetTeam(null);
+      setEditTeamError(null);
+      showToast("success", "Equipe modifiee avec succes.");
+    } catch (error) {
+      const message = getErrorMessage(
+        error,
+        "Impossible de modifier cette equipe.",
+      );
+
+      setEditTeamError(message);
+      showToast("error", message, 5000);
+    } finally {
+      setIsUpdatingTeam(false);
+    }
+  }
+
+  async function handleAddMemberToExistingTeam(
+    team: Team,
+    selectedUser: User,
+    roleName: TeamMemberRole,
+  ) {
+    if (addMemberMutation.isPending) {
+      return;
+    }
+
+    try {
+      await addMemberMutation.mutateAsync({
+        teamId: team.id,
+        request: {
+          roleName,
+          userId: selectedUser.id,
+        },
+      });
+
+      await teamsQuery.refetch();
+      setAddMemberTargetTeam(null);
+      addMemberMutation.reset();
+      showToast("success", "Membre ajoute avec succes.");
+    } catch (error) {
+      showToast(
+        "error",
+        getErrorMessage(error, "Impossible d'ajouter ce membre."),
+        5000,
+      );
+    }
+  }
+
   async function handleConfirmDeleteTeam() {
     if (!deleteTargetTeam || isDeletingTeam) {
       return;
@@ -1023,10 +1612,16 @@ export function TeamsPage() {
           ? teamSkeletons.map((item) => <TeamCardSkeleton key={item} />)
           : teams.map((team) => (
               <TeamCard
+                isActionsOpen={openActionsTeamId === team.id}
                 isDeleting={isDeletingTeam && deleteTargetTeam?.id === team.id}
                 key={team.id}
+                onActionsOpenChange={(open) =>
+                  setOpenActionsTeamId(open ? team.id : null)
+                }
                 onOpenDetails={setDetailsTeam}
+                onRequestAddMember={openAddMemberModal}
                 onRequestDelete={openDeleteTeamModal}
+                onRequestEdit={openEditTeamModal}
                 team={team}
               />
             ))}
@@ -1287,6 +1882,35 @@ export function TeamsPage() {
             onClose={closeDeleteTeamModal}
             onConfirm={handleConfirmDeleteTeam}
             team={deleteTargetTeam}
+          />
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editTargetTeam ? (
+          <EditTeamModal
+            key={editTargetTeam.id}
+            error={editTeamError}
+            isUpdating={isUpdatingTeam}
+            onClose={closeEditTeamModal}
+            onSubmit={handleUpdateTeam}
+            team={editTargetTeam}
+          />
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {addMemberTargetTeam ? (
+          <AddExistingTeamMemberModal
+            key={addMemberTargetTeam.id}
+            addMemberPending={addMemberMutation.isPending}
+            error={usersQuery.error}
+            loading={usersQuery.loading}
+            onAdd={handleAddMemberToExistingTeam}
+            onClose={closeAddMemberModal}
+            onRetry={usersQuery.refetch}
+            team={addMemberTargetTeam}
+            users={usersQuery.data ?? []}
           />
         ) : null}
       </AnimatePresence>
