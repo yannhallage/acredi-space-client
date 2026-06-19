@@ -1,4 +1,5 @@
 import {
+  ChangeEvent,
 
   FormEvent,
 
@@ -40,7 +41,7 @@ type LocalGroupMessage = GroupMessageResponse & {
   pending?: boolean;
   failed?: boolean;
 };
-
+import { fileService } from "../../shared/api/files/service";
 import { useAuth } from "../../shared/context";
 
 import { Avatar, EmptyState, Icon } from "../../shared/ui";
@@ -334,28 +335,77 @@ function ChatPageSkeleton() {
 
 }
 
+interface ChatFileAttachment {
+  id?: string | null;
+  name: string;
+  size?: number | null;
+  contentType?: string | null;
+}
+
+const FILE_ATTACHMENT_REGEX =
+  /[\r\n]*<!--ACREDISPACE_FILE:([\s\S]*?)-->/;
+
+function buildMessageContentWithFile(
+  text: string,
+  attachment: ChatFileAttachment,
+) {
+  const cleanText = text.trim();
+  const encodedAttachment = encodeURIComponent(JSON.stringify(attachment));
+
+  return `${cleanText}${cleanText ? "\n\n" : ""}<!--ACREDISPACE_FILE:${encodedAttachment}-->`;
+}
+
+function parseMessageContent(content: string): {
+  text: string;
+  attachment: ChatFileAttachment | null;
+} {
+  const match = content.match(FILE_ATTACHMENT_REGEX);
+
+  if (!match) {
+    return {
+      text: content,
+      attachment: null,
+    };
+  }
+
+  try {
+    const attachment = JSON.parse(
+      decodeURIComponent(match[1]),
+    ) as ChatFileAttachment;
+
+    return {
+      text: content.replace(match[0], "").trim(),
+      attachment,
+    };
+  } catch {
+    return {
+      text: content,
+      attachment: null,
+    };
+  }
+}
 
 
-function MessageBubble({ message }: { message: LocalGroupMessage }) {
+// function MessageBubble({ message }: { message: LocalGroupMessage }) {
 
-  const { user } = useAuth();
+//   const { user } = useAuth();
 
-  const mine = user?.id === message.senderId;
+//   const mine = user?.id === message.senderId;
 
-  const statusLabel = message.failed
-  ? "échec"
-  : message.pending
-    ? "envoi..."
-    : null;
+//   const statusLabel = message.failed
+//   ? "échec"
+//   : message.pending
+//     ? "envoi..."
+//     : null;
 
 
-  return (
+//   return (
 
-    <article className={mine ? "message-bubble mine" : "message-bubble"}>
+//     <article className={mine ? "message-bubble mine" : "message-bubble"}>
 
-      {!mine ? <Avatar name={message.senderName} size={28} /> : null}
+//       {!mine ? <Avatar name={message.senderName} size={28} /> : null}
 
-      <div>
+//       <div>
 
         {/* <header>
 
@@ -366,24 +416,88 @@ function MessageBubble({ message }: { message: LocalGroupMessage }) {
         </header> */}
 
 
+//         <header>
+//           <strong>{mine ? "Vous" : message.senderName}</strong>
+//           <small>
+//           {formatMessageTime(message.createdAt)}
+//           {statusLabel ? ` · ${statusLabel}` : ""}
+//           </small>
+//         </header>
+
+//         <p>{message.content}</p>
+
+//       </div>
+
+//     </article>
+
+//   );
+
+// }
+
+
+function MessageBubble({ message }: { message: LocalGroupMessage }) {
+  const { user } = useAuth();
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const mine = user?.id === message.senderId;
+
+  const statusLabel = message.failed
+    ? "échec"
+    : message.pending
+      ? "envoi..."
+      : null;
+
+  const { text, attachment } = parseMessageContent(message.content);
+
+  async function handleOpenAttachment() {
+    if (!attachment?.id) {
+      return;
+    }
+
+    try {
+      setDownloadError(null);
+      const url = await fileService.downloadUrl(attachment.id);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      setDownloadError("Impossible d'ouvrir le fichier.");
+    }
+  }
+
+  return (
+    <article className={mine ? "message-bubble mine" : "message-bubble"}>
+      {!mine ? <Avatar name={message.senderName} size={28} /> : null}
+
+      <div>
         <header>
           <strong>{mine ? "Vous" : message.senderName}</strong>
           <small>
-          {formatMessageTime(message.createdAt)}
-          {statusLabel ? ` · ${statusLabel}` : ""}
+            {formatMessageTime(message.createdAt)}
+            {statusLabel ? ` · ${statusLabel}` : ""}
           </small>
         </header>
 
-        <p>{message.content}</p>
+        {text ? <p>{text}</p> : null}
 
+        {attachment ? (
+          <button
+            className="message-file-attachment"
+            type="button"
+            disabled={!attachment.id}
+            onClick={handleOpenAttachment}
+          >
+            <Icon name="paperclip" size={14} />
+            <span>{attachment.name}</span>
+            <small>{attachment.id ? "Télécharger" : "Envoi..."}</small>
+          </button>
+        ) : null}
+
+        {downloadError ? (
+          <small className="chat-send-error">{downloadError}</small>
+        ) : null}
       </div>
-
     </article>
-
   );
-
 }
-
 
 
 export function ChatPage() {
@@ -399,7 +513,9 @@ export function ChatPage() {
   const [draft, setDraft] = useState("");
 
   const [emojiOpen, setEmojiOpen] = useState(false);
-
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [localMessages, setLocalMessages] = useState<LocalGroupMessage[]>([]);
 
 
@@ -601,23 +717,116 @@ const members = discussionDetail?.members ?? activeDiscussion?.members ?? [];
   setEmojiOpen(false);
 }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+
+function handlePickFile() {
+  fileInputRef.current?.click();
+}
+
+function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+  const file = event.target.files?.[0];
+
+  if (!file) {
+    return;
+  }
+
+  setSelectedFile(file);
+
+  // Permet de re-sélectionner le même fichier après suppression
+  event.currentTarget.value = "";
+}
+
+function removeSelectedFile() {
+  setSelectedFile(null);
+}
+
+//   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+//   event.preventDefault();
+
+//  const content = draft.trim();
+
+// if ((!content && !selectedFile) || !activeDiscussion || !user?.id) {
+//   return;
+// }
+//   const temporaryId = `temp-${activeDiscussion.id}-${Date.now()}`;
+
+//   const temporaryMessage: LocalGroupMessage = {
+//     id: temporaryId,
+//     discussionId: activeDiscussion.id,
+//     senderId: user.id,
+//     senderName: user.name || "Vous",
+//     content,
+//     createdAt: new Date().toISOString(),
+//     pending: true,
+//   };
+
+//   setLocalMessages((currentMessages) => [
+//     ...currentMessages,
+//     temporaryMessage,
+//   ]);
+
+//   setDraft("");
+//   setSelectedFile(null);
+
+//   try {
+//     const savedMessage = await sendMessage.mutateAsync({
+//       discussionId: activeDiscussion.id,
+//       request: {
+//   content: selectedFile ? `${content}\n📎 Fichier joint : ${selectedFile.name}` : content,
+// },
+//     });
+
+//     setLocalMessages((currentMessages) =>
+//       currentMessages.map((message) =>
+//         message.id === temporaryId ? savedMessage : message,
+//       ),
+//     );
+//   } catch {
+//     setLocalMessages((currentMessages) =>
+//       currentMessages.map((message) =>
+//         message.id === temporaryId
+//           ? {
+//               ...message,
+//               pending: false,
+//               failed: true,
+//             }
+//           : message,
+//       ),
+//     );
+//   }
+// }
+
+
+async function handleSubmit(event: FormEvent<HTMLFormElement>) {
   event.preventDefault();
 
   const content = draft.trim();
+  const fileToSend = selectedFile;
 
-  if (!content || !activeDiscussion || !user?.id) {
+  if ((!content && !fileToSend) || !activeDiscussion || !user?.id) {
+    return;
+  }
+
+  if (sendMessage.isPending || uploadingFile) {
     return;
   }
 
   const temporaryId = `temp-${activeDiscussion.id}-${Date.now()}`;
+
+  const temporaryContent = fileToSend
+    ? buildMessageContentWithFile(content, {
+        id: null,
+        name: fileToSend.name,
+        size: fileToSend.size,
+        contentType: fileToSend.type,
+      })
+    : content;
 
   const temporaryMessage: LocalGroupMessage = {
     id: temporaryId,
     discussionId: activeDiscussion.id,
     senderId: user.id,
     senderName: user.name || "Vous",
-    content,
+    content: temporaryContent,
     createdAt: new Date().toISOString(),
     pending: true,
   };
@@ -628,11 +837,33 @@ const members = discussionDetail?.members ?? activeDiscussion?.members ?? [];
   ]);
 
   setDraft("");
+  setSelectedFile(null);
 
   try {
+    let finalContent = content;
+
+    if (fileToSend) {
+      setUploadingFile(true);
+
+      const uploadedFile = await fileService.upload({
+        file: fileToSend,
+        teamId: activeDiscussion.teamId ?? null,
+        visibility: activeDiscussion.teamId ? "TEAM" : "PRIVATE",
+      });
+
+      finalContent = buildMessageContentWithFile(content, {
+        id: uploadedFile.id,
+        name: uploadedFile.name || fileToSend.name,
+        size: uploadedFile.size ?? fileToSend.size,
+        contentType: uploadedFile.contentType ?? fileToSend.type,
+      });
+    }
+
     const savedMessage = await sendMessage.mutateAsync({
       discussionId: activeDiscussion.id,
-      request: { content },
+      request: {
+        content: finalContent,
+      },
     });
 
     setLocalMessages((currentMessages) =>
@@ -652,6 +883,8 @@ const members = discussionDetail?.members ?? activeDiscussion?.members ?? [];
           : message,
       ),
     );
+  } finally {
+    setUploadingFile(false);
   }
 }
 
@@ -1063,7 +1296,7 @@ const members = discussionDetail?.members ?? activeDiscussion?.members ?? [];
 
 
 
-          <div className="composer-actions">
+          {/* <div className="composer-actions">
   <div className="emoji-action-wrapper">
     <button
       className="icon-button"
@@ -1102,6 +1335,84 @@ const members = discussionDetail?.members ?? activeDiscussion?.members ?? [];
     className="button primary"
     type="submit"
     disabled={!draft.trim()}
+    aria-label="Envoyer"
+  >
+    <Icon name="send" size={14} />
+  </button>
+</div> */}
+
+{selectedFile ? (
+  <div className="composer-file-preview">
+    <Icon name="paperclip" size={14} />
+    <span>{selectedFile.name}</span>
+
+    <button
+      className="icon-button"
+      type="button"
+      aria-label="Retirer le fichier"
+      onClick={removeSelectedFile}
+    >
+      <Icon name="x" size={13} />
+    </button>
+  </div>
+) : null}
+
+<div className="composer-actions">
+  <div className="emoji-action-wrapper">
+    <button
+      className="icon-button"
+      type="button"
+      aria-label="Emoji"
+      onClick={() => setEmojiOpen((value) => !value)}
+    >
+      <Icon name="smile" size={15} />
+    </button>
+
+    {emojiOpen ? (
+      <div className="emoji-picker-popover">
+        <EmojiPicker
+          onEmojiClick={handleEmojiClick}
+          width={340}
+          height={360}
+          theme={Theme.LIGHT}
+          emojiStyle={EmojiStyle.NATIVE}
+          lazyLoadEmojis={false}
+          searchPlaceholder="Rechercher un emoji..."
+          previewConfig={{
+            showPreview: false,
+          }}
+        />
+      </div>
+    ) : null}
+  </div>
+
+  <button
+    className="icon-button"
+    type="button"
+    aria-label="Joindre un fichier"
+    onClick={handlePickFile}
+  >
+    <Icon name="paperclip" size={15} />
+  </button>
+
+  <input
+    ref={fileInputRef}
+    type="file"
+    hidden
+    onChange={handleFileChange}
+  />
+
+  <span />
+
+  {sendError ? <small className="chat-send-error">{sendError}</small> : null}
+
+  {/* <small>Entree envoyer</small> */}
+<small>{uploadingFile ? "Upload..." : "Entree envoyer"}</small>
+  <button
+    className="button primary"
+    type="submit"
+    // disabled={!draft.trim() && !selectedFile}
+    disabled={(!draft.trim() && !selectedFile) || sendMessage.isPending || uploadingFile}
     aria-label="Envoyer"
   >
     <Icon name="send" size={14} />

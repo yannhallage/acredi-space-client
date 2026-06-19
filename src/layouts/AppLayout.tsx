@@ -456,7 +456,7 @@ export function AppLayout() {
             <div className="workspace-list">
               <div className="eyebrow-row">
                 <span>Equipes</span>
-                <Icon name="plus" size={12} />
+                {/* <Icon name="plus" size={12} /> */}
               </div>
               {myDiscussionsQuery.isLoading ? (
                 notificationSkeletons.map((item) => (

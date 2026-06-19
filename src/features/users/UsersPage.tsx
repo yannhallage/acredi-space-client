@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { useInviteUserMutation, useUsersQuery, useActivateUserMutation, useDeactivateUserMutation } from "../../shared/api/users";
+import {
+  useActivateUserMutation,
+  useDeactivateUserMutation,
+  useDeleteUserMutation,
+  useInviteUserMutation,
+  useUpdateUserMutation,
+  useUsersQuery,
+} from "../../shared/api/users";
 import {
   PermissionGate,
   USERS_INVITE_PERMISSIONS,
@@ -18,6 +25,7 @@ const roleOptions: Array<{ value: AdminRole; label: string }> = [
   { value: "manager", label: "Manager" },
   { value: "collaborator", label: "Collaborator" },
 ];
+
 const userSkeletons = [
   "user-skeleton-1",
   "user-skeleton-2",
@@ -90,13 +98,55 @@ function getInviteErrorMessage(error: unknown) {
   return "Failed to invite user";
 }
 
+function adminRoleFromUser(user: User): AdminRole {
+  if (user.adminRole === "admin" || user.adminRole === "owner") {
+    return "admin";
+  }
+
+  if (user.adminRole === "manager") {
+    return "manager";
+  }
+
+  return "collaborator";
+}
+
+// function roleNameFromAdminRole(role: AdminRole): "ADMIN" | "MANAGER" | "USER" {
+//   if (role === "admin" || role === "owner") {
+//     return "ADMIN";
+//   }
+
+//   if (role === "manager") {
+//     return "MANAGER";
+//   }
+
+//   return "USER";
+// }
+
+function roleNameFromAdminRole(
+  role: AdminRole,
+): "ADMIN" | "MANAGER" | "COLLABORATOR" {
+  if (role === "admin" || role === "owner") {
+    return "ADMIN";
+  }
+
+  if (role === "manager") {
+    return "MANAGER";
+  }
+
+  return "COLLABORATOR";
+}
+
 function UserActionsDropdown({
   user,
   onChanged,
+  onEdit,
+  onDelete,
   onToast,
 }: {
   user: User;
   onChanged: () => Promise<unknown>;
+  onEdit: (user: User) => void;
+  onDelete: (user: User) => void;
   onToast: (toast: {
     intent: "success" | "info" | "warning" | "error";
     message: string;
@@ -164,6 +214,18 @@ function UserActionsDropdown({
         <div className="users-actions-menu">
           <button
             type="button"
+            className="users-actions-item"
+            onClick={(event) => {
+              event.stopPropagation();
+              setOpen(false);
+              onEdit(user);
+            }}
+          >
+            Modifier les informations
+          </button>
+
+          <button
+            type="button"
             className={
               isActive
                 ? "users-actions-item danger"
@@ -178,25 +240,51 @@ function UserActionsDropdown({
                 ? "Désactiver utilisateur"
                 : "Activer utilisateur"}
           </button>
+
+          <button
+            type="button"
+            className="users-actions-item danger"
+            onClick={(event) => {
+              event.stopPropagation();
+              setOpen(false);
+              onDelete(user);
+            }}
+          >
+            Supprimer utilisateur
+          </button>
         </div>
       ) : null}
     </div>
   );
 }
+
 export function UsersPage() {
   const navigate = useNavigate();
   const { hasAnyPermission, loading: authLoading } = usePermissions();
   const canViewUsers = hasAnyPermission(USERS_VIEW_PERMISSIONS);
   const canInviteUsers = hasAnyPermission(USERS_INVITE_PERMISSIONS);
+
   const usersQuery = useUsersQuery({ enabled: !authLoading && canViewUsers });
   const inviteMutation = useInviteUserMutation();
+  const updateUserMutation = useUpdateUserMutation();
+  const deleteUserMutation = useDeleteUserMutation();
+
   const [nameFilter, setNameFilter] = useState("");
   const [emailFilter, setEmailFilter] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
+
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AdminRole>("collaborator");
+
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
+
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState<AdminRole>("collaborator");
+
   const loading = authLoading || usersQuery.loading;
 
   const [toast, setToast] = useState<{
@@ -221,6 +309,7 @@ export function UsersPage() {
         const matchesEmail =
           emailQuery.length === 0 ||
           user.email.toLowerCase().includes(emailQuery);
+
         return matchesName && matchesEmail;
       })
       .slice()
@@ -232,6 +321,25 @@ export function UsersPage() {
   const hasFilters =
     nameFilter.trim().length > 0 || emailFilter.trim().length > 0;
 
+  function showToast(
+    intent: "success" | "info" | "warning" | "error",
+    message: string,
+    timeout = 4000,
+  ) {
+    setToast({
+      show: true,
+      intent,
+      message,
+    });
+
+    setTimeout(() => {
+      setToast((prev) => ({
+        ...prev,
+        show: false,
+      }));
+    }, timeout);
+  }
+
   function closeInvite() {
     setIsInviteOpen(false);
     inviteMutation.reset();
@@ -242,12 +350,10 @@ export function UsersPage() {
 
   async function inviteUser() {
     if (!canInviteUsers) {
-      setToast({
-        show: true,
-        intent: "error",
-        message: "Vous n'avez pas les droits necessaires pour inviter un utilisateur.",
-      });
-
+      showToast(
+        "error",
+        "Vous n'avez pas les droits necessaires pour inviter un utilisateur.",
+      );
       return;
     }
 
@@ -255,12 +361,7 @@ export function UsersPage() {
     const nextEmail = email.trim();
 
     if (!nextName || !nextEmail) {
-      setToast({
-        show: true,
-        intent: "warning",
-        message: "Please fill all required fields",
-      });
-
+      showToast("warning", "Please fill all required fields");
       return;
     }
 
@@ -277,52 +378,92 @@ export function UsersPage() {
 
       await usersQuery.refetch();
 
-      setToast({
-        show: true,
-        intent: "success",
-        message: "utilisateur invité avec succès",
-      });
-
+      showToast("success", "Utilisateur invité avec succès");
       closeInvite();
-
-      setTimeout(() => {
-        setToast((prev) => ({
-          ...prev,
-          show: false,
-        }));
-      }, 4000);
     } catch (error) {
-      setToast({
-        show: true,
-        intent: "error",
-        message: getInviteErrorMessage(error),
-      });
-
-      setTimeout(() => {
-        setToast((prev) => ({
-          ...prev,
-          show: false,
-        }));
-      }, 5000);
+      showToast("error", getInviteErrorMessage(error), 5000);
     }
   }
+
+  function openEditUser(user: User) {
+    setEditingUser(user);
+    setEditName(user.name);
+    setEditEmail(user.email);
+    setEditRole(adminRoleFromUser(user));
+    updateUserMutation.reset();
+  }
+
+  function closeEditUser() {
+    setEditingUser(null);
+    setEditName("");
+    setEditEmail("");
+    setEditRole("collaborator");
+    updateUserMutation.reset();
+  }
+
+  async function submitEditUser() {
+    if (!editingUser) return;
+
+    const nextName = editName.trim();
+    const nextEmail = editEmail.trim();
+
+    if (!nextName || !nextEmail) {
+      showToast("warning", "Veuillez renseigner le nom et l'email.");
+      return;
+    }
+
+    try {
+      const [firstName, ...lastNameParts] = nextName.split(/\s+/);
+
+      await updateUserMutation.mutateAsync(editingUser.id, {
+        firstName,
+        lastName: lastNameParts.join(" "),
+        email: nextEmail,
+        roleName: roleNameFromAdminRole(editRole),
+      });
+
+      await usersQuery.refetch();
+
+      showToast("success", "Utilisateur modifié avec succès");
+      closeEditUser();
+    } catch (error) {
+      showToast(
+        "error",
+        error instanceof Error
+          ? error.message
+          : "Impossible de modifier l'utilisateur",
+      );
+    }
+  }
+
+  async function confirmDeleteUser() {
+    if (!deletingUser) return;
+
+    try {
+      await deleteUserMutation.mutateAsync(deletingUser.id);
+      await usersQuery.refetch();
+
+      showToast("success", "Utilisateur supprimé avec succès");
+      setDeletingUser(null);
+    } catch (error) {
+      showToast(
+        "error",
+        error instanceof Error
+          ? error.message
+          : "Impossible de supprimer l'utilisateur",
+      );
+    }
+  }
+
   return (
     <div className="page-stack users-page">
       {toast.show && <Toast intent={toast.intent} message={toast.message} />}
 
       <section className="notes-toolbar">
-        {/* <div className="page-header compact"> */}
-        {/* <div className="notes-titlebar">
-            <span className="eyebrow">Administration</span>
-            <h1>Utilisateurs</h1>
-            <p>Gérez les comptes, rôles et accès de votre application.</p>
-          </div> */}
         <div className="notes-titlebar">
           <span>Utilisateurs</span>
-          {/* <Icon name="list" size={14} /> */}
-          {/* <strong>Notes View</strong> */}
-          {/* <Icon name="chevDown" size={14} /> */}
         </div>
+
         <PermissionGate permissions={USERS_INVITE_PERMISSIONS}>
           <button
             className="button primary notes-create-button"
@@ -349,6 +490,7 @@ export function UsersPage() {
               placeholder="Name"
             />
           </label>
+
           <label>
             <span>Email</span>
             <input
@@ -358,6 +500,7 @@ export function UsersPage() {
             />
           </label>
         </div>
+
         <div className="notes-filter-actions">
           <button
             className="icon-button bordered"
@@ -372,10 +515,7 @@ export function UsersPage() {
           >
             <Icon name="refresh" size={14} />
           </button>
-          {/* <button className="button ghost" type="button">
-            <Icon name="filter" size={14} />
-            Filter
-          </button> */}
+
           <button
             className="button ghost"
             type="button"
@@ -384,13 +524,6 @@ export function UsersPage() {
             <Icon name="sort" size={14} />
             Sort
           </button>
-          {/* <button
-            className="icon-button bordered"
-            type="button"
-            aria-label="More actions"
-          >
-            <Icon name="moreH" size={14} />
-          </button> */}
         </div>
       </section>
 
@@ -405,71 +538,58 @@ export function UsersPage() {
         {loading
           ? userSkeletons.map((item) => <UserRowSkeleton key={item} />)
           : visibleUsers.map((user) => (
-            <motion.article
-              className="users-row"
-              key={user.id}
-              role="button"
-              tabIndex={0}
-              layout
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.16 }}
-              onClick={() =>
-                navigate(`/app/users/${user.id}`, { state: { user } })
-              }
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  navigate(`/app/users/${user.id}`, { state: { user } });
+              <motion.article
+                className="users-row"
+                key={user.id}
+                role="button"
+                tabIndex={0}
+                layout
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.16 }}
+                onClick={() =>
+                  navigate(`/app/users/${user.id}`, { state: { user } })
                 }
-              }}
-            >
-              <span className="users-initial">{initialsFor(user.name)}</span>
-              <div className="users-person">
-                <strong>{user.name}</strong>
-                <span>{user.email}</span>
-              </div>
-              <span className="users-status">
-                {user.enabled === false ? "Désactivé" : "Activé"}
-                {user.invitationStatus ? ` • ${user.invitationStatus}` : ""}
-              </span>
-              <button
-                className="users-role"
-                type="button"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <Icon name={roleIcon(user)} size={15} />
-                {roleLabel(user)}
-              </button>
-              {/* <button
-                className="icon-button users-more"
-                type="button"
-                aria-label={`Options ${user.name}`}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <Icon name="moreH" size={19} />
-              </button> */}
-
-              <UserActionsDropdown
-                user={user}
-                onChanged={usersQuery.refetch}
-                onToast={({ intent, message }) => {
-                  setToast({
-                    show: true,
-                    intent,
-                    message,
-                  });
-
-                  setTimeout(() => {
-                    setToast((prev) => ({
-                      ...prev,
-                      show: false,
-                    }));
-                  }, 4000);
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    navigate(`/app/users/${user.id}`, { state: { user } });
+                  }
                 }}
-              />
-            </motion.article>
-          ))}
+              >
+                <span className="users-initial">{initialsFor(user.name)}</span>
+
+                <div className="users-person">
+                  <strong>{user.name}</strong>
+                  <span>{user.email}</span>
+                </div>
+
+                <span className="users-status">
+                  {user.enabled === false ? "Désactivé" : "Activé"}
+                  {user.invitationStatus ? ` • ${user.invitationStatus}` : ""}
+                </span>
+
+                <button
+                  className="users-role"
+                  type="button"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <Icon name={roleIcon(user)} size={15} />
+                  {roleLabel(user)}
+                </button>
+
+                <UserActionsDropdown
+                  user={user}
+                  onChanged={usersQuery.refetch}
+                  onEdit={openEditUser}
+                  onDelete={setDeletingUser}
+                  onToast={({ intent, message }) => {
+                    showToast(intent, message);
+                  }}
+                />
+              </motion.article>
+            ))}
+
         {!loading && visibleUsers.length === 0 ? (
           <NotUsers
             hasFilters={hasFilters}
@@ -568,6 +688,7 @@ export function UsersPage() {
                 >
                   Cancel
                 </button>
+
                 <button
                   className="button primary notes-submit"
                   type="submit"
@@ -579,6 +700,183 @@ export function UsersPage() {
                 </button>
               </footer>
             </motion.form>
+          </motion.div>
+        ) : null}
+
+        {editingUser ? (
+          <motion.div
+            className="note-modal-overlay"
+            role="presentation"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
+            onMouseDown={closeEditUser}
+          >
+            <motion.form
+              className="note-modal users-note-modal"
+              aria-label="Modifier utilisateur"
+              initial={{ opacity: 0, y: 14, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              onMouseDown={(event) => event.stopPropagation()}
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitEditUser().catch(() => undefined);
+              }}
+            >
+              <header>
+                <h2>Modifier utilisateur</h2>
+                <div>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    aria-label="Fermer"
+                    onClick={closeEditUser}
+                  >
+                    <Icon name="x" size={16} />
+                  </button>
+                </div>
+              </header>
+
+              <label className="note-field">
+                <span>Nom complet</span>
+                <input
+                  value={editName}
+                  onChange={(event) => setEditName(event.target.value)}
+                  placeholder="Nom complet"
+                  autoFocus
+                />
+              </label>
+
+              <label className="note-field">
+                <span>Email</span>
+                <input
+                  value={editEmail}
+                  onChange={(event) => setEditEmail(event.target.value)}
+                  placeholder="name@company.com"
+                  type="email"
+                />
+              </label>
+
+              <label className="note-field">
+                <span>Rôle</span>
+                <select
+                  value={editRole}
+                  onChange={(event) =>
+                    setEditRole(event.target.value as AdminRole)
+                  }
+                >
+                  {roleOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {updateUserMutation.error ? (
+                <p className="auth-error text-red-500 text-sm">
+                  {updateUserMutation.error.message}
+                </p>
+              ) : null}
+
+              <footer>
+                <button
+                  className="button ghost"
+                  type="button"
+                  onClick={closeEditUser}
+                >
+                  Annuler
+                </button>
+
+                <button
+                  className="button primary notes-submit"
+                  type="submit"
+                  disabled={
+                    !editName.trim() ||
+                    !editEmail.trim() ||
+                    updateUserMutation.isPending
+                  }
+                >
+                  {updateUserMutation.isPending ? "Modification..." : "Modifier"}
+                </button>
+              </footer>
+            </motion.form>
+          </motion.div>
+        ) : null}
+
+        {deletingUser ? (
+          <motion.div
+            className="note-modal-overlay"
+            role="presentation"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
+            onMouseDown={() => setDeletingUser(null)}
+          >
+            <motion.div
+              className="note-modal users-note-modal"
+              role="dialog"
+              aria-label="Supprimer utilisateur"
+              initial={{ opacity: 0, y: 14, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <header>
+                <h2>Supprimer utilisateur</h2>
+                <div>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    aria-label="Fermer"
+                    onClick={() => setDeletingUser(null)}
+                  >
+                    <Icon name="x" size={16} />
+                  </button>
+                </div>
+              </header>
+
+              <p>
+                Voulez-vous vraiment supprimer{" "}
+                <strong>{deletingUser.name}</strong> ?
+              </p>
+
+              <p className="auth-error text-red-500 text-sm">
+                Cette action est irréversible.
+              </p>
+
+              {deleteUserMutation.error ? (
+                <p className="auth-error text-red-500 text-sm">
+                  {deleteUserMutation.error.message}
+                </p>
+              ) : null}
+
+              <footer>
+                <button
+                  className="button ghost"
+                  type="button"
+                  onClick={() => setDeletingUser(null)}
+                >
+                  Annuler
+                </button>
+
+                <button
+                  className="button primary notes-submit danger"
+                  type="button"
+                  disabled={deleteUserMutation.isPending}
+                  onClick={() => {
+                    confirmDeleteUser().catch(() => undefined);
+                  }}
+                >
+                  {deleteUserMutation.isPending ? "Suppression..." : "Supprimer"}
+                </button>
+              </footer>
+            </motion.div>
           </motion.div>
         ) : null}
       </AnimatePresence>
