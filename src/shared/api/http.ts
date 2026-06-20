@@ -42,6 +42,40 @@ function normalizeBaseUrl(url: string) {
   return url.replace(/\/+$/, "");
 }
 
+// Origine du serveur d'API (schema + host + port), sans le suffixe `/api`.
+// Sert a resoudre les chemins relatifs (ex: avatars, fichiers) renvoyes par le
+// backend, qui sinon seraient resolus contre l'origine du frontend.
+export const API_ORIGIN = (() => {
+  try {
+    return new URL(API_BASE_URL).origin;
+  } catch {
+    return API_BASE_URL.replace(/\/api\/?$/, "");
+  }
+})();
+
+// Transforme une URL d'asset renvoyee par l'API en URL chargeable par le
+// navigateur. Les URL absolues, blob: et data: sont laissees telles quelles ;
+// les chemins relatifs sont prefixes par l'origine de l'API.
+export function resolveAssetUrl(
+  url: string | null | undefined
+): string | undefined {
+  if (!url) {
+    return undefined;
+  }
+
+  const value = url.trim();
+
+  if (!value) {
+    return undefined;
+  }
+
+  if (/^(https?:|blob:|data:)/i.test(value)) {
+    return value;
+  }
+
+  return `${API_ORIGIN}${value.startsWith("/") ? value : `/${value}`}`;
+}
+
 function appendSearchParams(
   url: string,
   params?: Record<string, QueryParamValue>

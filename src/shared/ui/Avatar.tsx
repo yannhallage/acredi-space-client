@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { resolveAssetUrl } from '../api/http';
 import type { Presence } from '../types';
 
 interface AvatarProps {
@@ -48,11 +49,12 @@ function colorFor(name: string | null | undefined) {
 export function Avatar({ name, size = 32, presence, ring, src }: AvatarProps) {
   const color = colorFor(name);
   const [imageFailed, setImageFailed] = useState(false);
-  const showImage = Boolean(src && !imageFailed);
+  const resolvedSrc = resolveAssetUrl(src);
+  const showImage = Boolean(resolvedSrc && !imageFailed);
 
   useEffect(() => {
     setImageFailed(false);
-  }, [src]);
+  }, [resolvedSrc]);
 
   return (
     <span className="avatar" style={{ width: size, height: size }}>
@@ -71,7 +73,7 @@ export function Avatar({ name, size = 32, presence, ring, src }: AvatarProps) {
           <img
             alt=""
             className="avatar-image"
-            src={src ?? undefined}
+            src={resolvedSrc}
             onError={() => setImageFailed(true)}
           />
         ) : (
