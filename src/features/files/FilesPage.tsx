@@ -1429,7 +1429,7 @@ export function FilesPage() {
           ) : (
             <div className="files-empty-state files-shared-empty">
               <Icon name="file" size={38} />
-              <strong>Aucun fichier partage</strong>
+              {/* <strong>Aucun fichier partage</strong> */}
               <p>Les fichiers que l'on vous partage apparaitront ici.</p>
             </div>
           )}
