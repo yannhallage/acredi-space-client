@@ -47,7 +47,13 @@ export function UserDetailPage() {
     <div className="user-detail-page">
       <section className="user-profile-hero">
         <div className="user-profile-pattern" />
-        <Avatar name={user.name} size={86} presence={user.presence} ring="var(--surface)" />
+        <Avatar
+          name={user.name}
+          size={86}
+          presence={user.presence}
+          ring="var(--surface)"
+          src={user.avatarUrl}
+        />
         <div className="user-profile-main">
           <span>{user.team} - Acredi Group</span>
           <h1>{user.name}</h1>
@@ -84,7 +90,7 @@ export function UserDetailPage() {
             <div>
               <Icon name="phoneOff" size={15} />
               <dt>Telephone</dt>
-              <dd>+225 07 08 12 34 56</dd>
+              <dd>{user.phoneNumber ?? 'Non renseigne'}</dd>
               <button type="button">Modifier</button>
             </div>
             <div>

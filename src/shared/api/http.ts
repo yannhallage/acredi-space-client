@@ -53,9 +53,48 @@ export const API_ORIGIN = (() => {
   }
 })();
 
+function resolveLocalFrontendAssetUrl(value: string) {
+  const normalizedValue = value.replace(/^file:\/\/+/i, "").replace(/\\/g, "/");
+  const lowerValue = normalizedValue.toLowerCase();
+  const isWindowsAbsolutePath = /^[a-z]:\//i.test(normalizedValue);
+
+  if (lowerValue === "/src" || lowerValue.startsWith("/src/")) {
+    return normalizedValue;
+  }
+
+  if (lowerValue === "src" || lowerValue.startsWith("src/")) {
+    return `/${normalizedValue}`;
+  }
+
+  if (lowerValue === "/public" || lowerValue.startsWith("/public/")) {
+    const publicPath = normalizedValue.slice("/public".length);
+    return publicPath || "/";
+  }
+
+  if (lowerValue === "public" || lowerValue.startsWith("public/")) {
+    const publicPath = normalizedValue.slice("public".length);
+    return publicPath.startsWith("/") ? publicPath : `/${publicPath}`;
+  }
+
+  const publicIndex = isWindowsAbsolutePath ? lowerValue.lastIndexOf("/public/") : -1;
+  if (publicIndex >= 0) {
+    const publicPath = normalizedValue.slice(publicIndex + "/public".length);
+    return publicPath.startsWith("/") ? publicPath : `/${publicPath}`;
+  }
+
+  const srcIndex = isWindowsAbsolutePath ? lowerValue.lastIndexOf("/src/") : -1;
+  if (srcIndex >= 0) {
+    return normalizedValue.slice(srcIndex);
+  }
+
+  return undefined;
+}
+
 // Transforme une URL d'asset renvoyee par l'API en URL chargeable par le
 // navigateur. Les URL absolues, blob: et data: sont laissees telles quelles ;
-// les chemins relatifs sont prefixes par l'origine de l'API.
+// les chemins relatifs sont prefixes par l'origine de l'API. Les chemins qui
+// pointent vers un asset frontend local (`src/...`, `public/...`) restent servis
+// par Vite au lieu d'etre envoyes au backend.
 export function resolveAssetUrl(
   url: string | null | undefined
 ): string | undefined {
@@ -71,6 +110,12 @@ export function resolveAssetUrl(
 
   if (/^(https?:|blob:|data:)/i.test(value)) {
     return value;
+  }
+
+  const localFrontendAssetUrl = resolveLocalFrontendAssetUrl(value);
+
+  if (localFrontendAssetUrl) {
+    return localFrontendAssetUrl;
   }
 
   return `${API_ORIGIN}${value.startsWith("/") ? value : `/${value}`}`;
