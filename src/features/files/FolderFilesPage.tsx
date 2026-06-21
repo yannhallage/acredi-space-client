@@ -19,7 +19,13 @@ import { useAuth } from "../../shared/context";
 import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
 import type { User } from "../../shared/types";
 import Toast from "../../components/app/Toast/Toast";
-import { Avatar, EmptyState, FileIcon, Icon } from "../../shared/ui";
+import { FilePreviewContent } from "./components/FilePreviewContent";
+import { FileThumbnail } from "./components/FileThumbnail";
+import { getFileExtension, type PreviewState } from "./filePreview";
+import { setCachedFilePreviewUrl } from "./filePreviewUrlCache";
+import { resolveAssetUrl } from "../../shared/api/http";
+import { downloadFileFromUrl } from "../../shared/utils/downloadFile";
+import { Avatar, EmptyState, Icon } from "../../shared/ui";
 
 const fileSkeletons = [
   "file-skeleton-1",
@@ -58,13 +64,6 @@ type ToastState = {
   message: string;
 };
 
-type PreviewState = {
-  error: string | null;
-  fileId: string | null;
-  loading: boolean;
-  url: string | null;
-};
-
 function pluralizeFile(count: number) {
   return `${count} fichier${count > 1 ? "s" : ""}`;
 }
@@ -91,38 +90,6 @@ function buildFolderTrail(
   }
 
   return trail;
-}
-
-function getFileExtension(file: WorkspaceFile) {
-  const nameExtension = file.name.includes(".")
-    ? file.name.split(".").pop()
-    : null;
-  const mimeExtension = file.contentType?.split("/").pop();
-  const extension = nameExtension || mimeExtension || "file";
-
-  return extension.slice(0, 4).toUpperCase();
-}
-
-function getFileColor(file: WorkspaceFile) {
-  const extension = getFileExtension(file).toLowerCase();
-
-  if (["pdf"].includes(extension)) {
-    return "#ff5c75";
-  }
-
-  if (["xls", "xlsx", "csv"].includes(extension)) {
-    return "#29c36a";
-  }
-
-  if (["png", "jpg", "jpeg", "webp", "gif"].includes(extension)) {
-    return "#8b7fff";
-  }
-
-  if (["zip", "rar", "7z"].includes(extension)) {
-    return "#f3a712";
-  }
-
-  return "#6f7bff";
 }
 
 function formatFileSize(size: number | null) {
@@ -156,120 +123,6 @@ function formatFileDate(date: Date | null) {
     month: "short",
     year: "numeric",
   }).format(date);
-}
-
-function getPreviewKind(file: WorkspaceFile) {
-  const contentType = file.contentType?.toLowerCase() ?? "";
-  const extension = getFileExtension(file).toLowerCase();
-
-  if (
-    contentType.startsWith("image/") ||
-    ["gif", "jpeg", "jpg", "png", "webp"].includes(extension)
-  ) {
-    return "image";
-  }
-
-  if (contentType === "application/pdf" || extension === "pdf") {
-    return "pdf";
-  }
-
-  if (contentType.startsWith("video/")) {
-    return "video";
-  }
-
-  if (contentType.startsWith("audio/")) {
-    return "audio";
-  }
-
-  if (
-    contentType.startsWith("text/") ||
-    contentType === "application/json" ||
-    ["csv", "json", "md", "txt", "xml"].includes(extension)
-  ) {
-    return "text";
-  }
-
-  return "unsupported";
-}
-
-function FilePreviewContent({
-  file,
-  preview,
-}: {
-  file: WorkspaceFile;
-  preview: PreviewState;
-}) {
-  const kind = getPreviewKind(file);
-
-  if (preview.loading) {
-    return (
-      <div className="files-preview-loading" aria-live="polite">
-        <span className="skeleton-line files-preview-skeleton-large" />
-        <span className="skeleton-line files-preview-skeleton-small" />
-      </div>
-    );
-  }
-
-  if (preview.error) {
-    return (
-      <div className="files-preview-empty">
-        <Icon name="alert" size={34} />
-        <strong>Apercu indisponible</strong>
-        <p>{preview.error}</p>
-      </div>
-    );
-  }
-
-  if (!preview.url || kind === "unsupported") {
-    return (
-      <div className="files-preview-empty">
-        <FileIcon
-          ext={getFileExtension(file)}
-          color={getFileColor(file)}
-          size={62}
-        />
-        <strong>Apercu indisponible</strong>
-        <p>Ce format ne peut pas encore etre affiche dans la fenetre.</p>
-      </div>
-    );
-  }
-
-  if (kind === "image") {
-    return (
-      <img
-        className="files-preview-media"
-        src={preview.url}
-        alt={file.name}
-      />
-    );
-  }
-
-  if (kind === "video") {
-    return (
-      <video className="files-preview-media" src={preview.url} controls />
-    );
-  }
-
-  if (kind === "audio") {
-    return (
-      <div className="files-preview-audio">
-        <FileIcon
-          ext={getFileExtension(file)}
-          color={getFileColor(file)}
-          size={62}
-        />
-        <audio src={preview.url} controls />
-      </div>
-    );
-  }
-
-  return (
-    <iframe
-      className="files-preview-frame"
-      src={preview.url}
-      title={file.name}
-    />
-  );
 }
 
 function FileShareModal({
@@ -732,6 +585,9 @@ export function FolderFilesPage() {
 
     try {
       const url = await previewFileUrlMutation.mutateAsync(file.id);
+      const resolvedUrl = resolveAssetUrl(url) ?? url;
+
+      setCachedFilePreviewUrl(file.id, resolvedUrl);
 
       setPreview((current) =>
         current.fileId === file.id
@@ -739,7 +595,7 @@ export function FolderFilesPage() {
               error: null,
               fileId: file.id,
               loading: false,
-              url,
+              url: resolvedUrl,
             }
           : current,
       );
@@ -771,13 +627,13 @@ export function FolderFilesPage() {
         return;
       }
 
-      window.open(url, "_blank", "noopener,noreferrer");
+      await downloadFileFromUrl(url, file.name);
     } catch (caughtError) {
       showToast(
         "error",
         caughtError instanceof Error
           ? caughtError.message
-          : "Impossible d'ouvrir ce fichier.",
+          : "Impossible de telecharger ce fichier.",
         5000,
       );
     }
@@ -1020,11 +876,7 @@ export function FolderFilesPage() {
                   }}
                 >
                   <span className="files-file-preview">
-                    <FileIcon
-                      ext={getFileExtension(file)}
-                      color={getFileColor(file)}
-                      size={46}
-                    />
+                    <FileThumbnail file={file} />
                   </span>
                   <strong>{file.name}</strong>
                   <small>

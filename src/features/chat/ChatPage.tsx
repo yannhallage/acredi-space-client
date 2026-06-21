@@ -40,6 +40,8 @@ type LocalGroupMessage = GroupMessageResponse & {
   failed?: boolean;
 };
 import { fileService } from "../../shared/api/files/service";
+import { downloadFileById } from "../../shared/utils/downloadFile";
+import { useUsersQuery } from "../../shared/api/users";
 import { useAuth } from "../../shared/context";
 
 import { Avatar, EmptyState, Icon } from "../../shared/ui";
@@ -433,7 +435,13 @@ function parseMessageContent(content: string): {
 // }
 
 
-function MessageBubble({ message }: { message: LocalGroupMessage }) {
+function MessageBubble({
+  message,
+  avatarSrc,
+}: {
+  message: LocalGroupMessage;
+  avatarSrc?: string | null;
+}) {
   const { user } = useAuth();
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -447,23 +455,24 @@ function MessageBubble({ message }: { message: LocalGroupMessage }) {
 
   const { text, attachment } = parseMessageContent(message.content);
 
-  async function handleOpenAttachment() {
+  async function handleDownloadAttachment() {
     if (!attachment?.id) {
       return;
     }
 
     try {
       setDownloadError(null);
-      const url = await fileService.downloadUrl(attachment.id);
-      window.open(url, "_blank", "noopener,noreferrer");
+      await downloadFileById(attachment.id, attachment.name);
     } catch {
-      setDownloadError("Impossible d'ouvrir le fichier.");
+      setDownloadError("Impossible de telecharger le fichier.");
     }
   }
 
   return (
     <article className={mine ? "message-bubble mine" : "message-bubble"}>
-      {!mine ? <Avatar name={message.senderName} size={28} /> : null}
+      {!mine ? (
+        <Avatar name={message.senderName} size={28} src={avatarSrc} />
+      ) : null}
 
       <div>
         <header>
@@ -481,7 +490,9 @@ function MessageBubble({ message }: { message: LocalGroupMessage }) {
             className="message-file-attachment"
             type="button"
             disabled={!attachment.id}
-            onClick={handleOpenAttachment}
+            onClick={() => {
+              void handleDownloadAttachment();
+            }}
           >
             <Icon name="paperclip" size={14} />
             <span>{attachment.name}</span>
@@ -505,6 +516,26 @@ export function ChatPage() {
   const navigate = useNavigate();
 
   const { user } = useAuth();
+
+  const usersQuery = useUsersQuery();
+
+  const usersById = useMemo(() => {
+    const map = new Map<string, { avatarUrl?: string | null }>();
+
+    (usersQuery.data ?? []).forEach((member) => {
+      map.set(member.id, member);
+    });
+
+    return map;
+  }, [usersQuery.data]);
+
+  const getUserAvatarUrl = (userId: string) => {
+    if (user?.id === userId) {
+      return user.avatarUrl;
+    }
+
+    return usersById.get(userId)?.avatarUrl;
+  };
 
   const messageListRef = useRef<HTMLDivElement>(null);
 
@@ -1027,7 +1058,11 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 
                 <div className="chat-nav-item static" key={member.userId}>
 
-                  <Avatar name={memberName} size={20} />
+                  <Avatar
+                    name={memberName}
+                    size={20}
+                    src={getUserAvatarUrl(member.userId)}
+                  />
 
                   <span>{isCurrentUser ? `${memberName} (Vous)` : memberName}</span>
 
@@ -1199,7 +1234,11 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 
                 {group.items.map((message) => (
 
-                  <MessageBubble key={message.id} message={message} />
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    avatarSrc={getUserAvatarUrl(message.senderId)}
+                  />
 
                 ))}
 
@@ -1454,7 +1493,11 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 
                   <li key={member.userId}>
 
-                    <Avatar name={memberName} size={24} />
+                    <Avatar
+                      name={memberName}
+                      size={24}
+                      src={getUserAvatarUrl(member.userId)}
+                    />
 
                     <span>
 

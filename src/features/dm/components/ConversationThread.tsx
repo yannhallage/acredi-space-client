@@ -18,6 +18,10 @@ import type {
 } from "../../../shared/api/dm/types";
 import { useAuth } from "../../../shared/context";
 import type { Presence } from "../../../shared/types";
+import {
+  downloadFileById,
+  downloadFileFromUrl,
+} from "../../../shared/utils/downloadFile";
 import { Avatar, Icon } from "../../../shared/ui";
 
 type LocalAttachment = ChatAttachmentResponse & {
@@ -37,6 +41,7 @@ interface DirectConversationThreadProps {
   title: string;
   subtitle?: string;
   presence?: Presence;
+  avatarUrl?: string | null;
   messages: MessageResponse[];
   loading?: boolean;
   refreshing?: boolean;
@@ -278,37 +283,73 @@ function MessageAttachmentItem({
 }: {
   attachment: LocalAttachment;
 }) {
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
   const meta = `${getAttachmentExtension(attachment)} - ${formatAttachmentSize(
     attachment.sizeBytes
   )}`;
-  const content = (
-    <>
-      <span className="dm-attachment-icon">
-        <Icon name={attachment.pending ? "upload" : "file"} size={15} />
-      </span>
-      <span className="dm-attachment-copy">
-        <strong>{attachment.name}</strong>
-        <small>{attachment.pending ? "Envoi..." : meta}</small>
-      </span>
-      <Icon name={attachment.pending ? "upload" : "download"} size={14} />
-    </>
-  );
 
-  if (attachment.downloadUrl && !attachment.pending) {
-    return (
-      <a
-        className="dm-attachment-item"
-        href={attachment.downloadUrl}
-        target="_blank"
-        rel="noreferrer"
-        download={attachment.name}
-      >
-        {content}
-      </a>
-    );
+  async function handleDownload() {
+    if (attachment.pending || downloading) {
+      return;
+    }
+
+    setDownloading(true);
+    setDownloadError(null);
+
+    try {
+      if (attachment.downloadUrl) {
+        await downloadFileFromUrl(attachment.downloadUrl, attachment.name);
+        return;
+      }
+
+      if (attachment.id && !attachment.id.startsWith("pending-file-")) {
+        await downloadFileById(attachment.id, attachment.name);
+        return;
+      }
+
+      throw new Error("download-unavailable");
+    } catch {
+      setDownloadError("Impossible de telecharger le fichier.");
+    } finally {
+      setDownloading(false);
+    }
   }
 
-  return <span className="dm-attachment-item pending">{content}</span>;
+  return (
+    <>
+      <button
+        className="dm-attachment-item"
+        type="button"
+        disabled={attachment.pending || downloading}
+        onClick={() => {
+          void handleDownload();
+        }}
+      >
+        <span className="dm-attachment-icon">
+          <Icon name={attachment.pending ? "upload" : "file"} size={15} />
+        </span>
+        <span className="dm-attachment-copy">
+          <strong>{attachment.name}</strong>
+          <small>
+            {attachment.pending
+              ? "Envoi..."
+              : downloading
+                ? "Telechargement..."
+                : meta}
+          </small>
+        </span>
+        <Icon
+          name={attachment.pending ? "upload" : "download"}
+          size={14}
+        />
+      </button>
+      {downloadError ? (
+        <small className="dm-attachment-error">{downloadError}</small>
+      ) : null}
+    </>
+  );
 }
 
 function MessageAttachmentList({
@@ -334,11 +375,13 @@ function DirectMessageRow({
   isMine,
   senderLabel,
   presence,
+  avatarSrc,
 }: {
   message: LocalMessage;
   isMine: boolean;
   senderLabel: string;
   presence?: Presence;
+  avatarSrc?: string | null;
 }) {
   const time = formatTime(message.createdAt);
   const status = message.failed
@@ -352,7 +395,12 @@ function DirectMessageRow({
   return (
     <article className={`dm-message-row ${isMine ? "mine" : ""}`}>
       {!isMine ? (
-        <Avatar name={senderLabel} presence={presence} size={34} />
+        <Avatar
+          name={senderLabel}
+          presence={presence}
+          size={34}
+          src={avatarSrc}
+        />
       ) : null}
 
       <div className="dm-message-content">
@@ -387,7 +435,9 @@ function DirectMessageRow({
         </div>
       </div>
 
-      {isMine ? <Avatar name={senderLabel} size={34} /> : null}
+      {isMine ? (
+        <Avatar name={senderLabel} size={34} src={avatarSrc} />
+      ) : null}
     </article>
   );
 }
@@ -397,6 +447,7 @@ export function DirectConversationThread({
   title,
   subtitle = "Message direct",
   presence = "offline",
+  avatarUrl,
   messages,
   loading = false,
   refreshing = false,
@@ -616,7 +667,12 @@ export function DirectConversationThread({
       <div className="dm-thread-main">
         <header className="dm-thread-header">
           <div className="dm-thread-user">
-            <Avatar name={title} presence={presence} size={46} />
+            <Avatar
+              name={title}
+              presence={presence}
+              size={46}
+              src={avatarUrl}
+            />
 
             <div>
               <h2>{title}</h2>
@@ -685,6 +741,7 @@ export function DirectConversationThread({
                       isMine={isMine}
                       senderLabel={senderLabel}
                       presence={presence}
+                      avatarSrc={isMine ? user?.avatarUrl : avatarUrl}
                     />
                   );
                 })}
