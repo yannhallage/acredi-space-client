@@ -11,6 +11,14 @@ const adminRoleValues: AdminRole[] = [
   "member",
   "guest",
 ];
+const adminRoleRank: Record<AdminRole, number> = {
+  guest: 0,
+  member: 1,
+  collaborator: 2,
+  manager: 3,
+  admin: 4,
+  owner: 5,
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
@@ -37,11 +45,11 @@ function readPresence(value: unknown, userId?: string): Presence {
   return readCachedPresence(userId) ?? "offline";
 }
 
-function readAdminRole(value: unknown): AdminRole {
+function readAdminRole(value: unknown): AdminRole | undefined {
   const role = readString(value)?.toLowerCase();
 
   if (!role) {
-    return "collaborator";
+    return undefined;
   }
 
   const exactMatch = adminRoleValues.find((item) => item === role);
@@ -56,7 +64,15 @@ function readAdminRole(value: unknown): AdminRole {
   if (role.includes("collaborator")) return "collaborator";
   if (role.includes("guest")) return "guest";
 
-  return "collaborator";
+  return undefined;
+}
+
+function buildAdminRole(payload: AuthUserPayload) {
+  const roles = [readAdminRole(payload.adminRole), readAdminRole(payload.role)]
+    .filter((role): role is AdminRole => Boolean(role))
+    .sort((left, right) => adminRoleRank[right] - adminRoleRank[left]);
+
+  return roles[0] ?? "collaborator";
 }
 
 function buildName(payload: AuthUserPayload) {
@@ -117,6 +133,6 @@ export function normalizeAuthUser(value: unknown): User {
     phoneNumber: readString(payload.phoneNumber),
     appThemePreference: readString(payload.appThemePreference),
     profile: buildProfile(payload),
-    adminRole: readAdminRole(payload.adminRole ?? payload.role),
+    adminRole: buildAdminRole(payload),
   };
 }

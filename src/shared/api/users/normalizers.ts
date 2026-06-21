@@ -10,6 +10,14 @@ const adminRoles: AdminRole[] = [
   "member",
   "guest",
 ];
+const adminRoleRank: Record<AdminRole, number> = {
+  guest: 0,
+  member: 1,
+  collaborator: 2,
+  manager: 3,
+  admin: 4,
+  owner: 5,
+};
 const presenceValues: Presence[] = ["online", "busy", "away", "dnd", "offline"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -28,14 +36,11 @@ function readId(value: unknown) {
   return readString(value);
 }
 
-function normalizeAdminRole(
-  value: unknown,
-  fallback: AdminRole = "collaborator"
-) {
+function readAdminRole(value: unknown): AdminRole | undefined {
   const role = readString(value)?.toLowerCase();
 
   if (!role) {
-    return fallback;
+    return undefined;
   }
 
   const exactMatch = adminRoles.find((item) => item === role);
@@ -50,7 +55,22 @@ function normalizeAdminRole(
   if (role.includes("collaborator")) return "collaborator";
   if (role.includes("guest")) return "guest";
 
-  return "collaborator";
+  return undefined;
+}
+
+function buildAdminRole(
+  payload: UserResponse,
+  fallback: AdminRole = "collaborator"
+) {
+  const roles = [readAdminRole(payload.adminRole), readAdminRole(payload.role)]
+    .filter((role): role is AdminRole => Boolean(role))
+    .sort((left, right) => adminRoleRank[right] - adminRoleRank[left]);
+
+  if (roles[0]) {
+    return roles[0];
+  }
+
+  return fallback;
 }
 
 function normalizePresence(
@@ -158,7 +178,7 @@ export function normalizeUser(
 ): User {
   const payload = isRecord(value) ? (value as UserResponse) : {};
   const email = readString(payload.email) ?? "";
-  const adminRole = normalizeAdminRole(payload.adminRole ?? payload.role, options.fallbackAdminRole);
+  const adminRole = buildAdminRole(payload, options.fallbackAdminRole);
 
   return {
     id: readId(payload.id) ?? readId(payload.userId) ?? readId(payload.uuid) ?? email,

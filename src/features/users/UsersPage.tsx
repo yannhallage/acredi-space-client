@@ -16,7 +16,7 @@ import {
   usePermissions,
 } from "../../shared/permissions";
 import type { AdminRole, User } from "../../shared/types";
-import { Icon, type IconName } from "../../shared/ui";
+import { Avatar, Icon, type IconName } from "../../shared/ui";
 import { NotUsers } from "./components/NotUsers";
 import Toast from "../../components/app/Toast/Toast";
 
@@ -50,16 +50,6 @@ function roleIcon(user: User): IconName {
   return user.adminRole === "admin" || user.adminRole === "owner"
     ? "shield"
     : "users";
-}
-
-function initialsFor(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .slice(0, 1)
-    .join("")
-    .toUpperCase();
 }
 
 function UserRowSkeleton() {
@@ -426,7 +416,7 @@ export function UsersPage() {
         firstName,
         lastName: lastNameParts.join(" "),
         name: nextName,
-        role: role.toUpperCase(),
+        roleName: roleNameFromAdminRole(role),
       });
 
       await usersQuery.refetch();
@@ -610,7 +600,12 @@ export function UsersPage() {
                   }
                 }}
               >
-                <span className="users-initial">{initialsFor(user.name)}</span>
+                <Avatar
+                  name={user.name}
+                  size={42}
+                  presence={user.presence}
+                  src={user.avatarUrl}
+                />
 
                 <div className="users-person">
                   <strong>{user.name}</strong>

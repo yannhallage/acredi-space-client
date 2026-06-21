@@ -211,8 +211,13 @@ export function ProfileCompletionPage() {
     const cleanLastName = lastName.trim();
     const cleanPhoneNumber = phoneNumber.trim();
 
-    if (!cleanFirstName || !cleanLastName || !profileId) {
-      setMessage({ type: 'error', text: 'Merci de renseigner votre prenom, nom et votre fonction.' });
+    if (!avatarFile && !avatarUrl) {
+      setMessage({ type: 'error', text: "Merci d'ajouter une photo de profil." });
+      return;
+    }
+
+    if (!cleanFirstName || !cleanLastName || !cleanPhoneNumber || !profileId) {
+      setMessage({ type: 'error', text: 'Merci de renseigner votre prenom, nom, telephone et votre fonction.' });
       return;
     }
 
@@ -235,7 +240,7 @@ export function ProfileCompletionPage() {
         avatarUrl: nextAvatarUrl,
         firstName: cleanFirstName,
         lastName: cleanLastName,
-        phoneNumber: cleanPhoneNumber || null,
+        phoneNumber: cleanPhoneNumber,
         profileId,
       });
 
@@ -247,7 +252,7 @@ export function ProfileCompletionPage() {
         ...updatedUser,
         name: `${cleanFirstName} ${cleanLastName}`,
         onboardingStatus: 'COMPLETED',
-        phoneNumber: cleanPhoneNumber || null,
+        phoneNumber: cleanPhoneNumber,
         profile: selectedProfileName
           ? { id: profileId, name: selectedProfileName }
           : updatedUser.profile,
@@ -352,7 +357,7 @@ export function ProfileCompletionPage() {
         </label>
 
         <label className="profile-completion-row">
-          <span className="profile-completion-label">Telephone <small>(optionnel)</small></span>
+          <span className="profile-completion-label">Telephone</span>
           <span className="profile-phone-control">
             <input
               type="tel"
@@ -360,12 +365,14 @@ export function ProfileCompletionPage() {
               onChange={(event) => setPhoneNumber(event.target.value)}
               placeholder="+225 07 00 00 00 00"
               disabled={isSubmitting}
+              required
             />
             <select
               value={phoneKind}
               onChange={(event) => setPhoneKind(event.target.value as PhoneKind)}
               disabled={isSubmitting}
               aria-label="Type de telephone"
+              required
             >
               {phoneKindOptions.map((option) => (
                 <option key={option.value} value={option.value}>
