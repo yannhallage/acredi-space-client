@@ -473,6 +473,7 @@ return (
                   name={person.name}
                   presence={person.presence}
                   size={34}
+                  src={person.avatarUrl}
                 />
 
                 <span>
