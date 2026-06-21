@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { motion } from "framer-motion";
 import type { EmojiClickData, Theme } from "emoji-picker-react";
 
 import { useSendMessageMutation } from "../../../shared/api/dm/hooks";
@@ -16,6 +17,7 @@ import type {
   ChatAttachmentResponse,
   MessageResponse,
 } from "../../../shared/api/dm/types";
+import { resolveAssetUrl } from "../../../shared/api/http";
 import { useAuth } from "../../../shared/context";
 import type { Presence } from "../../../shared/types";
 import {
@@ -23,6 +25,7 @@ import {
   downloadFileFromUrl,
 } from "../../../shared/utils/downloadFile";
 import { Avatar, Icon } from "../../../shared/ui";
+import { AvatarPreviewOverlay } from "./AvatarPreviewOverlay";
 
 type LocalAttachment = ChatAttachmentResponse & {
   pending?: boolean;
@@ -457,6 +460,7 @@ export function DirectConversationThread({
   const { user } = useAuth();
   const [content, setContent] = useState("");
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const sendMessageMutation = useSendMessageMutation();
@@ -470,6 +474,7 @@ export function DirectConversationThread({
     [localMessages]
   );
   const subtitleLabel = formatSubtitle(subtitle);
+  const canPreviewAvatar = Boolean(resolveAssetUrl(avatarUrl));
   const canSend =
     (Boolean(content.trim()) || selectedFiles.length > 0) &&
     !sendMessageMutation.isPending;
@@ -498,6 +503,10 @@ export function DirectConversationThread({
 
     list.scrollTop = list.scrollHeight;
   }, [localMessages, channelId]);
+
+  useEffect(() => {
+    setAvatarPreviewOpen(false);
+  }, [channelId]);
 
   useEffect(() => {
     setContent("");
@@ -667,12 +676,29 @@ export function DirectConversationThread({
       <div className="dm-thread-main">
         <header className="dm-thread-header">
           <div className="dm-thread-user">
-            <Avatar
-              name={title}
-              presence={presence}
-              size={46}
-              src={avatarUrl}
-            />
+            {canPreviewAvatar ? (
+              <motion.button
+                className="dm-thread-avatar-button"
+                type="button"
+                aria-label={`Voir la photo de ${title}`}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setAvatarPreviewOpen(true)}
+              >
+                <Avatar
+                  name={title}
+                  presence={presence}
+                  size={46}
+                  src={avatarUrl}
+                />
+              </motion.button>
+            ) : (
+              <Avatar
+                name={title}
+                presence={presence}
+                size={46}
+                src={avatarUrl}
+              />
+            )}
 
             <div>
               <h2>{title}</h2>
@@ -854,6 +880,14 @@ export function DirectConversationThread({
           </div>
         </form>
       </div>
+
+      <AvatarPreviewOverlay
+        name={title}
+        open={avatarPreviewOpen}
+        presence={presence}
+        src={avatarUrl}
+        onClose={() => setAvatarPreviewOpen(false)}
+      />
     </section>
   );
 }

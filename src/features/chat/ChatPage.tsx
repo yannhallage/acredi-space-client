@@ -1,4 +1,5 @@
 import {
+  ChangeEvent,
   FormEvent,
 
   KeyboardEvent,
@@ -45,6 +46,13 @@ import { useUsersQuery } from "../../shared/api/users";
 import { useAuth } from "../../shared/context";
 
 import { Avatar, EmptyState, Icon } from "../../shared/ui";
+import {
+  filterMentionMembers,
+  getMentionContext,
+  insertMention,
+  MentionSuggestions,
+  type MentionMemberOption,
+} from "./components/MentionSuggestions";
 
 
 
@@ -538,8 +546,12 @@ export function ChatPage() {
   };
 
   const messageListRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [draft, setDraft] = useState("");
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionStart, setMentionStart] = useState<number | null>(null);
+  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
 
   const [emojiOpen, setEmojiOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -598,6 +610,26 @@ const activeDiscussion = useMemo(() => {
 
 
 const members = discussionDetail?.members ?? activeDiscussion?.members ?? [];
+
+  const mentionMembers = useMemo<MentionMemberOption[]>(() => {
+    return members.map((member) => ({
+      userId: member.userId,
+      name: formatDiscussionMemberName(member),
+      avatarUrl: getUserAvatarUrl(member.userId),
+      isCurrentUser: user?.id === member.userId,
+    }));
+  }, [members, user?.id, usersById]);
+
+  const filteredMentionMembers = useMemo(() => {
+    if (mentionQuery === null) {
+      return [];
+    }
+
+    return filterMentionMembers(mentionMembers, mentionQuery);
+  }, [mentionMembers, mentionQuery]);
+
+  const mentionDropdownOpen =
+    mentionQuery !== null && filteredMentionMembers.length > 0;
   
 
   const {
@@ -621,6 +653,11 @@ const members = discussionDetail?.members ?? activeDiscussion?.members ?? [];
 
 
   const sendMessage = useSendDiscussionMessage();
+
+
+  useEffect(() => {
+    closeMentionSuggestions();
+  }, [activeDiscussion?.id]);
 
 
   useEffect(() => {
@@ -746,6 +783,59 @@ const members = discussionDetail?.members ?? activeDiscussion?.members ?? [];
   setEmojiOpen(false);
 }
 
+function closeMentionSuggestions() {
+  setMentionQuery(null);
+  setMentionStart(null);
+  setMentionActiveIndex(0);
+}
+
+function syncMentionContext(value: string, cursor: number) {
+  const context = getMentionContext(value, cursor);
+
+  if (context) {
+    setMentionQuery(context.query);
+    setMentionStart(context.start);
+    setMentionActiveIndex(0);
+    return;
+  }
+
+  closeMentionSuggestions();
+}
+
+function handleDraftChange(event: ChangeEvent<HTMLTextAreaElement>) {
+  const { value, selectionStart } = event.target;
+  setDraft(value);
+  syncMentionContext(value, selectionStart);
+}
+
+function selectMentionMember(member: MentionMemberOption) {
+  if (mentionStart === null) {
+    return;
+  }
+
+  const cursor = textareaRef.current?.selectionStart ?? draft.length;
+  const { nextValue, nextCursor } = insertMention(
+    draft,
+    mentionStart,
+    cursor,
+    member.name,
+  );
+
+  setDraft(nextValue);
+  closeMentionSuggestions();
+
+  requestAnimationFrame(() => {
+    const textarea = textareaRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    textarea.focus();
+    textarea.setSelectionRange(nextCursor, nextCursor);
+  });
+}
+
 
 function handlePickFile() {
   fileInputRef.current?.click();
@@ -867,6 +957,7 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 
   setDraft("");
   setSelectedFile(null);
+  closeMentionSuggestions();
 
   try {
     let finalContent = content;
@@ -919,15 +1010,51 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 
 
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (mentionDropdownOpen) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setMentionActiveIndex(
+          (currentIndex) =>
+            (currentIndex + 1) % filteredMentionMembers.length,
+        );
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setMentionActiveIndex(
+          (currentIndex) =>
+            (currentIndex - 1 + filteredMentionMembers.length) %
+            filteredMentionMembers.length,
+        );
+        return;
+      }
+
+      if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault();
+        const selectedMember =
+          filteredMentionMembers[mentionActiveIndex] ??
+          filteredMentionMembers[0];
+
+        if (selectedMember) {
+          selectMentionMember(selectedMember);
+        }
+
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMentionSuggestions();
+        return;
+      }
+    }
 
     if (event.key === "Enter" && !event.shiftKey) {
-
       event.preventDefault();
 
       event.currentTarget.form?.requestSubmit();
-
     }
-
   }
 
 
@@ -1272,19 +1399,35 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 
         <form className="composer" onSubmit={handleSubmit}>
 
-          <textarea
+          <div className="composer-input-wrapper">
+            <MentionSuggestions
+              activeIndex={mentionActiveIndex}
+              members={filteredMentionMembers}
+              open={mentionDropdownOpen}
+              onHover={setMentionActiveIndex}
+              onSelect={selectMentionMember}
+            />
 
-            value={draft}
-
-            onChange={(event) => setDraft(event.target.value)}
-
-            onKeyDown={handleComposerKeyDown}
-
-            placeholder={`Ecrire dans ${discussionName}...`}
-
-            // disabled={sendMessage.isPending}
-
-          />
+            <textarea
+              ref={textareaRef}
+              value={draft}
+              onChange={handleDraftChange}
+              onKeyDown={handleComposerKeyDown}
+              onClick={(event) => {
+                syncMentionContext(
+                  event.currentTarget.value,
+                  event.currentTarget.selectionStart,
+                );
+              }}
+              onKeyUp={(event) => {
+                syncMentionContext(
+                  event.currentTarget.value,
+                  event.currentTarget.selectionStart,
+                );
+              }}
+              placeholder={`Ecrire dans ${discussionName}...`}
+            />
+          </div>
 
           {/* <div>
 
