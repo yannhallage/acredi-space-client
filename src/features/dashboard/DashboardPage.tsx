@@ -15,6 +15,7 @@ import {
 import { useCalendarEvents, type CalendarEvent } from "../../shared/api/callendar";
 import { useFiles } from "../../shared/api/files";
 import type { WorkspaceFile } from "../../shared/api/files/types";
+import { buildMeetingRoomUrl, extractMeetingRoomName } from "../../shared/api/meeting/room";
 import { useNotes } from "../../shared/api/notes";
 import type { Note } from "../../shared/api/notes/type";
 import { useUsersQuery } from "../../shared/api/users";
@@ -132,6 +133,16 @@ function formatDateTime(date: Date | null) {
     minute: "2-digit",
     month: "short",
   }).format(date);
+}
+
+function getMeetingTarget(meeting: DashboardMeeting) {
+  const roomName = meeting.roomName || extractMeetingRoomName(meeting.joinUrl);
+
+  if (roomName) {
+    return buildMeetingRoomUrl(roomName);
+  }
+
+  return `/app/meeting/${meeting.id}`;
 }
 
 function recentFiles(files: WorkspaceFile[]) {
@@ -455,16 +466,16 @@ function MeetingsList({ isLoading, meetings }: { isLoading: boolean; meetings: D
               {meeting.roomName ? ` - ${meeting.roomName}` : ""}
             </small>
           </span>
-          <Link
+          <a
             className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-semibold ${
               meeting.status === "LIVE"
                 ? "bg-[#5B6CFF] text-white"
                 : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"
             }`}
-            to={meeting.joinUrl ? meeting.joinUrl : `/app/meeting/${meeting.id}`}
+            href={getMeetingTarget(meeting)}
           >
             {meeting.status === "LIVE" ? "Rejoindre" : "Voir"}
-          </Link>
+          </a>
         </li>
       ))}
     </ul>
