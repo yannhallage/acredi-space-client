@@ -505,6 +505,19 @@ export function AppLayout() {
               >
                 <Icon name={dark ? "sun" : "moon"} size={18} />
               </button>
+              <a
+                className="icon-button nuum-link"
+                href="https://app.nuum-ci.com/authentification"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Ouvrir Nuum"
+              >
+                <img
+                  src={dark ? "/nuum-sm-logo-white.svg" : "/nuum-sm-logo.svg"}
+                  alt=""
+                  aria-hidden="true"
+                />
+              </a>
               <PermissionGate
                 permissions={FEATURE_PERMISSION_REQUIREMENTS.notifications}
               >
