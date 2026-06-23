@@ -1,0 +1,398 @@
+/* Notes board — scoped styles with light/dark theme support */
+
+.notes-board {
+  --nb-canvas: #fdf8f5;
+  --nb-card-radius: 10px;
+  --nb-card-min-height: 168px;
+  --nb-add-size: 48px;
+  --nb-add-radius: 8px;
+  --nb-add-bg: #315e77;
+  --nb-add-fab-shadow: 0 4px 18px rgba(49, 94, 119, 0.38);
+  --nb-card-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  --nb-card-shadow-hover: 0 8px 22px rgba(0, 0, 0, 0.12);
+  --nb-sticky-time: rgba(0, 0, 0, 0.42);
+  --nb-sticky-title: #2d2d2d;
+  --nb-sticky-body: #444444;
+  --nb-sticky-action: rgba(0, 0, 0, 0.42);
+  --nb-sticky-action-hover-bg: rgba(0, 0, 0, 0.06);
+  --nb-sticky-action-hover: #111111;
+  --nb-view-divider: rgba(0, 0, 0, 0.08);
+  --nb-view-modal-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
+
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(240px, 1fr);
+  gap: 20px;
+  padding: 24px;
+  background: var(--nb-canvas);
+  font-size: 14px;
+}
+
+[data-theme="dark"] .notes-board {
+  --nb-canvas: var(--bg);
+  --nb-card-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  --nb-card-shadow-hover: 0 10px 28px rgba(0, 0, 0, 0.55);
+  --nb-view-modal-shadow: 0 28px 72px rgba(0, 0, 0, 0.62);
+  --nb-add-fab-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+}
+
+.notes-board.notes-board-skeleton {
+  pointer-events: none;
+}
+
+/* Grille de notes */
+
+.nb-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
+  gap: 18px;
+}
+
+.nb-grid-loading {
+  pointer-events: none;
+}
+
+.nb-grid-item {
+  flex: 0 1 280px;
+  width: 280px;
+  max-width: 100%;
+}
+
+/* Sticky note card */
+
+.nb-card {
+  position: relative;
+  width: 100%;
+  min-height: var(--nb-card-min-height);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 18px;
+  overflow: hidden;
+  border: none;
+  border-radius: var(--nb-card-radius);
+  color: var(--nb-sticky-title);
+  box-shadow: var(--nb-card-shadow);
+  cursor: default;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.nb-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--nb-card-shadow-hover);
+}
+
+.nb-time {
+  align-self: flex-end;
+  margin: 0 0 8px;
+  color: var(--nb-sticky-time);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.nb-title {
+  margin: 0 0 10px;
+  overflow: hidden;
+  color: var(--nb-sticky-title);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nb-content {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  color: var(--nb-sticky-body);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
+.nb-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+.nb-action {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--nb-sticky-action);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.nb-action:hover,
+.nb-action:focus-visible {
+  outline: 0;
+  color: var(--nb-sticky-action-hover);
+  background: var(--nb-sticky-action-hover-bg);
+}
+
+.nb-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.nb-action-danger:hover,
+.nb-action-danger:focus-visible {
+  color: var(--red);
+  background: var(--red-soft);
+}
+
+/* Bouton flottant type chatbot — coin bas-droit */
+
+.nb-add-fab {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 40;
+}
+
+.nb-add {
+  width: var(--nb-add-size);
+  height: var(--nb-add-size);
+  flex: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--nb-add-radius);
+  background: var(--nb-add-bg);
+  color: #ffffff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--nb-add-fab-shadow);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.15s ease;
+}
+
+.nb-add:hover:not(:disabled) {
+  transform: scale(1.06);
+  box-shadow: 0 6px 22px rgba(49, 94, 119, 0.48);
+}
+
+[data-theme="dark"] .nb-add:hover:not(:disabled) {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.62);
+}
+
+.nb-add:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+.nb-add:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* Thin white plus, centered */
+.nb-add-plus {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  pointer-events: none;
+}
+
+.nb-add-plus::before,
+.nb-add-plus::after {
+  content: "";
+  position: absolute;
+  background: #ffffff;
+  border-radius: 1px;
+}
+
+.nb-add-plus::before {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+.nb-add-plus::after {
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+
+/* Skeleton */
+
+.nb-card-skeleton {
+  background: var(--surface);
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.nb-card-skeleton:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .nb-card-skeleton {
+  background: var(--surface-2);
+}
+
+.nb-skeleton-time {
+  align-self: flex-end;
+  width: 108px;
+  height: 11px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+}
+
+/* View modal (post-it style) */
+
+.note-modal.nb-view-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: none;
+  background: transparent;
+}
+
+.nb-view-modal {
+  width: min(520px, 100%);
+  min-height: min(420px, calc(100vh - 56px));
+  min-height: min(420px, calc(100dvh - 56px));
+  max-height: min(640px, calc(100vh - 56px));
+  max-height: min(640px, calc(100dvh - 56px));
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: none;
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: var(--nb-view-modal-shadow);
+  overflow: hidden;
+}
+
+.nb-view-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.nb-view-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.nb-view-body h2 {
+  margin: 0 0 14px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.nb-view-body p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.nb-view-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--nb-view-divider);
+  font-size: 12px;
+}
+
+.nb-view-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nb-view-edit {
+  min-height: 30px;
+  padding: 4px 10px;
+  gap: 6px;
+}
+
+.nb-view-owner {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nb-view-owner i {
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.08);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.notes-board .notes-empty {
+  flex: 1 1 100%;
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .notes-board {
+    padding: 16px;
+  }
+
+  .nb-grid {
+    gap: 14px;
+  }
+
+  .nb-grid-item {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .nb-card {
+    min-height: 150px;
+  }
+
+  .nb-add-fab {
+    right: 20px;
+    bottom: 20px;
+  }
+}
