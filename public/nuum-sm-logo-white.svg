@@ -1,0 +1,7 @@
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <mask id="nuum-white-cutout" maskUnits="userSpaceOnUse" x="0" y="0" width="40" height="40">
+    <path d="M28 0H12C5.37258 0 0 5.37258 0 12V28C0 34.6274 5.37258 40 12 40H28C34.6274 40 40 34.6274 40 28V12C40 5.37258 34.6274 0 28 0Z" fill="white" />
+    <path d="M26.0769 12.4545V27H23.4206L17.0925 17.8452H16.986V27H13.9107V12.4545H16.6096L22.888 21.6023H23.0158V12.4545H26.0769Z" fill="black" />
+  </mask>
+  <path d="M28 0H12C5.37258 0 0 5.37258 0 12V28C0 34.6274 5.37258 40 12 40H28C34.6274 40 40 34.6274 40 28V12C40 5.37258 34.6274 0 28 0Z" fill="white" mask="url(#nuum-white-cutout)" />
+</svg>
