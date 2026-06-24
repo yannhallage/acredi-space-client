@@ -224,6 +224,7 @@ export function DirectMessagesPage() {
           title={getChannelDisplayName(activeConversation)}
           subtitle={threadSubtitle}
           presence={activeParticipant?.presence ?? "offline"}
+          avatarUrl={activeParticipant?.avatarUrl}
           messages={messages}
           loading={messagesLoading}
           refreshing={isRefreshingDiscussion}

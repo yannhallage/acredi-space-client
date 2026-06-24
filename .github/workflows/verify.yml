@@ -1,0 +1,73 @@
+name: Vérification déploiement
+
+# À lancer manuellement APRÈS avoir mis à jour le conteneur dans Portainer.
+on:
+  workflow_dispatch:
+    inputs:
+      max_retries:
+        description: "Nombre max d'essais curl"
+        required: false
+        default: "20"
+      retry_delay:
+        description: "Délai entre essais (secondes)"
+        required: false
+        default: "10"
+
+jobs:
+  verify:
+    name: Curl front et notification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier le front (curl avec retry)
+        run: |
+          URL="${{ vars.FRONT_URL }}"
+          MAX="${{ github.event.inputs.max_retries }}"
+          DELAY="${{ github.event.inputs.retry_delay }}"
+          echo "Test de $URL (max $MAX essais, $DELAY s d'intervalle)"
+          for i in $(seq 1 "$MAX"); do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL" || echo "000")
+            echo "Essai $i/$MAX -> HTTP $CODE"
+            if [ "$CODE" = "200" ]; then
+              echo "Front OK (HTTP 200)"
+              exit 0
+            fi
+            sleep "$DELAY"
+          done
+          echo "Échec : le front n'a pas répondu 200 après $MAX essais"
+          exit 1
+
+      - name: Notification email - déploiement OK
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "[AcrediSpace Front] Déploiement vérifié ✅"
+          to: ${{ vars.MAIL_TO || secrets.MAIL_USERNAME }}
+          from: AcrediSpace CI <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            Le frontend répond correctement (HTTP 200).
+
+            URL : ${{ vars.FRONT_URL }}
+            Le déploiement est confirmé.
+
+      - name: Notification email - vérification échouée
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "[AcrediSpace Front] Vérification déploiement ÉCHEC ❌"
+          to: ${{ vars.MAIL_TO || secrets.MAIL_USERNAME }}
+          from: AcrediSpace CI <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            Le frontend n'a pas répondu HTTP 200 lors de la vérification.
+
+            URL    : ${{ vars.FRONT_URL }}
+            Détails: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Vérifiez le conteneur dans Portainer et les logs Nginx.

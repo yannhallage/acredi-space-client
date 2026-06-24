@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClipLoader } from "react-spinners";
 import Toast from "../../components/app/Toast/Toast";
@@ -21,6 +15,7 @@ import { useAuth } from "../../shared/context";
 import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
 import type { User } from "../../shared/types";
 import { Avatar, Icon } from "../../shared/ui";
+import "./notes.css";
 
 type SortMode = "newest" | "oldest";
 
@@ -37,7 +32,9 @@ interface NoteCard {
   ownerName: string;
   updatedLabel: string;
   updatedMinutes: number;
+  formattedDate: string;
   color: string | null;
+  displayColor: string;
 }
 
 const noteSkeletons = [
@@ -66,14 +63,45 @@ const editorTools = [
 ];
 
 const noteColors = [
-  "#171717",
-  "#7c3aed",
-  "#2563eb",
-  "#059669",
-  "#ca8a04",
-  "#dc2626",
-  "#db2777",
+  "#e8e8e8",
+  "#fce4ec",
+  "#ffe0b2",
+  "#bbdefb",
+  "#c8e6c9",
+  "#fff9c4",
 ];
+
+function formatNoteDate(dateValue?: Date | string | null) {
+  if (!dateValue) return "";
+
+  const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const pad = (value: number) => String(value).padStart(2, "0");
+
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} ${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}`;
+}
+
+function hashString(value: string) {
+  return [...value].reduce((acc, char) => acc + char.charCodeAt(0), 0);
+}
+
+function isLightColor(background: string) {
+  if (!/^#[0-9a-f]{6}$/i.test(background)) return true;
+
+  const hex = background.replace("#", "");
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+
+  return (r * 299 + g * 587 + b * 114) / 1000 > 150;
+}
+
+function getDisplayColor(color: string | null, id: string) {
+  if (color && isLightColor(color)) return color;
+
+  return noteColors[hashString(id) % noteColors.length];
+}
 
 function normalizeSearch(value: string) {
   return value
@@ -147,15 +175,10 @@ function getMutedTextColor(textColor: string) {
   return "var(--muted-soft)";
 }
 
-function getBorderColor(textColor: string) {
-  if (textColor === "#111") return "rgba(0, 0, 0, 0.14)";
-  if (textColor === "#fff") return "rgba(255, 255, 255, 0.18)";
-
-  return undefined;
-}
 
 function mapApiNoteToCard(note: ApiNote): NoteCard {
-  const meta = computeUpdatedMeta(note.updatedAt ?? note.createdAt);
+  const updatedAt = note.updatedAt ?? note.createdAt;
+  const meta = computeUpdatedMeta(updatedAt);
 
   return {
     id: note.id,
@@ -164,7 +187,9 @@ function mapApiNoteToCard(note: ApiNote): NoteCard {
     ownerName: getOwnerDisplayName(note),
     updatedLabel: meta.label,
     updatedMinutes: meta.minutes,
+    formattedDate: formatNoteDate(updatedAt),
     color: note.color ?? null,
+    displayColor: getDisplayColor(note.color ?? null, note.id),
   };
 }
 
@@ -173,7 +198,6 @@ function NoteCard({
   note,
   onDelete,
   onEdit,
-  onShare,
   onView,
 }: {
   isDeleting: boolean;
@@ -183,190 +207,48 @@ function NoteCard({
   onShare: (note: NoteCard) => void;
   onView: (note: NoteCard) => void;
 }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const textColor = getTextColor(note.color);
-  const mutedTextColor = getMutedTextColor(textColor);
-  const borderColor = note.color ? getBorderColor(textColor) : undefined;
-  const ownerInitial = note.ownerName.trim().charAt(0).toUpperCase() || "A";
-  const menuStyle: CSSProperties = note.color
-    ? {
-        backgroundColor:
-          textColor === "#111"
-            ? "rgba(255, 255, 255, 0.96)"
-            : "rgba(17, 17, 20, 0.96)",
-        borderColor:
-          textColor === "#111"
-            ? "rgba(0, 0, 0, 0.14)"
-            : "rgba(255, 255, 255, 0.18)",
-        color: textColor === "#111" ? "#111" : "#fff",
-      }
-    : {};
-
-  useEffect(() => {
-    if (!isMenuOpen) return undefined;
-
-    const onPointerDown = (event: MouseEvent | TouchEvent) => {
-      if (
-        event.target instanceof Node &&
-        menuRef.current &&
-        !menuRef.current.contains(event.target)
-      ) {
-        setIsMenuOpen(false);
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("touchstart", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("touchstart", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [isMenuOpen]);
-
   return (
     <article
-      className={isMenuOpen ? "note-card menu-open" : "note-card"}
-      style={{
-        backgroundColor: note.color ?? undefined,
-        borderColor,
-        color: textColor,
-      }}
+      className="nb-grid-item nb-card"
+      style={{ backgroundColor: note.displayColor }}
+      onDoubleClick={() => onEdit(note)}
     >
-      <header>
-        <h2 style={{ color: textColor }}>{note.title}</h2>
+      {note.formattedDate ? (
+        <time className="nb-time">{note.formattedDate}</time>
+      ) : null}
 
-        <PermissionGate
-          permissions={[
-            PERMISSIONS.VIEW_NOTES,
-            PERMISSIONS.UPDATE_NOTES,
-            PERMISSIONS.SHARE_NOTES,
-            PERMISSIONS.DELETE_NOTES,
-          ]}
-        >
-          <div className="note-card-actions" ref={menuRef}>
-            <button
-              className={isMenuOpen ? "icon-button active" : "icon-button"}
-              type="button"
-              aria-label={`Actions for ${note.title}`}
-              aria-haspopup="menu"
-              aria-expanded={isMenuOpen}
-              disabled={isDeleting}
-              onClick={() => setIsMenuOpen((current) => !current)}
-              style={{ color: textColor }}
-            >
-              {isDeleting ? (
-                <ClipLoader size={12} color="currentColor" />
-              ) : (
-                <Icon name="moreH" size={15} />
-              )}
-            </button>
+      <h2 className="nb-title">{note.title}</h2>
 
-            <AnimatePresence>
-              {isMenuOpen ? (
-                <motion.div
-                  className="note-card-menu"
-                  role="menu"
-                  aria-label={`Actions for ${note.title}`}
-                  initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                  transition={{ duration: 0.14, ease: "easeOut" }}
-                  style={menuStyle}
-                >
-                  <PermissionGate permission={PERMISSIONS.VIEW_NOTES}>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        onView(note);
-                      }}
-                    >
-                      <Icon name="eye" size={15} />
-                      Voir
-                    </button>
-                  </PermissionGate>
+      <p className="nb-content">{note.content || "No content yet."}</p>
 
-                  <PermissionGate permission={PERMISSIONS.UPDATE_NOTES}>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        onEdit(note);
-                      }}
-                    >
-                      <Icon name="edit" size={15} />
-                      Modifier
-                    </button>
-                  </PermissionGate>
-
-                  {/* <PermissionGate permission={PERMISSIONS.SHARE_NOTES}>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        onShare(note);
-                      }}
-                    >
-                      <Icon name="send" size={15} />
-                      Partager
-                    </button>
-                  </PermissionGate> */}
-
-                  <PermissionGate permission={PERMISSIONS.DELETE_NOTES}>
-                    <button
-                      className="danger"
-                      type="button"
-                      role="menuitem"
-                      disabled={isDeleting}
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        onDelete(note.id);
-                      }}
-                    >
-                      <Icon name="trash" size={15} />
-                      Supprimer
-                    </button>
-                  </PermissionGate>
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
-          </div>
-        </PermissionGate>
-      </header>
-
-      <p style={{ color: mutedTextColor }}>
-        {note.content || "No content yet."}
-      </p>
-
-      <footer style={{ color: mutedTextColor }}>
-        <span>
-          <i
-            style={{
-              background:
-                textColor === "#111"
-                  ? "rgba(255, 255, 255, 0.24)"
-                  : "rgba(0, 0, 0, 0.18)",
-              color: textColor,
-            }}
+      <footer className="nb-footer">
+        <PermissionGate permission={PERMISSIONS.VIEW_NOTES}>
+          <button
+            className="nb-action"
+            type="button"
+            aria-label={`Voir ${note.title}`}
+            disabled={isDeleting}
+            onClick={() => onView(note)}
           >
-            {ownerInitial}
-          </i>
-          <strong style={{ color: textColor }}>{note.ownerName}</strong>
-        </span>
+            <Icon name="eye" size={14} />
+          </button>
+        </PermissionGate>
 
-        <time style={{ color: mutedTextColor }}>{note.updatedLabel}</time>
+        <PermissionGate permission={PERMISSIONS.DELETE_NOTES}>
+          <button
+            className="nb-action nb-action-danger"
+            type="button"
+            aria-label={`Supprimer ${note.title}`}
+            disabled={isDeleting}
+            onClick={() => onDelete(note.id)}
+          >
+            {isDeleting ? (
+              <ClipLoader size={12} color="currentColor" />
+            ) : (
+              <Icon name="trash" size={14} />
+            )}
+          </button>
+        </PermissionGate>
       </footer>
     </article>
   );
@@ -374,25 +256,17 @@ function NoteCard({
 
 function NoteCardSkeleton() {
   return (
-    <article className="note-card note-card-skeleton" aria-hidden="true">
-      <header>
-        <span className="skeleton-line skeleton-title" />
-        <span className="skeleton-dot" />
-      </header>
-
+    <article className="nb-grid-item nb-card nb-card-skeleton" aria-hidden="true">
+      <span className="skeleton-line nb-skeleton-time" />
+      <span className="skeleton-line skeleton-title" />
       <div className="skeleton-copy">
         <span className="skeleton-line" />
         <span className="skeleton-line" />
         <span className="skeleton-line skeleton-short" />
       </div>
-
-      <footer>
-        <span>
-          <i className="skeleton-avatar" />
-          <span className="skeleton-line skeleton-name" />
-        </span>
-
-        <span className="skeleton-line skeleton-time" />
+      <footer className="nb-footer">
+        <span className="skeleton-dot" />
+        <span className="skeleton-dot" />
       </footer>
     </article>
   );
@@ -400,15 +274,7 @@ function NoteCardSkeleton() {
 
 function NotesPageSkeleton() {
   return (
-    <div className="notes-page notes-page-skeleton" aria-busy="true">
-      <section className="notes-toolbar" aria-hidden="true">
-        <div className="notes-page-skeleton-title">
-          <span className="skeleton-line notes-page-skeleton-kicker" />
-          <span className="skeleton-line notes-page-skeleton-heading" />
-        </div>
-        <span className="skeleton-pill notes-page-skeleton-create" />
-      </section>
-
+    <div className="notes-page notes-board notes-board-skeleton" aria-busy="true">
       <section className="notes-filters" aria-hidden="true">
         <div className="notes-filter-inputs">
           <span className="notes-skeleton-filter" />
@@ -423,7 +289,7 @@ function NotesPageSkeleton() {
         </div>
       </section>
 
-      <section className="notes-grid notes-grid-loading" aria-hidden="true">
+      <section className="nb-grid nb-grid-loading" aria-hidden="true">
         {noteSkeletons.map((item) => (
           <NoteCardSkeleton key={item} />
         ))}
@@ -435,11 +301,13 @@ function NotesPageSkeleton() {
 function NoteViewModal({
   note,
   onClose,
+  onEdit,
 }: {
   note: NoteCard;
   onClose: () => void;
+  onEdit: (note: NoteCard) => void;
 }) {
-  const textColor = getTextColor(note.color);
+  const textColor = getTextColor(note.displayColor);
   const mutedTextColor = getMutedTextColor(textColor);
   const ownerInitial = note.ownerName.trim().charAt(0).toUpperCase() || "A";
 
@@ -465,30 +333,24 @@ function NoteViewModal({
       onMouseDown={onClose}
     >
       <motion.section
-        className="note-modal note-view-modal"
+        className="note-modal nb-view-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="note-view-title"
-        initial={{ opacity: 0, y: 14, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 10, scale: 0.98 }}
-        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+        initial={{ opacity: 0, y: 18, scale: 0.96, rotate: -1.5 }}
+        animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+        exit={{ opacity: 0, y: 12, scale: 0.97, rotate: 1 }}
+        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
         onMouseDown={(event) => event.stopPropagation()}
+        style={{ backgroundColor: note.displayColor }}
       >
-        <header>
-          <div className="note-view-heading">
-            <span
-              className="note-view-accent"
-              style={{ background: note.color ?? "var(--accent)" }}
-            />
-            <div>
-              <small>Note</small>
-              <h2 id="note-view-title">{note.title}</h2>
-            </div>
-          </div>
+        <header className="nb-view-header">
+          {note.formattedDate ? (
+            <time className="nb-time">{note.formattedDate}</time>
+          ) : null}
 
           <button
-            className="icon-button"
+            className="nb-action"
             type="button"
             aria-label="Fermer la note"
             onClick={onClose}
@@ -497,24 +359,37 @@ function NoteViewModal({
           </button>
         </header>
 
-        <article
-          className="note-view-content"
-          style={{
-            backgroundColor: note.color ?? undefined,
-            color: textColor,
-          }}
-        >
+        <article className="nb-view-body">
+          <h2 id="note-view-title" style={{ color: textColor }}>
+            {note.title}
+          </h2>
           <p style={{ color: mutedTextColor }}>
             {note.content || "No content yet."}
           </p>
         </article>
 
-        <footer>
-          <span className="note-view-owner">
+        <footer className="nb-view-footer">
+          <span className="nb-view-owner">
             <i>{ownerInitial}</i>
-            <strong>{note.ownerName}</strong>
+            <strong style={{ color: textColor }}>{note.ownerName}</strong>
           </span>
-          <time>{note.updatedLabel}</time>
+
+          <div className="nb-view-actions">
+            <PermissionGate permission={PERMISSIONS.UPDATE_NOTES}>
+              <button
+                className="button ghost mini nb-view-edit"
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onEdit(note);
+                }}
+              >
+                <Icon name="edit" size={14} />
+                Modifier
+              </button>
+            </PermissionGate>
+            <time style={{ color: mutedTextColor }}>{note.updatedLabel}</time>
+          </div>
         </footer>
       </motion.section>
     </motion.div>
@@ -844,7 +719,7 @@ export function NotesPage() {
     setEditingNote(note);
     setDraftTitle(note.title);
     setDraftContent(note.content);
-    setDraftColor(note.color ?? noteColors[0]);
+    setDraftColor(note.color ?? note.displayColor ?? noteColors[0]);
     setIsNoteModalOpen(true);
   }
 
@@ -983,38 +858,8 @@ export function NotesPage() {
   }
 
   return (
-    <div className="notes-page">
+    <div className="notes-page notes-board">
       {toast.show && <Toast intent={toast.intent} message={toast.message} />}
-
-      <section className="notes-toolbar">
-        {/* <div className="notes-titlebar">
-          <span>Notes</span>
-          <Icon name="list" size={14} />
-          <strong>Notes View</strong>
-          <Icon name="chevDown" size={14} />
-        </div> */}
-
-        <PermissionGate permission={PERMISSIONS.CREATE_NOTES}>
-          <button
-            className="button primary notes-create-button"
-            type="button"
-            onClick={openCreateModal}
-            disabled={isSavingNote}
-          >
-            {createNoteMutation.isPending ? (
-              <>
-                <ClipLoader size={12} color="#fff" />
-                Creating...
-              </>
-            ) : (
-              <>
-                <Icon name="plus" size={12} />
-                Create
-              </>
-            )}
-          </button>
-        </PermissionGate>
-      </section>
 
       <section className="notes-filters" aria-label="Notes filters">
         <div className="notes-filter-inputs">
@@ -1083,9 +928,7 @@ export function NotesPage() {
       </section>
 
       <section
-        className={
-          isNotesLoading ? "notes-grid notes-grid-loading" : "notes-grid"
-        }
+        className={isNotesLoading ? "nb-grid nb-grid-loading" : "nb-grid"}
         aria-label="Notes list"
         aria-busy={isNotesLoading}
       >
@@ -1126,6 +969,26 @@ export function NotesPage() {
         ) : null}
       </section>
 
+      {!isNotesLoading ? (
+        <PermissionGate permission={PERMISSIONS.CREATE_NOTES}>
+          <div className="nb-add-fab">
+            <button
+              className="nb-add"
+              type="button"
+              aria-label="Créer une note"
+              onClick={openCreateModal}
+              disabled={isSavingNote}
+            >
+              {createNoteMutation.isPending ? (
+                <ClipLoader size={16} color="#ffffff" />
+              ) : (
+                <span className="nb-add-plus" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        </PermissionGate>
+      ) : null}
+
       <NoteShareModal
         error={usersQuery.error}
         isOpen={Boolean(shareTargetNote)}
@@ -1147,6 +1010,7 @@ export function NotesPage() {
             key={viewingNote.id}
             note={viewingNote}
             onClose={closeViewModal}
+            onEdit={openEditModal}
           />
         ) : null}
       </AnimatePresence>

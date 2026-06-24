@@ -1,6 +1,6 @@
 import { clearAuthSession } from "./auth/session";
 
-const PRODUCTION_API_BASE_URL = "https://api-acredispace.acredigroup.com/api";
+const PRODUCTION_API_BASE_URL = "https://srv.acredispace.acredigroup.com/api";
 const DEVELOPMENT_API_BASE_URL = "http://localhost:8080/api";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -40,6 +40,85 @@ export const API_BASE_URL = normalizeBaseUrl(
 
 function normalizeBaseUrl(url: string) {
   return url.replace(/\/+$/, "");
+}
+
+// Origine du serveur d'API (schema + host + port), sans le suffixe `/api`.
+// Sert a resoudre les chemins relatifs (ex: avatars, fichiers) renvoyes par le
+// backend, qui sinon seraient resolus contre l'origine du frontend.
+export const API_ORIGIN = (() => {
+  try {
+    return new URL(API_BASE_URL).origin;
+  } catch {
+    return API_BASE_URL.replace(/\/api\/?$/, "");
+  }
+})();
+
+function resolveLocalFrontendAssetUrl(value: string) {
+  const normalizedValue = value.replace(/^file:\/\/+/i, "").replace(/\\/g, "/");
+  const lowerValue = normalizedValue.toLowerCase();
+  const isWindowsAbsolutePath = /^[a-z]:\//i.test(normalizedValue);
+
+  if (lowerValue === "/src" || lowerValue.startsWith("/src/")) {
+    return normalizedValue;
+  }
+
+  if (lowerValue === "src" || lowerValue.startsWith("src/")) {
+    return `/${normalizedValue}`;
+  }
+
+  if (lowerValue === "/public" || lowerValue.startsWith("/public/")) {
+    const publicPath = normalizedValue.slice("/public".length);
+    return publicPath || "/";
+  }
+
+  if (lowerValue === "public" || lowerValue.startsWith("public/")) {
+    const publicPath = normalizedValue.slice("public".length);
+    return publicPath.startsWith("/") ? publicPath : `/${publicPath}`;
+  }
+
+  const publicIndex = isWindowsAbsolutePath ? lowerValue.lastIndexOf("/public/") : -1;
+  if (publicIndex >= 0) {
+    const publicPath = normalizedValue.slice(publicIndex + "/public".length);
+    return publicPath.startsWith("/") ? publicPath : `/${publicPath}`;
+  }
+
+  const srcIndex = isWindowsAbsolutePath ? lowerValue.lastIndexOf("/src/") : -1;
+  if (srcIndex >= 0) {
+    return normalizedValue.slice(srcIndex);
+  }
+
+  return undefined;
+}
+
+// Transforme une URL d'asset renvoyee par l'API en URL chargeable par le
+// navigateur. Les URL absolues, blob: et data: sont laissees telles quelles ;
+// les chemins relatifs sont prefixes par l'origine de l'API. Les chemins qui
+// pointent vers un asset frontend local (`src/...`, `public/...`) restent servis
+// par Vite au lieu d'etre envoyes au backend.
+export function resolveAssetUrl(
+  url: string | null | undefined
+): string | undefined {
+  if (!url) {
+    return undefined;
+  }
+
+  const value = url.trim();
+
+  if (!value) {
+    return undefined;
+  }
+
+  if (/^(https?:|blob:|data:)/i.test(value)) {
+    return value;
+  }
+
+  const localFrontendAssetUrl = resolveLocalFrontendAssetUrl(value);
+
+  if (localFrontendAssetUrl) {
+    return localFrontendAssetUrl;
+  }
+
+  return `${API_ORIGIN}${value.startsWith("/") ? value : `/${value}`}`;
 }
 
 function appendSearchParams(

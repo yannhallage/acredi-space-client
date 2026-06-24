@@ -1,6 +1,10 @@
+import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
+
 import { useAuth } from "../../shared/context";
 import { AccessDeniedState, EmptyState, Icon } from "../../shared/ui";
 import { canAccessMyTeams } from "./access";
+import { TeamDetailsModal } from "./components/TeamDetailsModal";
 import { useMyTeams } from "./hooks";
 import type { Team } from "./types";
 
@@ -23,7 +27,13 @@ function formatTeamDate(date: Date) {
   }).format(date);
 }
 
-function MyTeamCard({ team }: { team: Team }) {
+function MyTeamCard({
+  team,
+  onOpenDetails,
+}: {
+  team: Team;
+  onOpenDetails: (team: Team) => void;
+}) {
   return (
     <article className="team-card my-team-card">
       <header>
@@ -36,17 +46,21 @@ function MyTeamCard({ team }: { team: Team }) {
       </header>
 
       <div className="team-card-meta">
-        <span>
+        {/* <span>
           <Icon name="message" size={14} />
           {team.slug ? `#${team.slug}` : "#team"}
-        </span>
+        </span> */}
         <span>
           <Icon name="calendar" size={14} />
           {formatTeamDate(team.createdAt)}
         </span>
+        {/* <span>
+          <Icon name="users" size={14} />
+          {team.membersCount} membre{team.membersCount > 1 ? "s" : ""}
+        </span> */}
         {team.ownerName ? (
           <span>
-            <Icon name="users" size={14} />
+            <Icon name="building" size={14} />
             {team.ownerName}
           </span>
         ) : null}
@@ -54,6 +68,16 @@ function MyTeamCard({ team }: { team: Team }) {
 
       <div className="team-card-footer">
         <span className="team-card-footnote">My Team</span>
+
+        <button
+          className="button ghost my-team-view-button"
+          type="button"
+          aria-label={`Voir ${team.name}`}
+          onClick={() => onOpenDetails(team)}
+        >
+          <Icon name="eye" size={14} />
+          Voir l&apos;equipe
+        </button>
       </div>
     </article>
   );
@@ -85,6 +109,7 @@ function MyTeamCardSkeleton() {
 
 export function MyTeamsPage() {
   const { user } = useAuth();
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const canViewMyTeams = canAccessMyTeams(user?.adminRole);
   const myTeamsQuery = useMyTeams({ enabled: canViewMyTeams });
   const teams = myTeamsQuery.data ?? [];
@@ -138,7 +163,11 @@ export function MyTeamsPage() {
       ) : teams.length > 0 ? (
         <section className="teams-grid" aria-label="Mes equipes">
           {teams.map((team) => (
-            <MyTeamCard key={team.id} team={team} />
+            <MyTeamCard
+              key={team.id}
+              team={team}
+              onOpenDetails={setSelectedTeam}
+            />
           ))}
         </section>
       ) : (
@@ -147,6 +176,16 @@ export function MyTeamsPage() {
           body="Vous n'etes rattache a aucune equipe pour le moment."
         />
       )}
+
+      <AnimatePresence>
+        {selectedTeam ? (
+          <TeamDetailsModal
+            key={selectedTeam.id}
+            team={selectedTeam}
+            onClose={() => setSelectedTeam(null)}
+          />
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

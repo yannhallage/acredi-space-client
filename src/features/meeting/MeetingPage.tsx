@@ -1,9 +1,9 @@
 ﻿import { useEffect, useMemo, useState,useCallback, type MouseEvent } from "react";
-import { useNavigate } from "react-router-dom";
 import { useMeetingsQuery } from "../../shared/api/meeting/hooks";
 import Toast from "../../components/app/Toast/Toast";
 
 import { meetingService } from "../../shared/api/meeting/service";
+import { buildMeetingRoomUrl, extractMeetingRoomName } from "../../shared/api/meeting/room";
 import { useUsersQuery } from "../../shared/api/users";
 import type { User } from "../../shared/types";
 import { motion } from "framer-motion";
@@ -167,19 +167,6 @@ function getUserLabel(user: User) {
   );
 }
 
-function extractRoomNameFromJoinUrl(joinUrl?: string | null) {
-  if (!joinUrl) return null;
-
-  try {
-    const url = new URL(joinUrl);
-    const roomName = url.pathname.replace(/^\/+/, "").trim();
-    return roomName || null;
-  } catch {
-    const parts = joinUrl.split("/").filter(Boolean);
-    return parts.at(-1) ?? null;
-  }
-}
-
 function getErrorMessage(error: unknown) {
   if (error && typeof error === "object") {
     const maybeError = error as {
@@ -206,29 +193,11 @@ function isPastMeeting(meeting: Meeting) {
   return meetingEnd < Date.now();
 }
 
-function isClosedMeeting(meeting: Meeting) {
-  const status = meeting.status?.toUpperCase();
-  return status === "ENDED" || status === "CANCELLED";
-}
-
-function canStartMeeting(meeting: Meeting) {
-  return (
-    !isPastMeeting(meeting) &&
-    !isClosedMeeting(meeting) &&
-    meeting.status?.toUpperCase() !== "LIVE"
-  );
-}
-
-function canEndMeeting(meeting: Meeting) {
-  return !isPastMeeting(meeting) && !isClosedMeeting(meeting);
-}
-
 function isPastDateTime(date: string, time: string) {
   return new Date(`${date}T${time}:00`).getTime() < Date.now();
 }
 
 export default function MeetingPage() {
-  const navigate = useNavigate();
   const [view, setView] = useState<ViewMode>("week");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [openModal, setOpenModal] = useState(false);
@@ -328,7 +297,7 @@ export default function MeetingPage() {
       end: endsAt ? getLocalTime(endsAt) : "10:00",
       mode: meeting.joinUrl ? "Online" : "On-site",
       color: colors[index % colors.length],
-      roomName: meeting.roomName ?? extractRoomNameFromJoinUrl(meeting.joinUrl),
+      roomName: meeting.roomName ?? extractMeetingRoomName(meeting.joinUrl),
       joinUrl: meeting.joinUrl ?? null,
       organizerId: meeting.organizerId ?? null,
       status: meeting.status ?? null,
@@ -484,23 +453,6 @@ export default function MeetingPage() {
     }
   };
 
-  const startMeeting = async (meeting: Meeting) => {
-    setActionLoadingId(getMeetingActionKey("start", meeting.id));
-
-    try {
-      await meetingService.start(meeting.id);
-      await meetingsQuery.refetch?.();
-      setOpenMenuId(null);
-      setMenuPosition(null);
-      showToast("success", "Réunion démarrée.");
-    } catch (error) {
-      console.error("Failed to start meeting", error);
-      showToast("error", getErrorMessage(error));
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
-
   const endMeeting = async (meetingId: string) => {
     setActionLoadingId(getMeetingActionKey("end", meetingId));
 
@@ -554,9 +506,10 @@ export default function MeetingPage() {
   const openMeetingRoom = (meeting: Meeting) => {
     setOpenMenuId(null);
     setMenuPosition(null);
+    const roomName = meeting.roomName ?? extractMeetingRoomName(meeting.joinUrl);
 
-    if (meeting.roomName) {
-      navigate(`/app/meeting-room/${encodeURIComponent(meeting.roomName)}`);
+    if (roomName) {
+      window.location.assign(buildMeetingRoomUrl(roomName));
       return;
     }
 

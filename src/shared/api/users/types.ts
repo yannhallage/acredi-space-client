@@ -56,6 +56,7 @@ export interface CreateUserRequest {
   name?: string;
   password?: string;
   role?: string;
+  roleName?: RoleName;
   [key: string]: unknown;
 }
 
@@ -65,6 +66,7 @@ export interface InviteUserRequest {
   lastName?: string;
   name?: string;
   role?: string;
+  roleName?: RoleName;
   [key: string]: unknown;
 }
 
