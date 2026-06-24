@@ -4,6 +4,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useMyDiscussions } from "../shared/api/discussions";
 import { useAuth, useWorkspace } from "../shared/context";
+import {
+  requestBrowserNotificationPermission,
+  showBrowserNotification,
+} from "../shared/notifications/browserNotification";
 import { canAccessAllTeams, canAccessMyTeams } from "../features/teams/access";
 import {
   dashboardKeys,
@@ -390,9 +394,24 @@ export function AppLayout() {
 
     knownNotificationIdsRef.current = currentIds;
 
+    // if (hasNewNotification) {
+    //   playNotificationSound();
+    // }
     if (hasNewNotification) {
-      playNotificationSound();
-    }
+  playNotificationSound();
+
+  const newestNotification = notificationsQuery.data.find(
+    (notification) => !knownIds.has(notification.id)
+  );
+
+  if (newestNotification) {
+    showBrowserNotification({
+      title: newestNotification.title || "Nouvelle notification",
+      body: newestNotification.message || "Vous avez une nouvelle notification.",
+      url: getNotificationTarget(newestNotification),
+    });
+  }
+}
   }, [canReadNotifications, notificationsQuery.data, notificationsQuery.isError]);
 
   useEffect(() => {
@@ -719,6 +738,29 @@ export function AppLayout() {
                         </button>
                       </div>
                     </div>
+                    <div className="notifications-browser-permission">
+  <button
+    className="button primary"
+    type="button"
+    onClick={async () => {
+      const permission = await requestBrowserNotificationPermission();
+
+      if (permission === "granted") {
+        alert("Notifications bureau activées.");
+      }
+
+      if (permission === "denied") {
+        alert("Les notifications sont bloquées dans le navigateur.");
+      }
+
+      if (permission === "unsupported") {
+        alert("Ce navigateur ne supporte pas les notifications bureau.");
+      }
+    }}
+  >
+    Activer les notifications bureau
+  </button>
+</div>
 
                     <div className="notifications-list">
                       {isNotificationsFetching

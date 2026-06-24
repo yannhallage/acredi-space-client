@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMockQuery } from '../../shared/api/useMockQuery';
 import { users } from '../../shared/api/mockData';
 import type { AppNotification } from '../../shared/types';
+import { requestBrowserNotificationPermission } from "../../shared/notifications/browserNotification";
 import { Avatar, Card, Icon, type IconName, LoadingState } from '../../shared/ui';
 
 const typeIcon: Record<AppNotification['type'], IconName> = {
