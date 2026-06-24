@@ -164,8 +164,46 @@ export function DirectMessagesPage() {
 
   const threadSubtitle = activeParticipant?.role ?? "Message direct";
 
+  // return (
+  //   <div className="dm-page">
+  //     <DirectConversationList
+  //       conversations={directChannels}
+  //       users={usersQuery.data ?? []}
+  //       activeConversationId={activeConversationId}
+  //       activeMessages={messages}
+  //       latestMessagesByChannelId={latestMessagesByChannelId}
+  //       onSelectConversation={handleSelectConversation}
+  //       onConversationCreated={handleConversationCreated}
+  //     />
+
+  //     {!activeConversation ? (
+  //       <DirectConversationEmpty />
+  //     ) : (
+  //       <DirectConversationThread
+  //         channelId={activeConversation.id}
+  //         title={getChannelDisplayName(activeConversation)}
+  //         subtitle={threadSubtitle}
+  //         presence={activeParticipant?.presence ?? "offline"}
+  //         messages={messages}
+  //         loading={messagesLoading}
+  //         refreshing={isRefreshingDiscussion}
+  //         onRefresh={handleRefreshDiscussion}
+  //         onClose={handleCloseConversation}
+  //       />
+  //     )}
+  //   </div>
+  // );
+
+
   return (
-    <div className="dm-page">
+  <div
+    className={
+      activeConversation
+        ? "dm-page dm-page-thread-open"
+        : "dm-page"
+    }
+  >
+    <div className="dm-list-area">
       <DirectConversationList
         conversations={directChannels}
         users={usersQuery.data ?? []}
@@ -175,7 +213,9 @@ export function DirectMessagesPage() {
         onSelectConversation={handleSelectConversation}
         onConversationCreated={handleConversationCreated}
       />
+    </div>
 
+    <div className="dm-thread-area">
       {!activeConversation ? (
         <DirectConversationEmpty />
       ) : (
@@ -192,5 +232,6 @@ export function DirectMessagesPage() {
         />
       )}
     </div>
-  );
+  </div>
+);
 }

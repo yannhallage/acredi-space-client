@@ -1123,3 +1123,43 @@
 .dm-page .dm-thread-actions {
   margin-left: auto;
 }
+
+
+.dm-list-area,
+.dm-thread-area {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Mobile : comportement type WhatsApp */
+@media (max-width: 768px) {
+  .dm-page {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .dm-list-area,
+  .dm-thread-area {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  /* Quand aucune conversation n'est ouverte :
+     on affiche seulement la liste */
+  .dm-page:not(.dm-page-thread-open) .dm-thread-area {
+    display: none !important;
+  }
+
+  /* Quand une conversation est ouverte :
+     on affiche seulement les messages */
+  .dm-page.dm-page-thread-open .dm-list-area {
+    display: none !important;
+  }
+
+  .dm-page.dm-page-thread-open .dm-thread-area {
+    display: flex;
+    flex-direction: column;
+  }
+}
