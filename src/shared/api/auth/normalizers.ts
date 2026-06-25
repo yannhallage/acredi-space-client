@@ -28,6 +28,21 @@ function readString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+function readFirstString(
+  source: Record<string, unknown>,
+  keys: readonly string[]
+) {
+  for (const key of keys) {
+    const value = readString(source[key]);
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
 function readId(value: unknown) {
   if (typeof value === "number") {
     return String(value);
@@ -112,6 +127,55 @@ function buildProfile(payload: AuthUserPayload) {
   return undefined;
 }
 
+function buildAvatarUrl(payload: AuthUserPayload) {
+  const source = payload as Record<string, unknown>;
+  const directAvatarUrl = readFirstString(source, [
+    "url",
+    "path",
+    "src",
+    "href",
+    "avatarUrl",
+    "avatarURL",
+    "avatar",
+    "photoUrl",
+    "photoURL",
+    "photo",
+    "pictureUrl",
+    "pictureURL",
+    "picture",
+    "imageUrl",
+    "imageURL",
+    "profileImageUrl",
+    "profileImageURL",
+    "profilePictureUrl",
+    "profilePictureURL",
+  ]);
+
+  if (directAvatarUrl) {
+    return directAvatarUrl;
+  }
+
+  if (isRecord(source.avatar)) {
+    return readFirstString(source.avatar, ["url", "path", "src", "href"]);
+  }
+
+  if (isRecord(source.profile)) {
+    return readFirstString(source.profile, [
+      "avatarUrl",
+      "avatarURL",
+      "avatar",
+      "photoUrl",
+      "photoURL",
+      "pictureUrl",
+      "pictureURL",
+      "imageUrl",
+      "imageURL",
+    ]);
+  }
+
+  return undefined;
+}
+
 export function normalizeAuthUser(value: unknown): User {
   const payload = isRecord(value) ? (value as AuthUserPayload) : {};
   const email = readString(payload.email) ?? "";
@@ -129,7 +193,7 @@ export function normalizeAuthUser(value: unknown): User {
     enabled: payload.enabled !== false,
     onboardingStatus: readString(payload.onboardingStatus),
     invitationStatus: readString(payload.invitationStatus),
-    avatarUrl: readString(payload.avatarUrl),
+    avatarUrl: buildAvatarUrl(payload),
     phoneNumber: readString(payload.phoneNumber),
     appThemePreference: readString(payload.appThemePreference),
     profile: buildProfile(payload),

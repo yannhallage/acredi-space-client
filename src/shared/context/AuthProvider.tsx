@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import {
+  authStorageKeys,
   authService,
   buildOtpSession,
   clearAuthSession,
@@ -20,6 +21,7 @@ import {
   persistOtpSession,
   unwrapApiResponse,
 } from "../api/auth";
+import { userService } from "../api/users";
 import type {
   AuthPermissions,
   AuthResponse,
@@ -54,28 +56,62 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function persistUser(user: User) {
+  localStorage.setItem(authStorageKeys.user, JSON.stringify(user));
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [permissions, setPermissions] = useState<AuthPermissions | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
     const session = localStorage.getItem("acredi-session");
     const storedUser = getStoredUser();
 
     if (session !== "active" || !storedUser) {
       setLoading(false);
-      return;
+      return () => {
+        active = false;
+      };
     }
 
     try {
       setUser(storedUser);
       setPermissions(getStoredPermissions());
+      void userService
+        .me()
+        .then(async (freshUser) => {
+          const avatarUrl = await userService.myAvatarUrl().catch(() => null);
+
+          if (!active) {
+            return;
+          }
+
+          setUser((current) => {
+            const updatedUser = {
+              ...(current ?? storedUser),
+              ...freshUser,
+              avatarUrl: avatarUrl ?? freshUser.avatarUrl,
+            };
+            persistUser(updatedUser);
+
+            return updatedUser;
+          });
+        })
+        .catch(() => {
+          // The HTTP layer already handles forced logout for auth failures.
+        });
     } catch {
       clearAuthSession();
     } finally {
       setLoading(false);
     }
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const completeAuthSession = useCallback(
@@ -99,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         updatedUser = { ...current, ...patch };
-        localStorage.setItem('acredi-user', JSON.stringify(updatedUser));
+        persistUser(updatedUser);
         return updatedUser;
       });
 

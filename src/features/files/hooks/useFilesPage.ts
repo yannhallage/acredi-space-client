@@ -28,7 +28,7 @@ import type { User } from "../../../shared/types";
 import { downloadFileFromUrl } from "../../../shared/utils/downloadFile";
 
 import type { PreviewState } from "../filePreview";
-import { setCachedFilePreviewUrl } from "../filePreviewUrlCache";
+import { cacheFilePreviewUrl } from "../filePreviewUrlCache";
 import {
   buildFolderTrail,
   getFolderBranchIds,
@@ -418,9 +418,10 @@ export function useFilesPage() {
 
     try {
       const url = await previewSharedFileUrlMutation.mutateAsync(file.id);
-      const resolvedUrl = resolveAssetUrl(url) ?? url;
-
-      setCachedFilePreviewUrl(file.id, resolvedUrl);
+      const resolvedUrl = await cacheFilePreviewUrl(
+        file.id,
+        resolveAssetUrl(url) ?? url,
+      );
 
       setPreview((current) =>
         current.fileId === file.id

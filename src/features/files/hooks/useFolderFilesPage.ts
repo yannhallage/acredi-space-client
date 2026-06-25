@@ -19,7 +19,7 @@ import type { User } from "../../../shared/types";
 import { downloadFileFromUrl } from "../../../shared/utils/downloadFile";
 
 import type { PreviewState } from "../filePreview";
-import { setCachedFilePreviewUrl } from "../filePreviewUrlCache";
+import { cacheFilePreviewUrl } from "../filePreviewUrlCache";
 import { buildFolderTrail, pluralizeFile } from "../utils";
 
 const emptyFolders: Folder[] = [];
@@ -228,9 +228,10 @@ export function useFolderFilesPage(folderId: string | undefined) {
 
     try {
       const url = await previewFileUrlMutation.mutateAsync(file.id);
-      const resolvedUrl = resolveAssetUrl(url) ?? url;
-
-      setCachedFilePreviewUrl(file.id, resolvedUrl);
+      const resolvedUrl = await cacheFilePreviewUrl(
+        file.id,
+        resolveAssetUrl(url) ?? url,
+      );
 
       setPreview((current) =>
         current.fileId === file.id

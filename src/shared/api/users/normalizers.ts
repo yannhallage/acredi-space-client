@@ -28,6 +28,21 @@ function readString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+function readFirstString(
+  source: Record<string, unknown>,
+  keys: readonly string[]
+) {
+  for (const key of keys) {
+    const value = readString(source[key]);
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
 function readId(value: unknown) {
   if (typeof value === "number") {
     return String(value);
@@ -172,6 +187,55 @@ function buildStatus(payload: UserResponse) {
   return "Disponible";
 }
 
+function buildAvatarUrl(payload: UserResponse) {
+  const source = payload as Record<string, unknown>;
+  const directAvatarUrl = readFirstString(source, [
+    "url",
+    "path",
+    "src",
+    "href",
+    "avatarUrl",
+    "avatarURL",
+    "avatar",
+    "photoUrl",
+    "photoURL",
+    "photo",
+    "pictureUrl",
+    "pictureURL",
+    "picture",
+    "imageUrl",
+    "imageURL",
+    "profileImageUrl",
+    "profileImageURL",
+    "profilePictureUrl",
+    "profilePictureURL",
+  ]);
+
+  if (directAvatarUrl) {
+    return directAvatarUrl;
+  }
+
+  if (isRecord(source.avatar)) {
+    return readFirstString(source.avatar, ["url", "path", "src", "href"]);
+  }
+
+  if (isRecord(source.profile)) {
+    return readFirstString(source.profile, [
+      "avatarUrl",
+      "avatarURL",
+      "avatar",
+      "photoUrl",
+      "photoURL",
+      "pictureUrl",
+      "pictureURL",
+      "imageUrl",
+      "imageURL",
+    ]);
+  }
+
+  return undefined;
+}
+
 export function normalizeUser(
   value: unknown,
   options: NormalizedUserOptions = {}
@@ -189,7 +253,7 @@ export function normalizeUser(
     presence: normalizePresence(payload, options.fallbackPresence),
     status: buildStatus(payload),
     appThemePreference: readString(payload.appThemePreference),
-    avatarUrl: readString(payload.avatarUrl),
+    avatarUrl: buildAvatarUrl(payload),
     enabled: payload.enabled ?? true,
     invitationStatus: readString(payload.invitationStatus),
     onboardingStatus: readString(payload.onboardingStatus),
@@ -201,4 +265,20 @@ export function normalizeUser(
 
 export function normalizeUsers(values: unknown) {
   return Array.isArray(values) ? values.map((value) => normalizeUser(value)) : [];
+}
+
+export function normalizeAvatarUpdate(value: unknown): Partial<User> {
+  const stringAvatarUrl = readString(value);
+
+  if (stringAvatarUrl) {
+    return { avatarUrl: stringAvatarUrl };
+  }
+
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  const avatarUrl = buildAvatarUrl(value as UserResponse);
+
+  return avatarUrl ? { avatarUrl } : {};
 }

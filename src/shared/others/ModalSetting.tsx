@@ -65,6 +65,22 @@ function getAvatarErrorMessage(error: unknown) {
     : 'Impossible de mettre a jour la photo.';
 }
 
+function applyAvatarUpdate(
+  uploadedAvatar: { avatarUrl?: string | null },
+  fallbackAvatarUrl?: string
+) {
+  const avatarUrl = uploadedAvatar.avatarUrl ?? fallbackAvatarUrl;
+
+  if (!avatarUrl) {
+    throw new Error("L'API n'a pas renvoye l'URL de l'image.");
+  }
+
+  return {
+    ...uploadedAvatar,
+    avatarUrl,
+  };
+}
+
 const TEAM_SETTINGS_VIEW_PERMISSIONS = [
   PERMISSIONS.VIEW_TEAM_SETTINGS,
   PERMISSIONS.UPDATE_TEAM_SETTINGS,
@@ -579,11 +595,12 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
       return;
     }
 
-    setAvatarPreviewUrl(URL.createObjectURL(file));
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreviewUrl(previewUrl);
 
     try {
-      const updatedUser = await uploadAvatarMutation.mutateAsync(file);
-      updateUser(updatedUser);
+      const uploadedAvatar = await uploadAvatarMutation.mutateAsync(file);
+      updateUser(applyAvatarUpdate(uploadedAvatar));
       setAvatarPreviewUrl(null);
       setAvatarMessage({ type: 'success', text: 'Photo de profil mise a jour.' });
     } catch (error) {
@@ -601,12 +618,12 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
 
     setAvatarMessage(null);
     setSelectedPresetId(preset.id);
+    setAvatarPreviewUrl(preset.url);
 
     try {
       const file = await extractPresetAvatarFile(preset);
-      setAvatarPreviewUrl(URL.createObjectURL(file));
-      const updatedUser = await uploadAvatarMutation.mutateAsync(file);
-      updateUser(updatedUser);
+      const uploadedAvatar = await uploadAvatarMutation.mutateAsync(file);
+      updateUser(applyAvatarUpdate(uploadedAvatar, preset.url));
       setAvatarPreviewUrl(null);
       setAvatarMessage({ type: 'success', text: 'Avatar mis a jour.' });
     } catch (error) {

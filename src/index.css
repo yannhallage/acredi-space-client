@@ -1232,6 +1232,77 @@ a {
   overflow: hidden;
 }
 
+.desktop-notification-banner {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.desktop-notification-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.desktop-notification-banner-content p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.desktop-notification-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.desktop-notification-banner-button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.desktop-notification-banner-button:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+
+.desktop-notification-banner-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.desktop-notification-banner-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.desktop-notification-banner-close:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
 .sidebar {
   min-width: 0;
   display: flex;

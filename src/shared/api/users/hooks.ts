@@ -223,7 +223,7 @@ export function useUpdateProfileMutation() {
 }
 
 export function useUploadAvatarMutation() {
-  const [state, setState] = useState<MutationState<User>>({
+  const [state, setState] = useState<MutationState<Partial<User>>>({
     data: null,
     error: null,
     isPending: false,

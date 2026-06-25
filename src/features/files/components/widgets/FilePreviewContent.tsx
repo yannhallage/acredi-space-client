@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { WorkspaceFile } from "../../../../shared/api/files";
 import { resolveAssetUrl } from "../../../../shared/api/http";
@@ -15,6 +15,11 @@ function FileImageViewer({ alt, src }: { alt: string; src: string }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const resolvedSrc = resolveAssetUrl(src) ?? src;
+
+  useEffect(() => {
+    setFailed(false);
+    setLoaded(false);
+  }, [resolvedSrc]);
 
   if (failed) {
     return (

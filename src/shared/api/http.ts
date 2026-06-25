@@ -112,13 +112,69 @@ export function resolveAssetUrl(
     return value;
   }
 
-  const localFrontendAssetUrl = resolveLocalFrontendAssetUrl(value);
+  if (value.startsWith("//")) {
+    return `${window.location.protocol}${value}`;
+  }
+
+  const assetPath = value.replace(/\\/g, "/");
+  const localFrontendAssetUrl = resolveLocalFrontendAssetUrl(assetPath);
 
   if (localFrontendAssetUrl) {
     return localFrontendAssetUrl;
   }
 
-  return `${API_ORIGIN}${value.startsWith("/") ? value : `/${value}`}`;
+  return `${API_ORIGIN}${assetPath.startsWith("/") ? assetPath : `/${assetPath}`}`;
+}
+
+export type LoadedAssetUrl = {
+  revoke?: () => void;
+  url: string;
+};
+
+export function assetUrlNeedsAuth(url: string) {
+  try {
+    const parsed = new URL(url, window.location.origin);
+
+    return (
+      parsed.origin === API_ORIGIN || parsed.origin === window.location.origin
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function loadAssetUrl(
+  url: string | null | undefined
+): Promise<LoadedAssetUrl | null> {
+  const resolvedUrl = resolveAssetUrl(url);
+
+  if (!resolvedUrl) {
+    return null;
+  }
+
+  if (!assetUrlNeedsAuth(resolvedUrl)) {
+    return { url: resolvedUrl };
+  }
+
+  const headers = new Headers();
+  const token = getStoredToken();
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(resolvedUrl, { headers });
+
+  if (!response.ok) {
+    throw new Error("asset-unavailable");
+  }
+
+  const objectUrl = URL.createObjectURL(await response.blob());
+
+  return {
+    revoke: () => URL.revokeObjectURL(objectUrl),
+    url: objectUrl,
+  };
 }
 
 function appendSearchParams(
@@ -152,6 +208,10 @@ function resolveUrl(path: string, params?: Record<string, QueryParamValue>) {
     : `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
   return appendSearchParams(url, params);
+}
+
+export function resolveApiUrl(path: string) {
+  return resolveUrl(path);
 }
 
 function getStoredToken() {
@@ -289,6 +349,58 @@ async function request<T>(path: string, options: HttpRequestOptions = {}) {
   return payload as T;
 }
 
+async function requestRaw(path: string, options: HttpRequestOptions = {}) {
+  const {
+    auth = true,
+    body,
+    headers,
+    method = "GET",
+    params,
+    ...rest
+  } = options;
+  const requestHeaders = new Headers(headers);
+  const serializedBody = serializeBody(body);
+
+  if (
+    body !== undefined &&
+    !isRawBody(body) &&
+    !requestHeaders.has("Content-Type")
+  ) {
+    requestHeaders.set("Content-Type", "application/json");
+  }
+
+  if (auth) {
+    const token = getStoredToken();
+
+    if (token) {
+      requestHeaders.set("Authorization", `Bearer ${token}`);
+    }
+  }
+
+  const response = await fetch(resolveUrl(path, params), {
+    ...rest,
+    body: serializedBody,
+    headers: requestHeaders,
+    method,
+  });
+
+  if (!response.ok) {
+    const payload = await parseResponse(response);
+
+    if (auth && shouldForceLogout(response.status)) {
+      forceFrontendLogout();
+    }
+
+    throw new HttpError(
+      response.status,
+      getErrorMessage(response.status, payload),
+      payload && typeof payload === "object" ? (payload as ApiErrorPayload) : null
+    );
+  }
+
+  return response;
+}
+
 export const http = {
   delete: <T>(path: string, options?: Omit<HttpRequestOptions, "method">) =>
     request<T>(path, { ...options, method: "DELETE" }),
@@ -310,4 +422,5 @@ export const http = {
     options?: Omit<HttpRequestOptions, "body" | "method">
   ) => request<T>(path, { ...options, body, method: "PUT" }),
   request,
+  raw: requestRaw,
 };
