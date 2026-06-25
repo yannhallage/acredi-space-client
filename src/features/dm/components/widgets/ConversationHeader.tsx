@@ -12,6 +12,7 @@ interface ConversationHeaderProps {
   avatarUrl?: string | null;
   canPreviewAvatar: boolean;
   refreshing: boolean;
+  showBackButton?: boolean;
   onAvatarPreview: () => void;
   onRefresh?: () => void;
   onClose?: () => void;
@@ -24,6 +25,7 @@ export function ConversationHeader({
   avatarUrl,
   canPreviewAvatar,
   refreshing,
+  showBackButton = false,
   onAvatarPreview,
   onRefresh,
   onClose,
@@ -32,6 +34,18 @@ export function ConversationHeader({
 
   return (
     <header className="dm-thread-header">
+      {showBackButton && onClose ? (
+        <button
+          type="button"
+          className="dm-thread-back-button"
+          aria-label="Retour aux conversations"
+          title="Retour"
+          onClick={onClose}
+        >
+          <Icon name="arrowLeft" size={18} />
+        </button>
+      ) : null}
+
       <div className="dm-thread-user">
         {canPreviewAvatar ? (
           <motion.button
@@ -76,7 +90,7 @@ export function ConversationHeader({
             className={refreshing ? "dm-spin" : undefined}
           />
         </button>
-        {onClose ? (
+        {onClose && !showBackButton ? (
           <button
             type="button"
             aria-label="Fermer la discussion"

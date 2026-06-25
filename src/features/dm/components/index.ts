@@ -1,4 +1,5 @@
 export { AvatarPreviewOverlay } from "./widgets/AvatarPreviewOverlay";
+export { DirectConversationDrawer } from "./widgets/DirectConversationDrawer";
 export { ConversationComposer } from "./widgets/ConversationComposer";
 export { DirectConversationList } from "./widgets/ConversationList";
 export { ConversationHeader } from "./widgets/ConversationHeader";

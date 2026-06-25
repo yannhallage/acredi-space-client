@@ -1,8 +1,8 @@
 export type CalendarViewMode = "list" | "month" | "week" | "day";
 
 export const CALENDAR_HOUR_HEIGHT = 72;
-export const CALENDAR_START_HOUR = 7;
-export const CALENDAR_END_HOUR = 22;
+export const CALENDAR_START_HOUR = 0;
+export const CALENDAR_END_HOUR = 23;
 
 export function toDateKey(date: Date) {
   const copy = new Date(date);
@@ -103,6 +103,43 @@ export function getCalendarHours(
   );
 }
 
+export function getNextHourSlot(dateKey: string, hour: string) {
+  const hourNumber = Number(hour.split(":")[0]);
+  const anchorDate = new Date(`${dateKey}T12:00:00`);
+
+  if (hourNumber >= 23) {
+    return {
+      dateKey: toDateKey(addDays(anchorDate, 1)),
+      time: "00:00",
+    };
+  }
+
+  return {
+    dateKey,
+    time: `${String(hourNumber + 1).padStart(2, "0")}:00`,
+  };
+}
+
+export function resolveEndDateTime(
+  dateKey: string,
+  startTime: string,
+  endTime: string
+) {
+  const startMs = new Date(buildLocalDateTime(dateKey, startTime)).getTime();
+  let endDateKey = dateKey;
+
+  if (timeToMinutes(endTime) <= timeToMinutes(startTime)) {
+    endDateKey = toDateKey(addDays(new Date(`${dateKey}T12:00:00`), 1));
+  }
+
+  const endMs = new Date(buildLocalDateTime(endDateKey, endTime)).getTime();
+
+  return {
+    endsAt: buildLocalDateTime(endDateKey, endTime),
+    isValid: endMs > startMs,
+  };
+}
+
 export function getCalendarTop(
   time: string,
   startHour = CALENDAR_START_HOUR,
@@ -119,9 +156,16 @@ export function getCalendarHeight(
   end: string,
   hourHeight = CALENDAR_HOUR_HEIGHT
 ) {
+  let endMinutes = timeToMinutes(end);
+  const startMinutes = timeToMinutes(start);
+
+  if (endMinutes <= startMinutes) {
+    endMinutes += 24 * 60;
+  }
+
   return Math.max(
     34,
-    ((timeToMinutes(end) - timeToMinutes(start)) / 60) * hourHeight
+    ((endMinutes - startMinutes) / 60) * hourHeight
   );
 }
 

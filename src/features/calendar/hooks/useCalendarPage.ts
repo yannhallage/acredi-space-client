@@ -10,6 +10,7 @@ import {
   addMonths,
   buildDateTimeLocal,
   getMonthGrid,
+  getNextHourSlot,
   getWeekDays,
   toDateKey,
 } from "../../../shared/utils/calendarGrid";
@@ -82,12 +83,11 @@ export function useCalendarPage() {
   );
 
   function openCreateModal(dateKey = selectedDateKey, hour = "09:00") {
-    const hourNumber = Number(hour.split(":")[0]);
-    const nextHour = `${String(Math.min(hourNumber + 1, 23)).padStart(2, "0")}:00`;
+    const nextSlot = getNextHourSlot(dateKey, hour);
 
     setCreateSlot({
       startsAt: buildDateTimeLocal(dateKey, hour),
-      endsAt: buildDateTimeLocal(dateKey, nextHour),
+      endsAt: buildDateTimeLocal(nextSlot.dateKey, nextSlot.time),
     });
   }
 

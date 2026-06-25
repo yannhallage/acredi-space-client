@@ -235,7 +235,7 @@ export function DirectConversationList({
             </div>
 
             <button
-              className="dm-new-button"
+              className="dm-new-button dm-new-button-inline"
               type="button"
               onClick={() => setModalOpen(true)}
               aria-label="Nouvelle conversation"
@@ -323,6 +323,18 @@ export function DirectConversationList({
           </div>
         </div>
       </aside>
+
+      <div className="dm-add-fab">
+        <button
+          className="dm-add"
+          type="button"
+          aria-label="Nouvelle conversation"
+          title="Nouvelle conversation"
+          onClick={() => setModalOpen(true)}
+        >
+          <span className="dm-add-plus" aria-hidden="true" />
+        </button>
+      </div>
 
       <NewDirectConversationModal
         open={modalOpen}

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { motion } from 'framer-motion';
 import { useUploadAvatarMutation } from '../api/users';
+import { PresetAvatarPicker, extractPresetAvatarFile } from '../avatars/PresetAvatarPicker';
+import type { AvatarPreset } from '../avatars/presets';
 import { useAuth } from '../context';
 import { Avatar, Icon, type IconName } from '../ui';
 import { PERMISSIONS, usePermissions, type PermissionCode } from '../permissions';
@@ -505,6 +507,7 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
   const [activeKey, setActiveKey] = useState<SettingKey>('profile');
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [avatarMessage, setAvatarMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 
   const visibleGroups = useMemo(
     () =>
@@ -562,6 +565,7 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
     }
 
     setAvatarMessage(null);
+    setSelectedPresetId(null);
 
     if (!file.type.startsWith('image/')) {
       setAvatarMessage({ type: 'error', text: 'Merci de choisir une image valide.' });
@@ -587,6 +591,28 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
       setAvatarMessage({ type: 'error', text: getAvatarErrorMessage(error) });
     } finally {
       event.target.value = '';
+    }
+  }
+
+  async function handlePresetAvatarSelect(preset: AvatarPreset) {
+    if (!canUpdateActiveItem || isUploadingAvatar) {
+      return;
+    }
+
+    setAvatarMessage(null);
+    setSelectedPresetId(preset.id);
+
+    try {
+      const file = await extractPresetAvatarFile(preset);
+      setAvatarPreviewUrl(URL.createObjectURL(file));
+      const updatedUser = await uploadAvatarMutation.mutateAsync(file);
+      updateUser(updatedUser);
+      setAvatarPreviewUrl(null);
+      setAvatarMessage({ type: 'success', text: 'Avatar mis a jour.' });
+    } catch (error) {
+      setAvatarPreviewUrl(null);
+      setSelectedPresetId(null);
+      setAvatarMessage({ type: 'error', text: getAvatarErrorMessage(error) });
     }
   }
 
@@ -646,51 +672,63 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
 
               {activeItem.key === 'profile' ? (
                 <div className="modal-setting-profile">
-                  <div className="modal-setting-avatar-control">
-                    <Avatar name={userName} size={58} src={avatarSrc} />
-                    {canUpdateActiveItem ? (
-                      <button
-                        className="modal-setting-avatar-button"
-                        type="button"
-                        aria-label="Changer la photo"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploadingAvatar}
-                      >
-                        <Icon name={isUploadingAvatar ? 'refresh' : 'camera'} size={14} />
-                      </button>
-                    ) : null}
-                    <input
-                      ref={fileInputRef}
-                      className="modal-setting-avatar-input"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                      disabled={!canUpdateActiveItem || isUploadingAvatar}
-                    />
-                  </div>
-                  <div>
-                    <div className="modal-setting-profile-title">
-                      <h3>{userName}</h3>
+                  <div className="modal-setting-profile-main">
+                    <div className="modal-setting-avatar-control">
+                      <Avatar name={userName} size={48} src={avatarSrc} />
                       {canUpdateActiveItem ? (
                         <button
-                          className="modal-setting-photo-action"
+                          className="modal-setting-avatar-button"
                           type="button"
+                          aria-label="Changer la photo"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isUploadingAvatar}
                         >
                           <Icon name={isUploadingAvatar ? 'refresh' : 'camera'} size={14} />
-                          {isUploadingAvatar ? 'Import...' : 'Changer photo'}
                         </button>
                       ) : null}
+                      <input
+                        ref={fileInputRef}
+                        className="modal-setting-avatar-input"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        disabled={!canUpdateActiveItem || isUploadingAvatar}
+                      />
                     </div>
-                    <p>{userEmail}</p>
-                    <small>{workspaceName}</small>
-                    {avatarMessage ? (
-                      <small className={`modal-setting-avatar-message ${avatarMessage.type}`}>
-                        {avatarMessage.text}
-                      </small>
-                    ) : null}
+                    <div className="modal-setting-profile-details">
+                      <div className="modal-setting-profile-title">
+                        <h3>{userName}</h3>
+                        {canUpdateActiveItem ? (
+                          <button
+                            className="modal-setting-photo-action"
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploadingAvatar}
+                          >
+                            <Icon name={isUploadingAvatar ? 'refresh' : 'camera'} size={14} />
+                            {isUploadingAvatar ? 'Import...' : 'Changer photo'}
+                          </button>
+                        ) : null}
+                      </div>
+                      <p>{userEmail}</p>
+                      <small>{workspaceName}</small>
+                      {avatarMessage ? (
+                        <small className={`modal-setting-avatar-message ${avatarMessage.type}`}>
+                          {avatarMessage.text}
+                        </small>
+                      ) : null}
+                    </div>
                   </div>
+
+                  {canUpdateActiveItem ? (
+                    <PresetAvatarPicker
+                      disabled={isUploadingAvatar}
+                      selectedPresetId={selectedPresetId}
+                      onSelect={(preset) => {
+                        void handlePresetAvatarSelect(preset);
+                      }}
+                    />
+                  ) : null}
                 </div>
               ) : null}
 

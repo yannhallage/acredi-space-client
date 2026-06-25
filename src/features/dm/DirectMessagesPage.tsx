@@ -12,10 +12,12 @@ import type { User } from "../../shared/types";
 
 import {
   DirectConversationEmpty,
+  DirectConversationDrawer,
   DirectConversationList,
   DirectConversationThread,
   DmPageSkeleton,
 } from "./components";
+import { useDmMobileLayout } from "./hooks/useDmMobileLayout";
 
 import "./direct-messages.css";
 
@@ -42,6 +44,7 @@ function getLatestMessage(messages: MessageResponse[]) {
 export function DirectMessagesPage() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
+  const isMobileLayout = useDmMobileLayout();
 
   const [selectedConversationId, setSelectedConversationId] = useState(
     conversationId ?? ""
@@ -166,6 +169,20 @@ export function DirectMessagesPage() {
 
   const threadSubtitle = activeParticipant?.role ?? "Message direct";
 
+  const threadProps = activeConversation
+    ? {
+        channelId: activeConversation.id,
+        title: getChannelDisplayName(activeConversation),
+        subtitle: threadSubtitle,
+        presence: activeParticipant?.presence ?? ("offline" as const),
+        avatarUrl: activeParticipant?.avatarUrl,
+        messages,
+        loading: messagesLoading,
+        refreshing: isRefreshingDiscussion,
+        onRefresh: handleRefreshDiscussion,
+      }
+    : null;
+
   return (
     <div className="dm-page">
       <DirectConversationList
@@ -178,22 +195,27 @@ export function DirectMessagesPage() {
         onConversationCreated={handleConversationCreated}
       />
 
-      {!activeConversation ? (
+      {isMobileLayout ? (
+        <>
+          <DirectConversationDrawer
+            isOpen={Boolean(activeConversation && threadProps)}
+            title={threadProps?.title ?? "Conversation"}
+            onClose={handleCloseConversation}
+          >
+            {threadProps ? (
+              <DirectConversationThread
+                {...threadProps}
+                showBackButton
+                onClose={handleCloseConversation}
+              />
+            ) : null}
+          </DirectConversationDrawer>
+        </>
+      ) : !activeConversation ? (
         <DirectConversationEmpty />
-      ) : (
-        <DirectConversationThread
-          channelId={activeConversation.id}
-          title={getChannelDisplayName(activeConversation)}
-          subtitle={threadSubtitle}
-          presence={activeParticipant?.presence ?? "offline"}
-          avatarUrl={activeParticipant?.avatarUrl}
-          messages={messages}
-          loading={messagesLoading}
-          refreshing={isRefreshingDiscussion}
-          onRefresh={handleRefreshDiscussion}
-          onClose={handleCloseConversation}
-        />
-      )}
+      ) : threadProps ? (
+        <DirectConversationThread {...threadProps} />
+      ) : null}
     </div>
   );
 }

@@ -17,8 +17,9 @@ import {
   addDays,
   addMonths,
   buildLocalDateTime,
+  getNextHourSlot,
   getWeekDays,
-  timeToMinutes,
+  resolveEndDateTime,
   toDateKey,
 } from "../../../shared/utils/calendarGrid";
 import type {
@@ -134,8 +135,7 @@ export function useMeetingPage() {
     meetings.find((meeting) => meeting.id === openMenuId) ?? null;
 
   const openCreateModal = (date = selectedDateKey, hour = "09:00") => {
-    const hourNumber = Number(hour.split(":")[0]);
-    const nextHour = `${String(Math.min(hourNumber + 1, 23)).padStart(2, "0")}:00`;
+    const nextSlot = getNextHourSlot(date, hour);
     setOpenMenuId(null);
     setMenuPosition(null);
     setFormError("");
@@ -144,7 +144,7 @@ export function useMeetingPage() {
       title: "",
       date,
       start: hour,
-      end: nextHour,
+      end: nextSlot.time,
       description: "",
       mode: "Online",
     });
@@ -176,7 +176,12 @@ export function useMeetingPage() {
       setFormError("Renseigne la date, l'heure de début et l'heure de fin.");
       return;
     }
-    if (timeToMinutes(form.end) <= timeToMinutes(form.start)) {
+    const { endsAt, isValid } = resolveEndDateTime(
+      form.date,
+      form.start,
+      form.end,
+    );
+    if (!isValid) {
       setFormError("L'heure de fin doit être après l'heure de début.");
       return;
     }
@@ -193,7 +198,7 @@ export function useMeetingPage() {
       title: form.title.trim(),
       description: form.description.trim() || null,
       startsAt: buildLocalDateTime(form.date, form.start),
-      endsAt: buildLocalDateTime(form.date, form.end),
+      endsAt,
       teamId: null,
     };
 

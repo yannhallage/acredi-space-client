@@ -36,6 +36,7 @@ interface DirectConversationThreadProps {
   messages: MessageResponse[];
   loading?: boolean;
   refreshing?: boolean;
+  showBackButton?: boolean;
   onRefresh?: () => void;
   onClose?: () => void;
 }
@@ -49,6 +50,7 @@ export function DirectConversationThread({
   messages,
   loading = false,
   refreshing = false,
+  showBackButton = false,
   onRefresh,
   onClose,
 }: DirectConversationThreadProps) {
@@ -268,6 +270,7 @@ export function DirectConversationThread({
           avatarUrl={avatarUrl}
           canPreviewAvatar={canPreviewAvatar}
           refreshing={refreshing}
+          showBackButton={showBackButton}
           onAvatarPreview={() => setAvatarPreviewOpen(true)}
           onRefresh={onRefresh}
           onClose={onClose}
