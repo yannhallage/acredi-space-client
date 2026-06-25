@@ -22,6 +22,7 @@ import {
 import { useTheme } from "../shared/theme";
 import { AccessDeniedState, AcrediLockup, Avatar, Icon, type IconName } from "../shared/ui";
 import ModalSetting from "../shared/others/ModalSetting";
+import { getNotificationTarget } from "../shared/notifications/routing";
 import { playNotificationSound } from "../shared/notifications/sound";
 
 const pageMeta: Record<string, { title: string; crumb: string }> = {
@@ -86,28 +87,6 @@ function getNotificationInitials(notification: DashboardNotification) {
   const letters = source.replace(/[^a-z0-9]/gi, "").slice(0, 2);
 
   return (letters || "NO").toUpperCase();
-}
-
-function getNotificationTarget(notification: DashboardNotification) {
-  if (notification.linkUrl) {
-    return notification.linkUrl;
-  }
-
-  const type = notification.type.toUpperCase();
-
-  if (type.includes("FILE")) {
-    return "/app/files";
-  }
-
-  if (type.includes("MEETING")) {
-    return "/app/meeting/meet-daily";
-  }
-
-  if (type.includes("MESSAGE") || type.includes("CHAT")) {
-    return "/app/chat/general";
-  }
-
-  return null;
 }
 
 export function AppLayout() {
@@ -672,12 +651,11 @@ export function AppLayout() {
                                 handleMarkNotificationRead(notification);
                                 const target = getNotificationTarget(notification);
 
-                                if (!target) {
-                                  return;
-                                }
-
                                 setOpenDropdown(null);
-                                navigate(target);
+
+                                if (target) {
+                                  navigate(target);
+                                }
                               }}
                             >
                               <span className="notification-unread-dot" />

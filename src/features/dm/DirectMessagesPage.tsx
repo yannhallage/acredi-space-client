@@ -10,10 +10,12 @@ import type { ChannelResponse, MessageResponse } from "../../shared/api/dm/types
 import { useUsersQuery } from "../../shared/api/users";
 import type { User } from "../../shared/types";
 
-import { DirectConversationList } from "./components/ConversationList";
-import { DirectConversationThread } from "./components/ConversationThread";
-import { DirectConversationEmpty } from "./components/DirectConversationEmpty";
-import { DmPageSkeleton } from "./components/DmSkeletons";
+import {
+  DirectConversationEmpty,
+  DirectConversationList,
+  DirectConversationThread,
+  DmPageSkeleton,
+} from "./components";
 
 import "./direct-messages.css";
 
