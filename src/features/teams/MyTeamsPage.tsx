@@ -4,7 +4,7 @@ import { AnimatePresence } from "framer-motion";
 import { useAuth } from "../../shared/context";
 import { AccessDeniedState, EmptyState, Icon } from "../../shared/ui";
 import { canAccessMyTeams } from "./access";
-import { TeamDetailsModal } from "./components/TeamDetailsModal";
+import { TeamDetailsModal } from "./components";
 import { useMyTeams } from "./hooks";
 import type { Team } from "./types";
 

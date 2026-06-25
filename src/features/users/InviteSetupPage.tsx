@@ -1,6 +1,10 @@
 import { useState } from "react";
-import { InvitePasswordStep } from "./components/InvitePasswordStep";
-import { InviteProfileStep } from "./components/InviteProfileStep";
+
+import {
+  InvitePasswordStep,
+  InviteProfileStep,
+  InviteSuccessStep,
+} from "./components";
 
 export function InviteSetupPage() {
   const [step, setStep] = useState(1);
@@ -24,14 +28,7 @@ export function InviteSetupPage() {
         />
       )}
 
-      {step === 3 && (
-        <div className="invite-page">
-          <div className="invite-card">
-            <h1>Terminé</h1>
-            <p>Vos informations ont été enregistrées.</p>
-          </div>
-        </div>
-      )}
+      {step === 3 && <InviteSuccessStep />}
     </>
   );
 }

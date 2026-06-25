@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { resolveAssetUrl } from '../api/http';
+import { loadAssetUrl, resolveAssetUrl } from '../api/http';
 import type { Presence } from '../types';
 
 interface AvatarProps {
@@ -48,12 +48,42 @@ function colorFor(name: string | null | undefined) {
 
 export function Avatar({ name, size = 32, presence, ring, src }: AvatarProps) {
   const color = colorFor(name);
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
   const resolvedSrc = resolveAssetUrl(src);
-  const showImage = Boolean(resolvedSrc && !imageFailed);
+  const showImage = Boolean(loadedSrc && !imageFailed);
 
   useEffect(() => {
+    let active = true;
+    let revokeLoadedSrc: (() => void) | undefined;
+
     setImageFailed(false);
+    setLoadedSrc(null);
+
+    if (!resolvedSrc) {
+      return undefined;
+    }
+
+    loadAssetUrl(resolvedSrc)
+      .then((loaded) => {
+        if (!active || !loaded) {
+          loaded?.revoke?.();
+          return;
+        }
+
+        revokeLoadedSrc = loaded.revoke;
+        setLoadedSrc(loaded.url);
+      })
+      .catch(() => {
+        if (active) {
+          setImageFailed(true);
+        }
+      });
+
+    return () => {
+      active = false;
+      revokeLoadedSrc?.();
+    };
   }, [resolvedSrc]);
 
   return (
@@ -73,7 +103,7 @@ export function Avatar({ name, size = 32, presence, ring, src }: AvatarProps) {
           <img
             alt=""
             className="avatar-image"
-            src={resolvedSrc}
+            src={loadedSrc ?? undefined}
             onError={() => setImageFailed(true)}
           />
         ) : (

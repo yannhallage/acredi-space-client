@@ -63,6 +63,74 @@
   cursor: pointer;
 }
 
+.dm-add-fab {
+  display: none;
+}
+
+.dm-add {
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--accent) 42%, transparent);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.15s ease;
+}
+
+.dm-add:hover,
+.dm-add:focus-visible {
+  outline: 0;
+  transform: scale(1.06);
+  box-shadow: 0 6px 22px color-mix(in srgb, var(--accent) 52%, transparent);
+}
+
+.dm-add:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+.dm-add-plus {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  pointer-events: none;
+}
+
+.dm-add-plus::before,
+.dm-add-plus::after {
+  content: "";
+  position: absolute;
+  background: #fff;
+  border-radius: 1px;
+}
+
+.dm-add-plus::before {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+.dm-add-plus::after {
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+
 .dm-search {
   height: 44px;
   padding: 0 14px;
@@ -587,6 +655,22 @@
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.dm-message-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dm-message-link:hover,
+.dm-message-link:focus-visible {
+  opacity: 0.88;
+}
+
+.dm-message-row.mine .dm-message-link {
+  color: #fff;
 }
 
 .dm-attachment-list {
@@ -1158,19 +1242,79 @@
   border-radius: 10px;
 }
 
+.dm-thread-back-button {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  margin-right: 4px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted-soft);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.dm-thread-back-button:hover,
+.dm-thread-back-button:focus-visible {
+  outline: 0;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.dm-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.34);
+}
+
+.dm-drawer-panel {
+  width: 100%;
+  max-width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: -24px 0 80px rgba(0, 0, 0, 0.28);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.dm-drawer-panel .dm-thread {
+  height: 100%;
+}
+
 @media (max-width: 900px) {
   .dm-page {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(240px, 35vh) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .dm-sidebar {
     border-right: 0;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 0;
   }
 
   .dm-panel {
     padding: 16px;
+  }
+
+  .dm-new-button-inline {
+    display: none;
+  }
+
+  .dm-add-fab {
+    display: block;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 40;
   }
 
   .dm-thread-header,
