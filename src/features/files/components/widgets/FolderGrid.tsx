@@ -2,6 +2,8 @@ import type { Folder } from "../../../../shared/api/folders";
 import { PERMISSIONS, PermissionGate } from "../../../../shared/permissions";
 import { Icon } from "../../../../shared/ui";
 
+import { FilesEmptyIllustration } from "./FilesEmptyIllustration";
+
 export function FolderGrid({
   deletePending,
   folders,
@@ -24,7 +26,7 @@ export function FolderGrid({
   if (folders.length === 0) {
     return (
       <div className="files-empty-state">
-        <Icon name="folder" size={38} />
+        <FilesEmptyIllustration />
         <strong>Aucun dossier</strong>
         <p>Creez un dossier pour organiser cet espace.</p>
       </div>

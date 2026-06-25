@@ -33,7 +33,13 @@ export function PeopleList({ emptyTitle, isLoading, users }: PeopleListProps) {
   const items = users.slice(0, 5);
 
   if (!items.length) {
-    return <EmptyBlock title={emptyTitle} body="Aucun membre en ligne pour le moment." />;
+    return (
+      <EmptyBlock
+        illustration="user"
+        title={emptyTitle}
+        body="Aucun membre en ligne pour le moment."
+      />
+    );
   }
 
   return (

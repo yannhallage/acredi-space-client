@@ -14,7 +14,13 @@ export function MeetingsList({ isLoading, meetings }: MeetingsListProps) {
   const items = upcomingMeetings(meetings);
 
   if (!items.length) {
-    return <EmptyBlock title="Aucune reunion a venir" body="Les reunions planifiees apparaitront ici." />;
+    return (
+      <EmptyBlock
+        illustration="meeting"
+        title="Aucune reunion a venir"
+        body="Les reunions planifiees apparaitront ici."
+      />
+    );
   }
 
   return (

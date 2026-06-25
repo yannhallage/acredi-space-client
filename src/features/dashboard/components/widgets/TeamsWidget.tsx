@@ -8,7 +8,9 @@ export function TeamsWidget({ context }: WidgetComponentProps) {
   const teams = context.teams.slice(0, 5);
 
   if (!teams.length) {
-    return <EmptyBlock title="Aucune equipe" body="Les equipes creees apparaitront ici." />;
+    return (
+      <EmptyBlock illustration="teams" title="Aucune equipe" body="Les equipes creees apparaitront ici." />
+    );
   }
 
   return (
@@ -30,7 +32,9 @@ export function MyTeamWidget({ context }: WidgetComponentProps) {
   if (context.isTeamsLoading) return <ListSkeleton />;
 
   if (!context.myTeams.length) {
-    return <EmptyBlock title="Aucune equipe" body="Vos equipes apparaitront ici." />;
+    return (
+      <EmptyBlock illustration="teams" title="Aucune equipe" body="Vos equipes apparaitront ici." />
+    );
   }
 
   return (

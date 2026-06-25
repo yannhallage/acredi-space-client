@@ -14,7 +14,13 @@ export function NotesList({ isLoading, notes }: NotesListProps) {
   const items = recentNotes(notes);
 
   if (!items.length) {
-    return <EmptyBlock title="Aucune note" body="Les notes recentes apparaitront ici." />;
+    return (
+      <EmptyBlock
+        illustration="note"
+        title="Aucune note"
+        body="Les notes recentes apparaitront ici."
+      />
+    );
   }
 
   return (

@@ -14,7 +14,13 @@ export function FilesList({ files, isLoading }: FilesListProps) {
   const items = recentFiles(files);
 
   if (!items.length) {
-    return <EmptyBlock title="Aucun fichier recent" body="Les derniers fichiers apparaitront ici." />;
+    return (
+      <EmptyBlock
+        illustration="file"
+        title="Aucun fichier recent"
+        body="Les derniers fichiers apparaitront ici."
+      />
+    );
   }
 
   return (

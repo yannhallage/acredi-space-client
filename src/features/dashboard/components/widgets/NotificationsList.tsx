@@ -18,7 +18,13 @@ export function NotificationsList({
     .slice(0, 5);
 
   if (!items.length) {
-    return <EmptyBlock title="Aucune notification" body="Les alertes importantes apparaitront ici." />;
+    return (
+      <EmptyBlock
+        illustration="notification"
+        title="Aucune notification"
+        body="Les alertes importantes apparaitront ici."
+      />
+    );
   }
 
   return (
