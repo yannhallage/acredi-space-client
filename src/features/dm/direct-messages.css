@@ -589,6 +589,22 @@
   overflow-wrap: anywhere;
 }
 
+.dm-message-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dm-message-link:hover,
+.dm-message-link:focus-visible {
+  opacity: 0.88;
+}
+
+.dm-message-row.mine .dm-message-link {
+  color: #fff;
+}
+
 .dm-attachment-list {
   min-width: min(320px, 74vw);
   padding: 0 8px 8px;

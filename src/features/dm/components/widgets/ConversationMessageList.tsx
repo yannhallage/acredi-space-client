@@ -5,6 +5,7 @@ import {
   downloadFileById,
   downloadFileFromUrl,
 } from "../../../../shared/utils/downloadFile";
+import { LinkifiedText } from "../../../../shared/utils/linkifyMessage";
 import { Avatar, Icon } from "../../../../shared/ui";
 
 import {
@@ -154,9 +155,23 @@ function DirectMessageRow({
         </div>
 
         <div className="dm-message-bubble">
-          {hasContent ? <p>{message.content}</p> : null}
+          {hasContent ? (
+            <p>
+              <LinkifiedText
+                linkClassName="dm-message-link"
+                text={message.content}
+              />
+            </p>
+          ) : null}
           <MessageAttachmentList attachments={attachments} />
-          {!hasContent && !attachments.length ? <p>{message.content}</p> : null}
+          {!hasContent && !attachments.length ? (
+            <p>
+              <LinkifiedText
+                linkClassName="dm-message-link"
+                text={message.content}
+              />
+            </p>
+          ) : null}
         </div>
 
         <div className="dm-message-footer">
