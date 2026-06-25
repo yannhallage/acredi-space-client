@@ -16,6 +16,7 @@ export function DashboardPage() {
   if (!page.canViewDashboard) {
     return (
       <PanelState
+        illustration="user"
         title="Dashboard indisponible"
         body="Votre role ne permet pas d'afficher le tableau de bord."
       />
@@ -25,6 +26,7 @@ export function DashboardPage() {
   if (page.widgetsQuery.error && !page.widgetsResponse) {
     return (
       <PanelState
+        illustration="note"
         title="Dashboard indisponible"
         body="Impossible de charger les cartes du tableau de bord."
       />
@@ -62,6 +64,7 @@ export function DashboardPage() {
         </section>
       ) : (
         <PanelState
+          illustration="note"
           title="Aucune carte disponible"
           body="Aucune carte ne correspond a vos permissions actuelles."
         />

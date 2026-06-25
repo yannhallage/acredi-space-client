@@ -274,12 +274,15 @@ export function useNotesPage() {
     setSortMode((current) => (current === "newest" ? "oldest" : "newest"));
   }
 
+  const isCollectionEmpty = notes.length === 0;
+
   return {
     closeNoteModal,
     closeShareModal,
     closeViewModal,
     contentFilter,
     createNoteMutation,
+    isCollectionEmpty,
     deletingIds,
     draftColor,
     draftContent,

@@ -3,6 +3,7 @@ import { Icon } from "../../../../shared/ui";
 
 import { pluralizeFile } from "../../utils";
 import { FileGrid } from "../widgets/FileGrid";
+import { FilesEmptyIllustration } from "../widgets/FilesEmptyIllustration";
 
 const sharedFileSkeletons = [
   "folder-skeleton-1",
@@ -89,7 +90,7 @@ export function SharedFilesSection({
         />
       ) : (
         <div className="files-empty-state files-shared-empty">
-          <Icon name="file" size={38} />
+          <FilesEmptyIllustration />
           <p>Les fichiers que l'on vous partage apparaitront ici.</p>
         </div>
       )}

@@ -9,7 +9,13 @@ export function MyCalendarWidget({ context }: WidgetComponentProps) {
   const events = upcomingCalendarEvents(context.calendarEvents);
 
   if (!events.length) {
-    return <EmptyBlock title="Aucun evenement a venir" body="Votre calendrier est libre pour le moment." />;
+    return (
+      <EmptyBlock
+        illustration="calendar"
+        title="Aucun evenement a venir"
+        body="Votre calendrier est libre pour le moment."
+      />
+    );
   }
 
   return (

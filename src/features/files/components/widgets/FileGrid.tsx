@@ -5,13 +5,13 @@ import { PERMISSIONS, PermissionGate } from "../../../../shared/permissions";
 import { Icon } from "../../../../shared/ui";
 
 import { formatFileDate, formatFileSize } from "../../utils";
+import { FilesEmptyIllustration } from "./FilesEmptyIllustration";
 import { FileThumbnail } from "./FileThumbnail";
 
 export function FileGrid({
   deletePending,
   downloadPending,
   emptyDescription,
-  emptyIcon = "file",
   emptyTitle,
   files,
   metaSpanClassName,
@@ -28,7 +28,6 @@ export function FileGrid({
   deletePending?: boolean;
   downloadPending: boolean;
   emptyDescription: string;
-  emptyIcon?: "file" | "folder";
   emptyTitle: string;
   files: WorkspaceFile[];
   metaSpanClassName?: string;
@@ -45,7 +44,7 @@ export function FileGrid({
   if (files.length === 0) {
     return (
       <div className="files-empty-state">
-        <Icon name={emptyIcon} size={38} />
+        <FilesEmptyIllustration />
         <strong>{emptyTitle}</strong>
         <p>{emptyDescription}</p>
       </div>
