@@ -347,6 +347,14 @@
   display: contents;
 }
 
+.dm-thread-body-shell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+}
+
 .dm-thread-header {
   min-width: 0;
   padding: 0 30px;
@@ -435,6 +443,136 @@
   font-size: 18px;
   font-weight: 760;
   text-align: center;
+}
+
+.dm-message-image-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.86);
+}
+
+.dm-message-image-preview-stage {
+  width: min(960px, 92vw);
+  max-height: 90vh;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.dm-message-image-preview-frame {
+  position: relative;
+  max-width: min(960px, 92vw);
+  max-height: 78vh;
+  min-width: min(340px, 86vw);
+  min-height: 220px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgb(18 18 22 / 92%);
+  display: grid;
+  place-items: center;
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgb(255 255 255 / 10%);
+}
+
+.dm-message-image-preview-frame img {
+  width: auto;
+  height: auto;
+  max-width: min(960px, 92vw);
+  max-height: 78vh;
+  display: block;
+  object-fit: contain;
+}
+
+.dm-message-image-preview-download {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 10px;
+  background: rgb(0 0 0 / 62%);
+  color: #fff;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 24%);
+}
+
+.dm-message-image-preview-download:hover,
+.dm-message-image-preview-download:focus-visible {
+  outline: 0;
+  background: rgb(0 0 0 / 78%);
+}
+
+.dm-message-image-preview-download:disabled {
+  cursor: not-allowed;
+  opacity: 0.66;
+}
+
+.dm-message-image-preview-loading {
+  width: min(520px, 78vw);
+  height: min(320px, 52vh);
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgb(255 255 255 / 10%),
+      transparent
+    ),
+    rgb(255 255 255 / 8%);
+  background-size: 220% 100%;
+  animation: dm-image-loading 1.1s ease-in-out infinite;
+}
+
+.dm-message-image-preview-empty {
+  min-height: 220px;
+  padding: 36px;
+  color: rgb(255 255 255 / 74%);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.dm-message-image-preview-empty strong {
+  color: #fff;
+  font-size: 15px;
+}
+
+.dm-message-image-preview-empty span {
+  font-size: 13px;
+}
+
+.dm-message-image-preview-status {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 62%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.dm-message-image-preview-name {
+  max-width: min(760px, 88vw);
+  margin: 0;
+  overflow: hidden;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 720;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dm-thread-user > div {
@@ -556,12 +694,68 @@
 }
 
 .dm-thread-body {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   padding: 22px 56px;
   overflow-y: auto;
   scrollbar-color: color-mix(in srgb, var(--muted) 55%, transparent) transparent;
   scrollbar-width: thin;
   background: var(--surface);
+}
+
+.dm-scroll-bottom-anchor {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 5;
+  width: 42px;
+  height: 42px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, #fff);
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--accent) 38%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 18px) scale(0.94);
+  transition:
+    opacity 0.18s ease,
+    transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.18s ease;
+}
+
+.dm-scroll-bottom-anchor.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0) scale(1);
+  animation: dm-scroll-anchor-rise 0.24s ease-out;
+}
+
+.dm-scroll-bottom-anchor:hover,
+.dm-scroll-bottom-anchor:focus-visible {
+  outline: 0;
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--accent) 46%, transparent);
+  transform: translate(-50%, -2px) scale(1.03);
+}
+
+.dm-scroll-bottom-anchor:disabled {
+  cursor: default;
+}
+
+@keyframes dm-scroll-anchor-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 22px) scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
 }
 
 .dm-message-group {
@@ -680,6 +874,15 @@
   gap: 6px;
 }
 
+.dm-attachment-list.has-inline-image {
+  min-width: 0;
+  justify-items: start;
+}
+
+.dm-message-row.mine .dm-attachment-list.has-inline-image {
+  justify-items: end;
+}
+
 .dm-message-bubble > .dm-attachment-list:first-child {
   padding-top: 8px;
 }
@@ -742,6 +945,128 @@
 
 .dm-message-row.mine .dm-attachment-icon {
   background: rgb(255 255 255 / 18%);
+}
+
+.dm-image-attachment {
+  position: relative;
+  max-width: min(380px, 72vw);
+  max-height: 300px;
+  min-width: 150px;
+  min-height: 96px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 64%, transparent);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--surface) 82%, var(--surface-2));
+  color: inherit;
+  display: inline-block;
+}
+
+.dm-message-row.mine .dm-image-attachment {
+  border-color: rgb(255 255 255 / 22%);
+  background: rgb(255 255 255 / 12%);
+}
+
+.dm-image-attachment:hover,
+.dm-image-attachment:focus-within {
+  outline: 0;
+  border-color: color-mix(in srgb, var(--accent) 56%, var(--border));
+}
+
+.dm-message-row.mine .dm-image-attachment:hover,
+.dm-message-row.mine .dm-image-attachment:focus-within {
+  border-color: rgb(255 255 255 / 46%);
+}
+
+.dm-image-attachment-preview {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  display: grid;
+  place-items: center;
+  cursor: zoom-in;
+}
+
+.dm-image-attachment-preview:focus-visible,
+.dm-image-attachment-download:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 64%, #fff);
+  outline-offset: -2px;
+}
+
+.dm-image-attachment-preview:disabled,
+.dm-image-attachment-download:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.dm-image-attachment img {
+  width: auto;
+  height: auto;
+  max-width: min(380px, 72vw);
+  max-height: 300px;
+  display: block;
+  object-fit: contain;
+}
+
+.dm-image-attachment-download {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 9px;
+  background: rgb(0 0 0 / 58%);
+  color: #fff;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 20%);
+}
+
+.dm-image-attachment-download:hover {
+  background: rgb(0 0 0 / 74%);
+}
+
+.dm-image-attachment-loading {
+  width: 220px;
+  height: 140px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--muted) 16%, transparent),
+      transparent
+    ),
+    var(--surface-2);
+  background-size: 220% 100%;
+  animation: dm-image-loading 1.1s ease-in-out infinite;
+}
+
+.dm-image-attachment.loaded .dm-image-attachment-loading {
+  display: none;
+}
+
+.dm-image-attachment-status {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 58%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@keyframes dm-image-loading {
+  to {
+    background-position: -220% 0;
+  }
 }
 
 .dm-attachment-copy {
@@ -1321,6 +1646,31 @@
   .dm-thread-body,
   .dm-composer {
     padding-inline: 16px;
+  }
+
+  .dm-scroll-bottom-anchor {
+    bottom: 14px;
+  }
+
+  .dm-image-attachment,
+  .dm-image-attachment img {
+    max-width: min(320px, 82vw);
+    max-height: 260px;
+  }
+
+  .dm-message-image-preview-overlay {
+    padding: 16px;
+  }
+
+  .dm-message-image-preview-stage,
+  .dm-message-image-preview-frame,
+  .dm-message-image-preview-frame img {
+    max-width: 94vw;
+  }
+
+  .dm-message-image-preview-frame,
+  .dm-message-image-preview-frame img {
+    max-height: 74vh;
   }
 
   .dm-message-content {

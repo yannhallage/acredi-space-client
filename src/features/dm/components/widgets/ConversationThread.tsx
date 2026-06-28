@@ -1,6 +1,7 @@
 import {
   ChangeEvent,
   FormEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -13,6 +14,7 @@ import type { MessageResponse } from "../../../../shared/api/dm/types";
 import { resolveAssetUrl } from "../../../../shared/api/http";
 import { useAuth } from "../../../../shared/context";
 import type { Presence } from "../../../../shared/types";
+import { Icon } from "../../../../shared/ui";
 
 import { DmConversationThreadLoadingSkeleton } from "../skeletons/DmSkeletons";
 import {
@@ -26,6 +28,8 @@ import { AvatarPreviewOverlay } from "./AvatarPreviewOverlay";
 import { ConversationComposer } from "./ConversationComposer";
 import { ConversationHeader } from "./ConversationHeader";
 import { ConversationMessageList } from "./ConversationMessageList";
+
+const SCROLL_BOTTOM_THRESHOLD = 120;
 
 interface DirectConversationThreadProps {
   channelId: string;
@@ -60,11 +64,14 @@ export function DirectConversationThread({
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [showScrollAnchor, setShowScrollAnchor] = useState(false);
   const sendMessageMutation = useSendMessageMutation();
   const messageListRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const shouldStickToBottomRef = useRef(true);
+  const previousChannelIdRef = useRef<string | null>(null);
 
   const messageGroups = useMemo(
     () => groupMessagesByDay(localMessages),
@@ -74,6 +81,36 @@ export function DirectConversationThread({
   const canSend =
     (Boolean(content.trim()) || selectedFiles.length > 0) &&
     !sendMessageMutation.isPending;
+
+  const getBottomDistance = useCallback((list: HTMLDivElement) => {
+    return Math.max(0, list.scrollHeight - list.scrollTop - list.clientHeight);
+  }, []);
+
+  const syncScrollAnchorVisibility = useCallback(() => {
+    const list = messageListRef.current;
+
+    if (!list) return;
+
+    const isAwayFromBottom = getBottomDistance(list) > SCROLL_BOTTOM_THRESHOLD;
+    shouldStickToBottomRef.current = !isAwayFromBottom;
+    setShowScrollAnchor(isAwayFromBottom);
+  }, [getBottomDistance]);
+
+  const scrollMessageListToBottom = useCallback(
+    (behavior: ScrollBehavior = "auto") => {
+      const list = messageListRef.current;
+
+      if (!list) return;
+
+      list.scrollTo({
+        top: list.scrollHeight,
+        behavior,
+      });
+      shouldStickToBottomRef.current = true;
+      setShowScrollAnchor(false);
+    },
+    []
+  );
 
   useEffect(() => {
     setLocalMessages((currentMessages) => {
@@ -97,8 +134,39 @@ export function DirectConversationThread({
 
     if (!list) return;
 
-    list.scrollTop = list.scrollHeight;
-  }, [localMessages, channelId]);
+    const channelChanged = previousChannelIdRef.current !== channelId;
+    previousChannelIdRef.current = channelId;
+
+    if (channelChanged || shouldStickToBottomRef.current) {
+      const frameId = window.requestAnimationFrame(() => {
+        scrollMessageListToBottom();
+      });
+
+      return () => window.cancelAnimationFrame(frameId);
+    }
+
+    syncScrollAnchorVisibility();
+  }, [
+    channelId,
+    localMessages,
+    scrollMessageListToBottom,
+    syncScrollAnchorVisibility,
+  ]);
+
+  useEffect(() => {
+    const list = messageListRef.current;
+
+    if (!list || loading) return;
+
+    syncScrollAnchorVisibility();
+    list.addEventListener("scroll", syncScrollAnchorVisibility, {
+      passive: true,
+    });
+
+    return () => {
+      list.removeEventListener("scroll", syncScrollAnchorVisibility);
+    };
+  }, [channelId, loading, syncScrollAnchorVisibility]);
 
   useEffect(() => {
     setAvatarPreviewOpen(false);
@@ -195,6 +263,7 @@ export function DirectConversationThread({
       pending: true,
     };
 
+    shouldStickToBottomRef.current = true;
     setLocalMessages((currentMessages) => [
       ...currentMessages,
       temporaryMessage,
@@ -256,6 +325,10 @@ export function DirectConversationThread({
     });
   }
 
+  function handleScrollToLatest() {
+    scrollMessageListToBottom();
+  }
+
   if (loading) {
     return <DmConversationThreadLoadingSkeleton />;
   }
@@ -276,16 +349,32 @@ export function DirectConversationThread({
           onClose={onClose}
         />
 
-        <ConversationMessageList
-          title={title}
-          presence={presence}
-          avatarUrl={avatarUrl}
-          messageGroups={messageGroups}
-          messageListRef={messageListRef}
-          currentUserId={user?.id}
-          currentUserName={user?.name}
-          currentUserAvatarUrl={user?.avatarUrl}
-        />
+        <div className="dm-thread-body-shell">
+          <ConversationMessageList
+            title={title}
+            presence={presence}
+            avatarUrl={avatarUrl}
+            messageGroups={messageGroups}
+            messageListRef={messageListRef}
+            currentUserId={user?.id}
+            currentUserName={user?.name}
+            currentUserAvatarUrl={user?.avatarUrl}
+          />
+
+          <button
+            className={`dm-scroll-bottom-anchor ${
+              showScrollAnchor ? "visible" : ""
+            }`}
+            type="button"
+            aria-hidden={!showScrollAnchor}
+            aria-label="Aller aux derniers messages"
+            disabled={!showScrollAnchor}
+            title="Aller en bas"
+            onClick={handleScrollToLatest}
+          >
+            <Icon name="chevDown" size={20} strokeWidth={2} />
+          </button>
+        </div>
 
         <ConversationComposer
           title={title}
