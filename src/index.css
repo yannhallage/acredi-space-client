@@ -1088,6 +1088,177 @@ a {
   line-height: 1.5;
 }
 
+.modal-setting-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.modal-setting-section-heading p {
+  max-width: 520px;
+  margin-top: 5px;
+  color: var(--muted-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.modal-setting-profiles {
+  display: grid;
+  gap: 16px;
+}
+
+.modal-setting-inline-state {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 9px 11px;
+  background: var(--surface-2);
+  color: var(--muted-soft);
+  font-size: 13px;
+}
+
+.modal-setting-inline-state.error,
+.modal-setting-profile-message.error {
+  color: var(--red);
+}
+
+.modal-setting-profile-table {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.modal-setting-profile-table-head,
+.modal-setting-profile-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(180px, 1.4fr) minmax(100px, 0.7fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+}
+
+.modal-setting-profile-table-head {
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.modal-setting-profile-row {
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--muted-soft);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.modal-setting-profile-row:last-child {
+  border-bottom: 0;
+}
+
+.modal-setting-profile-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.modal-setting-profile-row span,
+.modal-setting-profile-row small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.modal-setting-profile-row small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.modal-setting-profile-row.skeleton .skeleton-line {
+  width: 100%;
+}
+
+.modal-setting-profile-empty {
+  min-height: 112px;
+  display: grid;
+  place-items: center;
+  gap: 7px;
+  padding: 18px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.modal-setting-profile-empty strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.modal-setting-profile-empty span {
+  font-size: 12px;
+}
+
+.modal-setting-profile-form {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.9fr) minmax(240px, 1.35fr) auto;
+  gap: 12px;
+  align-items: end;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--surface-2);
+}
+
+.modal-setting-profile-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.modal-setting-profile-form input,
+.modal-setting-profile-form textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: 0;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.modal-setting-profile-form input {
+  height: 38px;
+  padding: 0 11px;
+}
+
+.modal-setting-profile-form textarea {
+  min-height: 38px;
+  max-height: 120px;
+  resize: vertical;
+  padding: 9px 11px;
+  line-height: 1.45;
+}
+
+.modal-setting-profile-form input:focus,
+.modal-setting-profile-form textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.modal-setting-profile-message {
+  grid-column: 1 / -1;
+  color: #16a34a;
+  font-size: 13px;
+}
+
 @media (max-width: 760px) {
   .modal-setting-overlay {
     padding: 12px;
@@ -1112,6 +1283,23 @@ a {
   .modal-setting-row {
     display: grid;
     gap: 12px;
+  }
+
+  .modal-setting-section-heading {
+    display: grid;
+  }
+
+  .modal-setting-profile-table-head {
+    display: none;
+  }
+
+  .modal-setting-profile-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .modal-setting-profile-form {
+    grid-template-columns: 1fr;
   }
 }
 

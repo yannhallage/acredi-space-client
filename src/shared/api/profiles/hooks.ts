@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { profileService } from "./service";
-import type { ProfileResponse } from "./types";
+import type { CreateProfileRequest, ProfileResponse } from "./types";
 
 interface QueryState<TData> {
   data: TData | null;
@@ -10,6 +10,12 @@ interface QueryState<TData> {
 
 interface UseProfilesQueryOptions {
   enabled?: boolean;
+}
+
+interface MutationState<TData> {
+  data: TData | null;
+  error: Error | null;
+  isPending: boolean;
 }
 
 function toError(error: unknown) {
@@ -75,4 +81,38 @@ export function useProfilesQuery(options: UseProfilesQueryOptions = {}) {
   }, [enabled]);
 
   return { ...state, refetch };
+}
+
+export function useCreateProfileMutation() {
+  const [state, setState] = useState<MutationState<ProfileResponse>>({
+    data: null,
+    error: null,
+    isPending: false,
+  });
+
+  const reset = useCallback(() => {
+    setState({ data: null, error: null, isPending: false });
+  }, []);
+
+  const mutateAsync = useCallback(async (request: CreateProfileRequest) => {
+    setState({ data: null, error: null, isPending: true });
+
+    try {
+      const data = await profileService.create(request);
+      setState({ data, error: null, isPending: false });
+      return data;
+    } catch (error) {
+      const normalizedError = toError(error);
+      setState({ data: null, error: normalizedError, isPending: false });
+      throw normalizedError;
+    }
+  }, []);
+
+  return {
+    ...state,
+    loading: state.isPending,
+    mutate: mutateAsync,
+    mutateAsync,
+    reset,
+  };
 }
