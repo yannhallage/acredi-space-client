@@ -1,4 +1,4 @@
-export type RoleName = "ADMIN" | "MANAGER" | "USER";
+export type RoleName = "ADMIN" | "MANAGER" | "COLLABORATOR";
 
 export interface InviteUserRequest {
   firstName: string;

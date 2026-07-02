@@ -10,6 +10,14 @@ const adminRoles: AdminRole[] = [
   "member",
   "guest",
 ];
+const adminRoleRank: Record<AdminRole, number> = {
+  guest: 0,
+  member: 1,
+  collaborator: 2,
+  manager: 3,
+  admin: 4,
+  owner: 5,
+};
 const presenceValues: Presence[] = ["online", "busy", "away", "dnd", "offline"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -20,6 +28,21 @@ function readString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+function readFirstString(
+  source: Record<string, unknown>,
+  keys: readonly string[]
+) {
+  for (const key of keys) {
+    const value = readString(source[key]);
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
 function readId(value: unknown) {
   if (typeof value === "number") {
     return String(value);
@@ -28,14 +51,11 @@ function readId(value: unknown) {
   return readString(value);
 }
 
-function normalizeAdminRole(
-  value: unknown,
-  fallback: AdminRole = "collaborator"
-) {
+function readAdminRole(value: unknown): AdminRole | undefined {
   const role = readString(value)?.toLowerCase();
 
   if (!role) {
-    return fallback;
+    return undefined;
   }
 
   const exactMatch = adminRoles.find((item) => item === role);
@@ -50,7 +70,22 @@ function normalizeAdminRole(
   if (role.includes("collaborator")) return "collaborator";
   if (role.includes("guest")) return "guest";
 
-  return "collaborator";
+  return undefined;
+}
+
+function buildAdminRole(
+  payload: UserResponse,
+  fallback: AdminRole = "collaborator"
+) {
+  const roles = [readAdminRole(payload.adminRole), readAdminRole(payload.role)]
+    .filter((role): role is AdminRole => Boolean(role))
+    .sort((left, right) => adminRoleRank[right] - adminRoleRank[left]);
+
+  if (roles[0]) {
+    return roles[0];
+  }
+
+  return fallback;
 }
 
 function normalizePresence(
@@ -152,13 +187,62 @@ function buildStatus(payload: UserResponse) {
   return "Disponible";
 }
 
+function buildAvatarUrl(payload: UserResponse) {
+  const source = payload as Record<string, unknown>;
+  const directAvatarUrl = readFirstString(source, [
+    "url",
+    "path",
+    "src",
+    "href",
+    "avatarUrl",
+    "avatarURL",
+    "avatar",
+    "photoUrl",
+    "photoURL",
+    "photo",
+    "pictureUrl",
+    "pictureURL",
+    "picture",
+    "imageUrl",
+    "imageURL",
+    "profileImageUrl",
+    "profileImageURL",
+    "profilePictureUrl",
+    "profilePictureURL",
+  ]);
+
+  if (directAvatarUrl) {
+    return directAvatarUrl;
+  }
+
+  if (isRecord(source.avatar)) {
+    return readFirstString(source.avatar, ["url", "path", "src", "href"]);
+  }
+
+  if (isRecord(source.profile)) {
+    return readFirstString(source.profile, [
+      "avatarUrl",
+      "avatarURL",
+      "avatar",
+      "photoUrl",
+      "photoURL",
+      "pictureUrl",
+      "pictureURL",
+      "imageUrl",
+      "imageURL",
+    ]);
+  }
+
+  return undefined;
+}
+
 export function normalizeUser(
   value: unknown,
   options: NormalizedUserOptions = {}
 ): User {
   const payload = isRecord(value) ? (value as UserResponse) : {};
   const email = readString(payload.email) ?? "";
-  const adminRole = normalizeAdminRole(payload.adminRole ?? payload.role, options.fallbackAdminRole);
+  const adminRole = buildAdminRole(payload, options.fallbackAdminRole);
 
   return {
     id: readId(payload.id) ?? readId(payload.userId) ?? readId(payload.uuid) ?? email,
@@ -169,7 +253,7 @@ export function normalizeUser(
     presence: normalizePresence(payload, options.fallbackPresence),
     status: buildStatus(payload),
     appThemePreference: readString(payload.appThemePreference),
-    avatarUrl: readString(payload.avatarUrl),
+    avatarUrl: buildAvatarUrl(payload),
     enabled: payload.enabled ?? true,
     invitationStatus: readString(payload.invitationStatus),
     onboardingStatus: readString(payload.onboardingStatus),
@@ -181,4 +265,20 @@ export function normalizeUser(
 
 export function normalizeUsers(values: unknown) {
   return Array.isArray(values) ? values.map((value) => normalizeUser(value)) : [];
+}
+
+export function normalizeAvatarUpdate(value: unknown): Partial<User> {
+  const stringAvatarUrl = readString(value);
+
+  if (stringAvatarUrl) {
+    return { avatarUrl: stringAvatarUrl };
+  }
+
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  const avatarUrl = buildAvatarUrl(value as UserResponse);
+
+  return avatarUrl ? { avatarUrl } : {};
 }

@@ -22,6 +22,8 @@ import {
 import { useTheme } from "../shared/theme";
 import { AccessDeniedState, AcrediLockup, Avatar, Icon, type IconName } from "../shared/ui";
 import ModalSetting from "../shared/others/ModalSetting";
+import { DesktopNotificationBanner } from "../shared/notifications/DesktopNotificationBanner";
+import { getNotificationTarget } from "../shared/notifications/routing";
 import { playNotificationSound } from "../shared/notifications/sound";
 
 const pageMeta: Record<string, { title: string; crumb: string }> = {
@@ -603,6 +605,19 @@ export function AppLayout() {
               >
                 <Icon name={dark ? "sun" : "moon"} size={18} />
               </button>
+              <a
+                className="icon-button nuum-link"
+                href="https://app.nuum-ci.com/authentification"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Ouvrir Nuum"
+              >
+                <img
+                  src={dark ? "/nuum-sm-logo-white.svg" : "/nuum-sm-logo.svg"}
+                  alt=""
+                  aria-hidden="true"
+                />
+              </a>
               <PermissionGate
                 permissions={FEATURE_PERMISSION_REQUIREMENTS.notifications}
               >
@@ -757,12 +772,11 @@ export function AppLayout() {
                                 handleMarkNotificationRead(notification);
                                 const target = getNotificationTarget(notification);
 
-                                if (!target) {
-                                  return;
-                                }
-
                                 setOpenDropdown(null);
-                                navigate(target);
+
+                                if (target) {
+                                  navigate(target);
+                                }
                               }}
                             >
                               <span className="notification-unread-dot" />
@@ -868,6 +882,8 @@ export function AppLayout() {
               </AnimatePresence>
             </div>
           </header>
+
+          <DesktopNotificationBanner />
 
           <main
             className={fullBleedContent ? "content content-full" : "content"}

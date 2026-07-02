@@ -12,6 +12,7 @@ import {
 import { API_BASE_URL } from "../api/http";
 import { authStorageKeys } from "../api/auth";
 import { useAuth } from "../context";
+import { showDesktopNotification } from "./desktop";
 import { playNotificationSound } from "./sound";
 
 interface UseNotificationSocketOptions {
@@ -92,6 +93,11 @@ export function useNotificationSocket(options: UseNotificationSocketOptions = {}
           queryClient.invalidateQueries({ queryKey: dashboardKeys.notifications() });
           onNotificationRef.current?.(payload);
           playNotificationSound();
+          showDesktopNotification({
+            id: notification.id,
+            title: notification.title,
+            message: notification.message,
+          });
         });
       },
     });
