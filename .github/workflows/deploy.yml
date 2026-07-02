@@ -6,7 +6,11 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: ${{ vars.DOCKERHUB_USERNAME }}/acredispace-prod-front
+  DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/acredispace-prod-front
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   build-and-push:
@@ -38,11 +42,24 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      - name: Prepare image names
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER:-${GITHUB_REPOSITORY%%/*}}"
+          OWNER="${OWNER,,}"
+          echo "GHCR_IMAGE=ghcr.io/${OWNER}/acredispace-prod-front" >> "$GITHUB_ENV"
+
       - name: Login Docker Hub
         uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build et push
         uses: docker/build-push-action@v7
@@ -50,8 +67,13 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.DOCKERHUB_IMAGE }}:latest
+            ${{ env.DOCKERHUB_IMAGE }}:${{ github.sha }}
+            ${{ env.GHCR_IMAGE }}:latest
+            ${{ env.GHCR_IMAGE }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -69,8 +91,10 @@ jobs:
           body: |
             L'image Docker du frontend a été poussée avec succès sur Docker Hub.
 
-            Image  : ${{ env.IMAGE_NAME }}:latest
-            Tag SHA: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            Docker Hub : ${{ env.DOCKERHUB_IMAGE }}:latest
+            GitHub CR  : ${{ env.GHCR_IMAGE }}:latest
+            Tag SHA DH : ${{ env.DOCKERHUB_IMAGE }}:${{ github.sha }}
+            Tag SHA GH : ${{ env.GHCR_IMAGE }}:${{ github.sha }}
             Commit : ${{ github.sha }}
             Branche: ${{ github.ref_name }}
 

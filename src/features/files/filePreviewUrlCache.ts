@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 
 import { fileService } from "../../shared/api/files/service";
-import { resolveAssetUrl } from "../../shared/api/http";
+import { loadAssetUrl } from "../../shared/api/http";
 
 type CacheEntry = {
+  revoke?: () => void;
   error?: boolean;
   promise?: Promise<string>;
   url?: string;
@@ -11,8 +12,24 @@ type CacheEntry = {
 
 const cache = new Map<string, CacheEntry>();
 
-function resolveDownloadUrl(url: string) {
-  return resolveAssetUrl(url) ?? url;
+async function resolveDownloadUrl(url: string) {
+  const loaded = await loadAssetUrl(url);
+
+  if (!loaded) {
+    throw new Error("preview-unavailable");
+  }
+
+  return loaded;
+}
+
+function replaceCacheEntry(fileId: string, entry: CacheEntry) {
+  const current = cache.get(fileId);
+
+  if (current?.revoke && current.url !== entry.url) {
+    current.revoke();
+  }
+
+  cache.set(fileId, entry);
 }
 
 async function fetchFilePreviewUrl(fileId: string) {
@@ -29,10 +46,10 @@ async function fetchFilePreviewUrl(fileId: string) {
   if (!existing?.promise) {
     const promise = fileService
       .downloadUrl(fileId)
-      .then((url) => {
-        const resolvedUrl = resolveDownloadUrl(url);
-        cache.set(fileId, { url: resolvedUrl });
-        return resolvedUrl;
+      .then(async (url) => {
+        const loaded = await resolveDownloadUrl(url);
+        replaceCacheEntry(fileId, { revoke: loaded.revoke, url: loaded.url });
+        return loaded.url;
       })
       .catch((error) => {
         cache.delete(fileId);
@@ -46,7 +63,14 @@ async function fetchFilePreviewUrl(fileId: string) {
 }
 
 export function setCachedFilePreviewUrl(fileId: string, url: string) {
-  cache.set(fileId, { url: resolveDownloadUrl(url) });
+  void cacheFilePreviewUrl(fileId, url);
+}
+
+export async function cacheFilePreviewUrl(fileId: string, url: string) {
+  const loaded = await resolveDownloadUrl(url);
+  replaceCacheEntry(fileId, { revoke: loaded.revoke, url: loaded.url });
+
+  return loaded.url;
 }
 
 export function useFilePreviewUrl(fileId: string | null, enabled = true) {

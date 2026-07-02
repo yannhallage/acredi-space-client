@@ -1,15 +1,23 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { useUploadAvatarMutation } from '../api/users';
+import {
+  useCreateProfileMutation,
+  useDeleteProfileMutation,
+  useProfilesQuery,
+} from '../api/profil_modal/hooks';
+import { PresetAvatarPicker, extractPresetAvatarFile } from '../avatars/PresetAvatarPicker';
+import type { AvatarPreset } from '../avatars/presets';
 import { useAuth } from '../context';
 import { Avatar, Icon, type IconName } from '../ui';
 import { PERMISSIONS, usePermissions, type PermissionCode } from '../permissions';
 
 type SettingKey =
-  | 'profile'
+  | 'account'
   | 'preferences'
   | 'members'
   | 'roles'
+  | 'profiles'
   | 'invitations'
   | 'general'
   | 'dashboard'
@@ -63,6 +71,22 @@ function getAvatarErrorMessage(error: unknown) {
     : 'Impossible de mettre a jour la photo.';
 }
 
+function applyAvatarUpdate(
+  uploadedAvatar: { avatarUrl?: string | null },
+  fallbackAvatarUrl?: string
+) {
+  const avatarUrl = uploadedAvatar.avatarUrl ?? fallbackAvatarUrl;
+
+  if (!avatarUrl) {
+    throw new Error("L'API n'a pas renvoye l'URL de l'image.");
+  }
+
+  return {
+    ...uploadedAvatar,
+    avatarUrl,
+  };
+}
+
 const TEAM_SETTINGS_VIEW_PERMISSIONS = [
   PERMISSIONS.VIEW_TEAM_SETTINGS,
   PERMISSIONS.UPDATE_TEAM_SETTINGS,
@@ -90,11 +114,11 @@ const groups: SettingGroup[] = [
     title: 'Configuration utilisateur',
     items: [
       {
-        key: 'profile',
-        label: 'Profil',
+        key: 'account',
+        label: 'Compte',
         icon: 'user',
-        title: 'Profil',
-        subtitle: 'Gere ton profil et tes informations de connexion.',
+        title: 'Compte',
+        subtitle: 'Gere ton compte et tes informations de connexion.',
         sectionTitle: 'Compte et securite',
         permissions: [
           PERMISSIONS.VIEW_PROFILE_SETTINGS,
@@ -214,6 +238,26 @@ const groups: SettingGroup[] = [
             action: 'Modifier',
           },
         ],
+      },
+      {
+        key: 'profiles',
+        label: 'Profils',
+        icon: 'user',
+        title: 'Profils',
+        subtitle: 'Ajoute et supprime les profils disponibles pour les comptes utilisateurs.',
+        sectionTitle: 'Profils enregistres',
+        permissions: [
+          PERMISSIONS.VIEW_ROLES_SETTINGS,
+          PERMISSIONS.UPDATE_ROLES_SETTINGS,
+          PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
+          ...TEAM_SETTINGS_VIEW_PERMISSIONS,
+        ],
+        updatePermissions: [
+          PERMISSIONS.UPDATE_ROLES_SETTINGS,
+          PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
+          ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
+        ],
+        rows: [],
       },
       {
         key: 'invitations',
@@ -490,6 +534,135 @@ const groups: SettingGroup[] = [
   }
 ];
 
+
+function ProfilesSettingsTable({ canUpdate }: { canUpdate: boolean }) {
+  const { data: profiles = [], isLoading, error } = useProfilesQuery();
+  const createProfileMutation = useCreateProfileMutation();
+  const deleteProfileMutation = useDeleteProfileMutation();
+
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const payload = {
+      name: name.trim(),
+      description: description.trim() || null,
+    };
+
+    if (!payload.name) {
+      return;
+    }
+
+    createProfileMutation.mutate(payload, {
+      onSuccess: () => {
+        setName('');
+        setDescription('');
+      },
+    });
+  }
+
+  function handleDelete(profileId: string) {
+    const confirmed = window.confirm('Supprimer ce profil ?');
+
+    if (!confirmed) {
+      return;
+    }
+
+    deleteProfileMutation.mutate(profileId);
+  }
+
+  return (
+    <section className="modal-setting-profiles">
+      <form className="modal-setting-profile-form" onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="profile-name">Nom du profil</label>
+          <input
+            id="profile-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Ex: Manager, Collaborateur, RH"
+            disabled={!canUpdate || createProfileMutation.isPending}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="profile-description">Description</label>
+          <input
+            id="profile-description"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Ex: Profil responsable d'equipe"
+            disabled={!canUpdate || createProfileMutation.isPending}
+          />
+        </div>
+
+        <button
+          className="button primary mini"
+          type="submit"
+          disabled={!canUpdate || createProfileMutation.isPending}
+        >
+          {createProfileMutation.isPending ? 'Ajout...' : 'Ajouter'}
+        </button>
+      </form>
+
+      {isLoading ? (
+        <p className="modal-setting-empty">Chargement des profils...</p>
+      ) : error ? (
+        <p className="modal-setting-error">
+  Impossible de charger les profils :{' '}
+  {error instanceof Error ? error.message : 'Erreur inconnue'}
+</p>
+      ) : profiles.length === 0 ? (
+        <p className="modal-setting-empty">Aucun profil enregistre.</p>
+      ) : (
+        <div className="modal-setting-table-wrapper">
+          <table className="modal-setting-table">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Description</th>
+                <th>Date creation</th>
+                <th aria-label="Actions" />
+              </tr>
+            </thead>
+
+            <tbody>
+              {profiles.map((profile) => (
+                <tr key={profile.id}>
+                  <td>
+                    <strong>{profile.name}</strong>
+                  </td>
+
+                  <td>{profile.description || 'Aucune description'}</td>
+
+                  <td>
+                    {profile.createdAt
+                      ? new Date(profile.createdAt).toLocaleDateString('fr-FR')
+                      : '-'}
+                  </td>
+
+                  <td className="modal-setting-table-actions">
+                    <button
+                      className="button ghost mini danger"
+                      type="button"
+                      disabled={!canUpdate || deleteProfileMutation.isPending}
+                      onClick={() => handleDelete(profile.id)}
+                    >
+                      Supprimer
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 interface ModalSettingProps {
   userEmail: string;
   userName: string;
@@ -502,9 +675,10 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
   const { hasAnyPermission } = usePermissions();
   const uploadAvatarMutation = useUploadAvatarMutation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [activeKey, setActiveKey] = useState<SettingKey>('profile');
+  const [activeKey, setActiveKey] = useState<SettingKey>('account');
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [avatarMessage, setAvatarMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 
   const visibleGroups = useMemo(
     () =>
@@ -562,6 +736,7 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
     }
 
     setAvatarMessage(null);
+    setSelectedPresetId(null);
 
     if (!file.type.startsWith('image/')) {
       setAvatarMessage({ type: 'error', text: 'Merci de choisir une image valide.' });
@@ -575,11 +750,12 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
       return;
     }
 
-    setAvatarPreviewUrl(URL.createObjectURL(file));
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreviewUrl(previewUrl);
 
     try {
-      const updatedUser = await uploadAvatarMutation.mutateAsync(file);
-      updateUser(updatedUser);
+      const uploadedAvatar = await uploadAvatarMutation.mutateAsync(file);
+      updateUser(applyAvatarUpdate(uploadedAvatar));
       setAvatarPreviewUrl(null);
       setAvatarMessage({ type: 'success', text: 'Photo de profil mise a jour.' });
     } catch (error) {
@@ -587,6 +763,28 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
       setAvatarMessage({ type: 'error', text: getAvatarErrorMessage(error) });
     } finally {
       event.target.value = '';
+    }
+  }
+
+  async function handlePresetAvatarSelect(preset: AvatarPreset) {
+    if (!canUpdateActiveItem || isUploadingAvatar) {
+      return;
+    }
+
+    setAvatarMessage(null);
+    setSelectedPresetId(preset.id);
+    setAvatarPreviewUrl(preset.url);
+
+    try {
+      const file = await extractPresetAvatarFile(preset);
+      const uploadedAvatar = await uploadAvatarMutation.mutateAsync(file);
+      updateUser(applyAvatarUpdate(uploadedAvatar, preset.url));
+      setAvatarPreviewUrl(null);
+      setAvatarMessage({ type: 'success', text: 'Avatar mis a jour.' });
+    } catch (error) {
+      setAvatarPreviewUrl(null);
+      setSelectedPresetId(null);
+      setAvatarMessage({ type: 'error', text: getAvatarErrorMessage(error) });
     }
   }
 
@@ -644,71 +842,89 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
                 <p>{activeItem.subtitle}</p>
               </header>
 
-              {activeItem.key === 'profile' ? (
+              {activeItem.key === 'account' ? (
                 <div className="modal-setting-profile">
-                  <div className="modal-setting-avatar-control">
-                    <Avatar name={userName} size={58} src={avatarSrc} />
-                    {canUpdateActiveItem ? (
-                      <button
-                        className="modal-setting-avatar-button"
-                        type="button"
-                        aria-label="Changer la photo"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploadingAvatar}
-                      >
-                        <Icon name={isUploadingAvatar ? 'refresh' : 'camera'} size={14} />
-                      </button>
-                    ) : null}
-                    <input
-                      ref={fileInputRef}
-                      className="modal-setting-avatar-input"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                      disabled={!canUpdateActiveItem || isUploadingAvatar}
-                    />
-                  </div>
-                  <div>
-                    <div className="modal-setting-profile-title">
-                      <h3>{userName}</h3>
+                  <div className="modal-setting-profile-main">
+                    <div className="modal-setting-avatar-control">
+                      <Avatar name={userName} size={48} src={avatarSrc} />
                       {canUpdateActiveItem ? (
                         <button
-                          className="modal-setting-photo-action"
+                          className="modal-setting-avatar-button"
                           type="button"
+                          aria-label="Changer la photo"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isUploadingAvatar}
                         >
                           <Icon name={isUploadingAvatar ? 'refresh' : 'camera'} size={14} />
-                          {isUploadingAvatar ? 'Import...' : 'Changer photo'}
                         </button>
                       ) : null}
+                      <input
+                        ref={fileInputRef}
+                        className="modal-setting-avatar-input"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        disabled={!canUpdateActiveItem || isUploadingAvatar}
+                      />
                     </div>
-                    <p>{userEmail}</p>
-                    <small>{workspaceName}</small>
-                    {avatarMessage ? (
-                      <small className={`modal-setting-avatar-message ${avatarMessage.type}`}>
-                        {avatarMessage.text}
-                      </small>
-                    ) : null}
+                    <div className="modal-setting-profile-details">
+                      <div className="modal-setting-profile-title">
+                        <h3>{userName}</h3>
+                        {canUpdateActiveItem ? (
+                          <button
+                            className="modal-setting-photo-action"
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploadingAvatar}
+                          >
+                            <Icon name={isUploadingAvatar ? 'refresh' : 'camera'} size={14} />
+                            {isUploadingAvatar ? 'Import...' : 'Changer photo'}
+                          </button>
+                        ) : null}
+                      </div>
+                      <p>{userEmail}</p>
+                      <small>{workspaceName}</small>
+                      {avatarMessage ? (
+                        <small className={`modal-setting-avatar-message ${avatarMessage.type}`}>
+                          {avatarMessage.text}
+                        </small>
+                      ) : null}
+                    </div>
                   </div>
+
+                  {canUpdateActiveItem ? (
+                    <PresetAvatarPicker
+                      disabled={isUploadingAvatar}
+                      selectedPresetId={selectedPresetId}
+                      onSelect={(preset) => {
+                        void handlePresetAvatarSelect(preset);
+                      }}
+                    />
+                  ) : null}
                 </div>
               ) : null}
 
-              <section className="modal-setting-section">
-                <h4>{activeItem.sectionTitle}</h4>
+              {activeItem.key === 'profiles' ? (
+                <ProfilesSettingsTable canUpdate={canUpdateActiveItem} />
+              ) : null}
 
-                {activeItem.rows.map((row) => (
-                  <article className="modal-setting-row" key={row.title}>
-                    <div>
-                      <strong>{row.title}</strong>
-                      <p>{row.description}</p>
-                    </div>
-                    <button className="button ghost mini" type="button" disabled={!canUpdateActiveItem}>
-                      {canUpdateActiveItem ? row.action : 'Lecture seule'}
-                    </button>
-                  </article>
-                ))}
-              </section>
+              {activeItem.key !== 'profiles' ? (
+                <section className="modal-setting-section">
+                  <h4>{activeItem.sectionTitle}</h4>
+
+                  {activeItem.rows.map((row) => (
+                    <article className="modal-setting-row" key={row.title}>
+                      <div>
+                        <strong>{row.title}</strong>
+                        <p>{row.description}</p>
+                      </div>
+                      <button className="button ghost mini" type="button" disabled={!canUpdateActiveItem}>
+                        {canUpdateActiveItem ? row.action : 'Lecture seule'}
+                      </button>
+                    </article>
+                  ))}
+                </section>
+              ) : null}
             </>
           ) : (
             <header>
