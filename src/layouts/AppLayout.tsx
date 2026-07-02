@@ -90,6 +90,126 @@ function getNotificationInitials(notification: DashboardNotification) {
   return (letters || "NO").toUpperCase();
 }
 
+// function getNotificationTarget(notification: DashboardNotification) {
+//   if (notification.linkUrl) {
+//     return notification.linkUrl;
+//   }
+
+//   const type = notification.type.toUpperCase();
+
+//   if (type.includes("FILE")) {
+//     return "/app/files";
+//   }
+
+//   if (type.includes("MEETING")) {
+//     return "/app/meeting/meet-daily";
+//   }
+
+//   if (type.includes("MESSAGE") || type.includes("CHAT")) {
+//     return "/app/chat/general";
+//   }
+
+//   return null;
+// }
+
+
+type NotificationMetadata = {
+  channelId?: string | null;
+  conversationId?: string | null;
+  discussionId?: string | null;
+  meetingId?: string | null;
+  fileId?: string | null;
+  folderId?: string | null;
+  noteId?: string | null;
+  entityId?: string | null;
+  targetId?: string | null;
+};
+
+function getNotificationMetadata(notification: DashboardNotification) {
+  const item = notification as DashboardNotification & {
+    metadata?: NotificationMetadata | null;
+    data?: NotificationMetadata | null;
+    payload?: NotificationMetadata | null;
+    channelId?: string | null;
+    conversationId?: string | null;
+    discussionId?: string | null;
+    meetingId?: string | null;
+    fileId?: string | null;
+    folderId?: string | null;
+    noteId?: string | null;
+    entityId?: string | null;
+    targetId?: string | null;
+  };
+
+  return item.metadata ?? item.data ?? item.payload ?? item;
+}
+
+function getNotificationTarget(notification: DashboardNotification) {
+  if (notification.linkUrl) {
+    return notification.linkUrl;
+  }
+
+  const metadata = getNotificationMetadata(notification);
+  const type = notification.type?.toUpperCase() ?? "";
+  const title = `${notification.title ?? ""} ${notification.message ?? ""}`.toUpperCase();
+
+  const conversationId =
+    metadata.conversationId ??
+    metadata.channelId ??
+    metadata.entityId ??
+    metadata.targetId;
+
+  const discussionId =
+    metadata.discussionId ??
+    metadata.channelId ??
+    metadata.entityId ??
+    metadata.targetId;
+
+  const meetingId =
+    metadata.meetingId ??
+    metadata.entityId ??
+    metadata.targetId;
+
+  if (type.includes("DIRECT") || type.includes("DM")) {
+    return conversationId ? `/app/dm/${conversationId}` : "/app/dm";
+  }
+
+  if (
+    type.includes("GROUP") ||
+    type.includes("DISCUSSION") ||
+    type.includes("CHAT") ||
+    type.includes("MESSAGE")
+  ) {
+    if (title.includes("YANN") && conversationId) {
+      return `/app/dm/${conversationId}`;
+    }
+
+    return discussionId ? `/app/chat/${discussionId}` : "/app/chat";
+  }
+
+  if (type.includes("MEETING") || type.includes("REUNION")) {
+    return meetingId ? `/app/meeting/${meetingId}` : "/app/meeting/meet-daily";
+  }
+
+  if (type.includes("FILE") || type.includes("FICHIER")) {
+    if (metadata.folderId) {
+      return `/app/files/${metadata.folderId}`;
+    }
+
+    if (metadata.fileId) {
+      return `/app/files?fileId=${metadata.fileId}`;
+    }
+
+    return "/app/files";
+  }
+
+  if (type.includes("NOTE")) {
+    return metadata.noteId ? `/app/notes?noteId=${metadata.noteId}` : "/app/notes";
+  }
+
+  return "/app/dashboard";
+}
+
 export function AppLayout() {
   const { user: authenticatedUser, logout } = useAuth();
   const queryClient = useQueryClient();
