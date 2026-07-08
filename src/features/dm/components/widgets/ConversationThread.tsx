@@ -43,6 +43,14 @@ interface DirectConversationThreadProps {
   showBackButton?: boolean;
   onRefresh?: () => void;
   onClose?: () => void;
+
+  selectedMessages: MessageResponse[];
+  currentUserId: string;
+  onToggleMessageSelection: (message: MessageResponse) => void;
+  onClearMessageSelection: () => void;
+  onForwardSelectedMessages: () => void;
+  onEditSelectedMessage: () => void;
+  onDeleteSelectedMessages: () => void;
 }
 
 export function DirectConversationThread({
@@ -57,15 +65,25 @@ export function DirectConversationThread({
   showBackButton = false,
   onRefresh,
   onClose,
+  selectedMessages,
+  currentUserId,
+  onToggleMessageSelection,
+  onClearMessageSelection,
+  onForwardSelectedMessages,
+  onEditSelectedMessage,
+  onDeleteSelectedMessages,
 }: DirectConversationThreadProps) {
   const { user } = useAuth();
+
   const [content, setContent] = useState("");
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [showScrollAnchor, setShowScrollAnchor] = useState(false);
+
   const sendMessageMutation = useSendMessageMutation();
+
   const messageListRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,10 +95,26 @@ export function DirectConversationThread({
     () => groupMessagesByDay(localMessages),
     [localMessages]
   );
+
   const canPreviewAvatar = Boolean(resolveAssetUrl(avatarUrl));
+
   const canSend =
     (Boolean(content.trim()) || selectedFiles.length > 0) &&
     !sendMessageMutation.isPending;
+
+  const hasSelectedMessages = selectedMessages.length > 0;
+
+  const canEditSelectedMessage =
+  selectedMessages.length === 1 &&
+  selectedMessages[0]?.senderId === currentUserId &&
+  !selectedMessages[0]?.deleted;
+
+  const canDeleteSelectedMessages =
+  selectedMessages.length > 0 &&
+  selectedMessages.every(
+    (message) => message.senderId === currentUserId && !message.deleted
+  );
+  const selectedMessageIds = selectedMessages.map((message) => message.id);
 
   const getBottomDistance = useCallback((list: HTMLDivElement) => {
     return Math.max(0, list.scrollHeight - list.scrollTop - list.clientHeight);
@@ -106,6 +140,7 @@ export function DirectConversationThread({
         top: list.scrollHeight,
         behavior,
       });
+
       shouldStickToBottomRef.current = true;
       setShowScrollAnchor(false);
     },
@@ -159,6 +194,7 @@ export function DirectConversationThread({
     if (!list || loading) return;
 
     syncScrollAnchorVisibility();
+
     list.addEventListener("scroll", syncScrollAnchorVisibility, {
       passive: true,
     });
@@ -208,6 +244,13 @@ export function DirectConversationThread({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [emojiPickerOpen]);
+function handleToggleMessageSelection(message: LocalMessage) {
+  if (message.pending || message.failed || message.deleted) {
+    return;
+  }
+
+  onToggleMessageSelection(message as MessageResponse);
+}
 
   function handleFileInputChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -252,22 +295,28 @@ export function DirectConversationThread({
     }
 
     const temporaryId = `temp-${channelId}-${Date.now()}`;
-    const temporaryMessage: LocalMessage = {
-      id: temporaryId,
-      channelId,
-      senderId: user.id,
-      senderName: user.name || "Vous",
-      content: value,
-      createdAt: new Date().toISOString(),
-      attachments: createPendingAttachments(files),
-      pending: true,
-    };
+const temporaryMessage: LocalMessage = {
+  id: temporaryId,
+  channelId,
+  senderId: user.id,
+  senderName: user.name || "Vous",
+  content: value,
+  createdAt: new Date().toISOString(),
+  editedAt: null,
+  deletedAt: null,
+  deletedById: null,
+  deleted: false,
+  attachments: createPendingAttachments(files),
+  pending: true,
+};
 
     shouldStickToBottomRef.current = true;
+
     setLocalMessages((currentMessages) => [
       ...currentMessages,
       temporaryMessage,
     ]);
+
     setContent("");
     setSelectedFiles([]);
 
@@ -310,10 +359,12 @@ export function DirectConversationThread({
     const textarea = textareaRef.current;
     const cursorStart = textarea?.selectionStart ?? content.length;
     const cursorEnd = textarea?.selectionEnd ?? content.length;
+
     const nextContent =
       content.slice(0, cursorStart) +
       emojiData.emoji +
       content.slice(cursorEnd);
+
     const nextCursorPosition = cursorStart + emojiData.emoji.length;
 
     setContent(nextContent);
@@ -336,18 +387,77 @@ export function DirectConversationThread({
   return (
     <section className="dm-thread">
       <div className="dm-thread-main">
-        <ConversationHeader
-          title={title}
-          subtitle={subtitle}
-          presence={presence}
-          avatarUrl={avatarUrl}
-          canPreviewAvatar={canPreviewAvatar}
-          refreshing={refreshing}
-          showBackButton={showBackButton}
-          onAvatarPreview={() => setAvatarPreviewOpen(true)}
-          onRefresh={onRefresh}
-          onClose={onClose}
-        />
+        {hasSelectedMessages ? (
+          <div className="dm-selection-header">
+            <div className="dm-selection-header-left">
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="Annuler la sélection"
+                onClick={onClearMessageSelection}
+              >
+                ✕
+              </button>
+
+              <span>
+                <strong>
+                  {selectedMessages.length} message
+                  {selectedMessages.length > 1 ? "s" : ""} sélectionné
+                  {selectedMessages.length > 1 ? "s" : ""}
+                </strong>
+              </span>
+            </div>
+
+            <div className="dm-selection-header-actions">
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="Transférer"
+                title="Transférer"
+                onClick={onForwardSelectedMessages}
+              >
+                ↗
+              </button>
+
+              {canEditSelectedMessage ? (
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label="Modifier"
+                  title="Modifier"
+                  onClick={onEditSelectedMessage}
+                >
+                  ✎
+                </button>
+              ) : null}
+
+             {canDeleteSelectedMessages ? (
+  <button
+    className="icon-button"
+    type="button"
+    aria-label="Supprimer"
+    title="Supprimer"
+    onClick={onDeleteSelectedMessages}
+  >
+    🗑
+  </button>
+) : null}
+            </div>
+          </div>
+        ) : (
+          <ConversationHeader
+            title={title}
+            subtitle={subtitle}
+            presence={presence}
+            avatarUrl={avatarUrl}
+            canPreviewAvatar={canPreviewAvatar}
+            refreshing={refreshing}
+            showBackButton={showBackButton}
+            onAvatarPreview={() => setAvatarPreviewOpen(true)}
+            onRefresh={onRefresh}
+            onClose={onClose}
+          />
+        )}
 
         <div className="dm-thread-body-shell">
           <ConversationMessageList
@@ -356,9 +466,11 @@ export function DirectConversationThread({
             avatarUrl={avatarUrl}
             messageGroups={messageGroups}
             messageListRef={messageListRef}
-            currentUserId={user?.id}
+            currentUserId={currentUserId}
             currentUserName={user?.name}
             currentUserAvatarUrl={user?.avatarUrl}
+            selectedMessageIds={selectedMessageIds}
+            onToggleMessageSelection={handleToggleMessageSelection}
           />
 
           <button

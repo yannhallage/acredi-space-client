@@ -4,6 +4,9 @@ import type {
   ChannelResponse,
   CreateChannelRequest,
   CreateDirectChannelRequest,
+  UpdateMessageRequest,
+  ForwardMessageRequest,
+  ForwardMessageResponse,
   MessageResponse,
   SendMessageRequest,
 } from "./types";
@@ -88,4 +91,36 @@ export const chatService = {
 
     return unwrapApiResponse(response);
   },
+
+
+    async forwardMessages(
+    request: ForwardMessageRequest
+  ): Promise<ForwardMessageResponse> {
+    const response = await http.post<ApiResponse<ForwardMessageResponse>>(
+      chatEndpoints.forward,
+      request
+    );
+
+    return unwrapApiResponse(response);
+  },
+
+  async updateMessage(
+  messageId: string,
+  request: UpdateMessageRequest
+): Promise<MessageResponse> {
+  const response = await http.patch<ApiResponse<MessageResponse>>(
+    chatEndpoints.updateMessage(messageId),
+    request
+  );
+
+  return unwrapApiResponse(response);
+},
+
+async deleteMessage(messageId: string): Promise<MessageResponse> {
+  const response = await http.delete<ApiResponse<MessageResponse>>(
+    chatEndpoints.deleteMessage(messageId)
+  );
+
+  return unwrapApiResponse(response);
+},
 };

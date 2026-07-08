@@ -456,32 +456,73 @@ function MessageAttachmentList({
   );
 }
 
+// function DirectMessageRow({
+//   message,
+//   isMine,
+//   senderLabel,
+//   presence,
+//   avatarSrc,
+//   onPreviewImage,
+// }: {
+//   message: LocalMessage;
+//   isMine: boolean;
+//   senderLabel: string;
+//   presence?: Presence;
+//   avatarSrc?: string | null;
+//   onPreviewImage: (attachment: LocalAttachment) => void;
+// }) {
+
 function DirectMessageRow({
   message,
   isMine,
   senderLabel,
   presence,
   avatarSrc,
+  selected,
   onPreviewImage,
+  onToggleMessageSelection,
 }: {
   message: LocalMessage;
   isMine: boolean;
   senderLabel: string;
   presence?: Presence;
   avatarSrc?: string | null;
+  selected: boolean;
   onPreviewImage: (attachment: LocalAttachment) => void;
+  onToggleMessageSelection: (message: LocalMessage) => void;
 }) {
   const time = formatTime(message.createdAt);
+
+  const isDeleted = Boolean(message.deleted);
+
   const status = message.failed
     ? "Echec d'envoi"
     : message.pending
       ? "Envoi..."
       : "Envoye";
-  const attachments = message.attachments ?? [];
-  const hasContent = Boolean(message.content?.trim());
+
+  const attachments = isDeleted ? [] : message.attachments ?? [];
+  const hasContent = !isDeleted && Boolean(message.content?.trim());
+
+  function handleSelectMessage() {
+    if (message.pending || message.failed || isDeleted) {
+      return;
+    }
+
+    onToggleMessageSelection(message);
+  }
 
   return (
-    <article className={`dm-message-row ${isMine ? "mine" : ""}`}>
+    <article
+      className={`dm-message-row ${isMine ? "mine" : ""} ${
+        selected ? "selected" : ""
+      } ${isDeleted ? "deleted" : ""}`}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        handleSelectMessage();
+      }}
+      onDoubleClick={handleSelectMessage}
+    >
       {!isMine ? (
         <Avatar
           name={senderLabel}
@@ -498,26 +539,39 @@ function DirectMessageRow({
         </div>
 
         <div className="dm-message-bubble">
-          {hasContent ? (
-            <p>
-              <LinkifiedText
-                linkClassName="dm-message-link"
-                text={message.content}
-              />
+          {isDeleted ? (
+            <p className="deleted-message-text">
+              <span aria-hidden="true">🚫</span>{" "}
+              {isMine
+                ? "Vous avez supprimé ce message"
+                : "Ce message a été supprimé"}
             </p>
-          ) : null}
-          <MessageAttachmentList
-            attachments={attachments}
-            onPreviewImage={onPreviewImage}
-          />
-          {!hasContent && !attachments.length ? (
-            <p>
-              <LinkifiedText
-                linkClassName="dm-message-link"
-                text={message.content}
+          ) : (
+            <>
+              {hasContent ? (
+                <p>
+                  <LinkifiedText
+                    linkClassName="dm-message-link"
+                    text={message.content}
+                  />
+                </p>
+              ) : null}
+
+              <MessageAttachmentList
+                attachments={attachments}
+                onPreviewImage={onPreviewImage}
               />
-            </p>
-          ) : null}
+
+              {!hasContent && !attachments.length ? (
+                <p>
+                  <LinkifiedText
+                    linkClassName="dm-message-link"
+                    text={message.content}
+                  />
+                </p>
+              ) : null}
+            </>
+          )}
         </div>
 
         <div className="dm-message-footer">
@@ -527,7 +581,7 @@ function DirectMessageRow({
             <span>Recu</span>
           )}
 
-          {!message.pending && !message.failed ? (
+          {!message.pending && !message.failed && !isDeleted ? (
             <div className="dm-message-tools" aria-hidden="true">
               <button type="button" tabIndex={-1}>
                 <Icon name="smile" size={13} />
@@ -547,6 +601,21 @@ function DirectMessageRow({
   );
 }
 
+// interface ConversationMessageListProps {
+//   title: string;
+//   presence: Presence;
+//   avatarUrl?: string | null;
+//   messageGroups: Array<{
+//     dateKey: string;
+//     label: string;
+//     items: LocalMessage[];
+//   }>;
+//   messageListRef: RefObject<HTMLDivElement | null>;
+//   currentUserId?: string;
+//   currentUserName?: string;
+//   currentUserAvatarUrl?: string | null;
+// }
+
 interface ConversationMessageListProps {
   title: string;
   presence: Presence;
@@ -560,7 +629,20 @@ interface ConversationMessageListProps {
   currentUserId?: string;
   currentUserName?: string;
   currentUserAvatarUrl?: string | null;
+  selectedMessageIds: string[];
+  onToggleMessageSelection: (message: LocalMessage) => void;
 }
+
+// export function ConversationMessageList({
+//   title,
+//   presence,
+//   avatarUrl,
+//   messageGroups,
+//   messageListRef,
+//   currentUserId,
+//   currentUserName,
+//   currentUserAvatarUrl,
+// }: ConversationMessageListProps) {
 
 export function ConversationMessageList({
   title,
@@ -571,6 +653,8 @@ export function ConversationMessageList({
   currentUserId,
   currentUserName,
   currentUserAvatarUrl,
+  selectedMessageIds,
+  onToggleMessageSelection,
 }: ConversationMessageListProps) {
   const [previewAttachment, setPreviewAttachment] =
     useState<LocalAttachment | null>(null);
@@ -599,17 +683,31 @@ export function ConversationMessageList({
                   ? currentUserName || message.senderName || "Vous"
                   : message.senderName || title;
 
+                // return (
+                //   <DirectMessageRow
+                //     key={message.id}
+                //     message={message}
+                //     isMine={isMine}
+                //     senderLabel={senderLabel}
+                //     presence={presence}
+                //     avatarSrc={isMine ? currentUserAvatarUrl : avatarUrl}
+                //     onPreviewImage={setPreviewAttachment}
+                //   />
+                // );
+                const selected = selectedMessageIds.includes(message.id);
                 return (
-                  <DirectMessageRow
-                    key={message.id}
-                    message={message}
-                    isMine={isMine}
-                    senderLabel={senderLabel}
-                    presence={presence}
-                    avatarSrc={isMine ? currentUserAvatarUrl : avatarUrl}
-                    onPreviewImage={setPreviewAttachment}
-                  />
-                );
+                <DirectMessageRow
+                key={message.id}
+                message={message}
+                isMine={isMine}
+                senderLabel={senderLabel}
+                presence={presence}
+                avatarSrc={isMine ? currentUserAvatarUrl : avatarUrl}
+                selected={selected}
+                onPreviewImage={setPreviewAttachment}
+                onToggleMessageSelection={onToggleMessageSelection}
+                />
+              );
               })}
             </div>
           ))

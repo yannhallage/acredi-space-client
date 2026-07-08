@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
+import { useCreateProfileMutation, useProfilesQuery, type ProfileResponse } from '../api/profiles';
 import { useUploadAvatarMutation } from '../api/users';
-import {
-  useCreateProfileMutation,
-  useDeleteProfileMutation,
-  useProfilesQuery,
-} from '../api/profil_modal/hooks';
 import { PresetAvatarPicker, extractPresetAvatarFile } from '../avatars/PresetAvatarPicker';
 import type { AvatarPreset } from '../avatars/presets';
 import { useAuth } from '../context';
@@ -13,11 +9,11 @@ import { Avatar, Icon, type IconName } from '../ui';
 import { PERMISSIONS, usePermissions, type PermissionCode } from '../permissions';
 
 type SettingKey =
-  | 'account'
+  | 'profile'
+  | 'profiles'
   | 'preferences'
   | 'members'
   | 'roles'
-  | 'profiles'
   | 'invitations'
   | 'general'
   | 'dashboard'
@@ -71,20 +67,22 @@ function getAvatarErrorMessage(error: unknown) {
     : 'Impossible de mettre a jour la photo.';
 }
 
-function applyAvatarUpdate(
-  uploadedAvatar: { avatarUrl?: string | null },
-  fallbackAvatarUrl?: string
-) {
-  const avatarUrl = uploadedAvatar.avatarUrl ?? fallbackAvatarUrl;
-
-  if (!avatarUrl) {
-    throw new Error("L'API n'a pas renvoye l'URL de l'image.");
+function formatProfileDate(value?: string) {
+  if (!value) {
+    return 'Non renseigne';
   }
 
-  return {
-    ...uploadedAvatar,
-    avatarUrl,
-  };
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Non renseigne';
+  }
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
 }
 
 const TEAM_SETTINGS_VIEW_PERMISSIONS = [
@@ -114,7 +112,7 @@ const groups: SettingGroup[] = [
     title: 'Configuration utilisateur',
     items: [
       {
-        key: 'account',
+        key: 'profile',
         label: 'Compte',
         icon: 'user',
         title: 'Compte',
@@ -240,26 +238,6 @@ const groups: SettingGroup[] = [
         ],
       },
       {
-        key: 'profiles',
-        label: 'Profils',
-        icon: 'user',
-        title: 'Profils',
-        subtitle: 'Ajoute et supprime les profils disponibles pour les comptes utilisateurs.',
-        sectionTitle: 'Profils enregistres',
-        permissions: [
-          PERMISSIONS.VIEW_ROLES_SETTINGS,
-          PERMISSIONS.UPDATE_ROLES_SETTINGS,
-          PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
-          ...TEAM_SETTINGS_VIEW_PERMISSIONS,
-        ],
-        updatePermissions: [
-          PERMISSIONS.UPDATE_ROLES_SETTINGS,
-          PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
-          ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
-        ],
-        rows: [],
-      },
-      {
         key: 'invitations',
         label: 'Invitations',
         icon: 'mail',
@@ -289,6 +267,27 @@ const groups: SettingGroup[] = [
             action: 'Inviter',
           },
         ],
+      },
+      {
+        key: 'profiles',
+        label: 'Profil',
+        icon: 'user',
+        title: 'Profils',
+        subtitle: 'Gere les profils disponibles dans l espace.',
+        sectionTitle: 'Profils disponibles',
+        permissions: [
+          PERMISSIONS.VIEW_INVITATIONS_SETTINGS,
+          PERMISSIONS.INVITE_COLLABORATORS,
+          PERMISSIONS.CREATE_USERS,
+          PERMISSIONS.MANAGE_ACCOUNTS,
+          ...TEAM_SETTINGS_VIEW_PERMISSIONS,
+        ],
+        updatePermissions: [
+          PERMISSIONS.CREATE_USERS,
+          PERMISSIONS.MANAGE_ACCOUNTS,
+          ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
+        ],
+        rows: [],
       },
     ]
   },
@@ -534,135 +533,6 @@ const groups: SettingGroup[] = [
   }
 ];
 
-
-function ProfilesSettingsTable({ canUpdate }: { canUpdate: boolean }) {
-  const { data: profiles = [], isLoading, error } = useProfilesQuery();
-  const createProfileMutation = useCreateProfileMutation();
-  const deleteProfileMutation = useDeleteProfileMutation();
-
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const payload = {
-      name: name.trim(),
-      description: description.trim() || null,
-    };
-
-    if (!payload.name) {
-      return;
-    }
-
-    createProfileMutation.mutate(payload, {
-      onSuccess: () => {
-        setName('');
-        setDescription('');
-      },
-    });
-  }
-
-  function handleDelete(profileId: string) {
-    const confirmed = window.confirm('Supprimer ce profil ?');
-
-    if (!confirmed) {
-      return;
-    }
-
-    deleteProfileMutation.mutate(profileId);
-  }
-
-  return (
-    <section className="modal-setting-profiles">
-      <form className="modal-setting-profile-form" onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="profile-name">Nom du profil</label>
-          <input
-            id="profile-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Ex: Manager, Collaborateur, RH"
-            disabled={!canUpdate || createProfileMutation.isPending}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="profile-description">Description</label>
-          <input
-            id="profile-description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Ex: Profil responsable d'equipe"
-            disabled={!canUpdate || createProfileMutation.isPending}
-          />
-        </div>
-
-        <button
-          className="button primary mini"
-          type="submit"
-          disabled={!canUpdate || createProfileMutation.isPending}
-        >
-          {createProfileMutation.isPending ? 'Ajout...' : 'Ajouter'}
-        </button>
-      </form>
-
-      {isLoading ? (
-        <p className="modal-setting-empty">Chargement des profils...</p>
-      ) : error ? (
-        <p className="modal-setting-error">
-  Impossible de charger les profils :{' '}
-  {error instanceof Error ? error.message : 'Erreur inconnue'}
-</p>
-      ) : profiles.length === 0 ? (
-        <p className="modal-setting-empty">Aucun profil enregistre.</p>
-      ) : (
-        <div className="modal-setting-table-wrapper">
-          <table className="modal-setting-table">
-            <thead>
-              <tr>
-                <th>Nom</th>
-                <th>Description</th>
-                <th>Date creation</th>
-                <th aria-label="Actions" />
-              </tr>
-            </thead>
-
-            <tbody>
-              {profiles.map((profile) => (
-                <tr key={profile.id}>
-                  <td>
-                    <strong>{profile.name}</strong>
-                  </td>
-
-                  <td>{profile.description || 'Aucune description'}</td>
-
-                  <td>
-                    {profile.createdAt
-                      ? new Date(profile.createdAt).toLocaleDateString('fr-FR')
-                      : '-'}
-                  </td>
-
-                  <td className="modal-setting-table-actions">
-                    <button
-                      className="button ghost mini danger"
-                      type="button"
-                      disabled={!canUpdate || deleteProfileMutation.isPending}
-                      onClick={() => handleDelete(profile.id)}
-                    >
-                      Supprimer
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
-
 interface ModalSettingProps {
   userEmail: string;
   userName: string;
@@ -675,10 +545,13 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
   const { hasAnyPermission } = usePermissions();
   const uploadAvatarMutation = useUploadAvatarMutation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [activeKey, setActiveKey] = useState<SettingKey>('account');
+  const [activeKey, setActiveKey] = useState<SettingKey>('profile');
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
-  const [avatarMessage, setAvatarMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  const [avatarMessage, setAvatarMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [profileName, setProfileName] = useState('');
+  const [profileDescription, setProfileDescription] = useState('');
+  const [profileMessage, setProfileMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const visibleGroups = useMemo(
     () =>
@@ -698,8 +571,13 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
 
   const activeItem = visibleItems.find((item) => item.key === activeKey) ?? visibleItems[0];
   const canUpdateActiveItem = activeItem ? hasAnyPermission(activeItem.updatePermissions) : false;
+  const isProfilesSection = activeItem?.key === 'profiles';
+  const canCreateProfiles = user?.adminRole === 'admin';
+  const profilesQuery = useProfilesQuery({ enabled: isProfilesSection });
+  const createProfileMutation = useCreateProfileMutation();
   const isUploadingAvatar = uploadAvatarMutation.isPending;
   const avatarSrc = avatarPreviewUrl ?? user?.avatarUrl ?? null;
+  const profiles: ProfileResponse[] = profilesQuery.data ?? [];
 
   useEffect(() => {
     if (activeItem && activeItem.key !== activeKey) {
@@ -755,7 +633,7 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
 
     try {
       const uploadedAvatar = await uploadAvatarMutation.mutateAsync(file);
-      updateUser(applyAvatarUpdate(uploadedAvatar));
+      updateUser(uploadedAvatar);
       setAvatarPreviewUrl(null);
       setAvatarMessage({ type: 'success', text: 'Photo de profil mise a jour.' });
     } catch (error) {
@@ -767,24 +645,65 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
   }
 
   async function handlePresetAvatarSelect(preset: AvatarPreset) {
-    if (!canUpdateActiveItem || isUploadingAvatar) {
-      return;
-    }
-
     setAvatarMessage(null);
     setSelectedPresetId(preset.id);
     setAvatarPreviewUrl(preset.url);
 
     try {
       const file = await extractPresetAvatarFile(preset);
+
+      if (file.size > MAX_AVATAR_SIZE) {
+        setSelectedPresetId(null);
+        setAvatarPreviewUrl(null);
+        setAvatarMessage({ type: 'error', text: 'La photo doit faire moins de 5 Mo.' });
+        return;
+      }
+
       const uploadedAvatar = await uploadAvatarMutation.mutateAsync(file);
-      updateUser(applyAvatarUpdate(uploadedAvatar, preset.url));
+      updateUser(uploadedAvatar);
       setAvatarPreviewUrl(null);
-      setAvatarMessage({ type: 'success', text: 'Avatar mis a jour.' });
+      setAvatarMessage({ type: 'success', text: 'Photo de profil mise a jour.' });
     } catch (error) {
-      setAvatarPreviewUrl(null);
       setSelectedPresetId(null);
+      setAvatarPreviewUrl(null);
       setAvatarMessage({ type: 'error', text: getAvatarErrorMessage(error) });
+    }
+  }
+
+  async function handleCreateProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setProfileMessage(null);
+
+    if (!canCreateProfiles) {
+      setProfileMessage({
+        type: 'error',
+        text: 'Seuls les administrateurs peuvent creer des profils.',
+      });
+      return;
+    }
+
+    const name = profileName.trim();
+    const description = profileDescription.trim();
+
+    if (!name) {
+      setProfileMessage({ type: 'error', text: 'Le nom du profil est obligatoire.' });
+      return;
+    }
+
+    try {
+      await createProfileMutation.mutateAsync({
+        name,
+        description: description || null,
+      });
+      setProfileName('');
+      setProfileDescription('');
+      setProfileMessage({ type: 'success', text: 'Profil ajoute.' });
+      profilesQuery.refetch().catch(() => undefined);
+    } catch (error) {
+      setProfileMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Impossible de creer le profil.',
+      });
     }
   }
 
@@ -842,7 +761,7 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
                 <p>{activeItem.subtitle}</p>
               </header>
 
-              {activeItem.key === 'account' ? (
+              {activeItem.key === 'profile' ? (
                 <div className="modal-setting-profile">
                   <div className="modal-setting-profile-main">
                     <div className="modal-setting-avatar-control">
@@ -904,11 +823,110 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
                 </div>
               ) : null}
 
-              {activeItem.key === 'profiles' ? (
-                <ProfilesSettingsTable canUpdate={canUpdateActiveItem} />
+              {isProfilesSection ? (
+                <section className="modal-setting-section modal-setting-profiles">
+                  <div className="modal-setting-section-heading">
+                    <div>
+                      <h4>Profils</h4>
+                      <p>Profils disponibles pour les utilisateurs de l espace.</p>
+                    </div>
+                    <button
+                      className="button ghost mini"
+                      type="button"
+                      onClick={() => profilesQuery.refetch().catch(() => undefined)}
+                      disabled={profilesQuery.loading}
+                    >
+                      {profilesQuery.loading ? 'Chargement...' : 'Actualiser'}
+                    </button>
+                  </div>
+
+                  {profilesQuery.error ? (
+                    <div className="modal-setting-inline-state error">
+                      <Icon name="alert" size={16} />
+                      <span>{profilesQuery.error.message}</span>
+                    </div>
+                  ) : null}
+
+                  <div className="modal-setting-profile-table" role="table" aria-label="Profils">
+                    <div className="modal-setting-profile-table-head" role="row">
+                      <span role="columnheader">Profil</span>
+                      <span role="columnheader">Description</span>
+                      <span role="columnheader">Creation</span>
+                    </div>
+
+                    {profilesQuery.loading ? (
+                      ['profile-skeleton-1', 'profile-skeleton-2', 'profile-skeleton-3'].map((item) => (
+                        <div className="modal-setting-profile-row skeleton" key={item} role="row">
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line" />
+                        </div>
+                      ))
+                    ) : null}
+
+                    {!profilesQuery.loading && profiles.length === 0 && !profilesQuery.error ? (
+                      <div className="modal-setting-profile-empty">
+                        <Icon name="users" size={16} />
+                        <strong>Aucun profil</strong>
+                        <span>Les profils ajoutes apparaitront ici.</span>
+                      </div>
+                    ) : null}
+
+                    {!profilesQuery.loading
+                      ? profiles.map((profile) => (
+                          <div className="modal-setting-profile-row" key={profile.id} role="row">
+                            <strong role="cell">{profile.name}</strong>
+                            <span role="cell">{profile.description || 'Aucune description'}</span>
+                            <small role="cell">{formatProfileDate(profile.createdAt)}</small>
+                          </div>
+                        ))
+                      : null}
+                  </div>
+
+                  {canCreateProfiles ? (
+                    <form className="modal-setting-profile-form" onSubmit={handleCreateProfile}>
+                      <label>
+                        Nom du profil
+                        <input
+                          value={profileName}
+                          onChange={(event) => setProfileName(event.target.value)}
+                          placeholder="Developpeur frontend"
+                          maxLength={160}
+                        />
+                      </label>
+                      <label>
+                        Description
+                        <textarea
+                          value={profileDescription}
+                          onChange={(event) => setProfileDescription(event.target.value)}
+                          placeholder="Responsabilites, perimetre ou contexte du profil"
+                          maxLength={1000}
+                          rows={3}
+                        />
+                      </label>
+                      {profileMessage ? (
+                        <p className={`modal-setting-profile-message ${profileMessage.type}`}>
+                          {profileMessage.text}
+                        </p>
+                      ) : null}
+                      <button
+                        className="button primary"
+                        type="submit"
+                        disabled={createProfileMutation.isPending}
+                      >
+                        {createProfileMutation.isPending ? 'Ajout...' : 'Ajouter le profil'}
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="modal-setting-inline-state">
+                      <Icon name="shield" size={16} />
+                      <span>Seuls les administrateurs peuvent creer des profils.</span>
+                    </div>
+                  )}
+                </section>
               ) : null}
 
-              {activeItem.key !== 'profiles' ? (
+              {!isProfilesSection ? (
                 <section className="modal-setting-section">
                   <h4>{activeItem.sectionTitle}</h4>
 

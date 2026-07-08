@@ -9,7 +9,10 @@ import type {
   ChannelResponse,
   CreateChannelRequest,
   CreateDirectChannelRequest,
+  ForwardMessageRequest,
+  ForwardMessageResponse,
   MessageResponse,
+   UpdateMessageRequest,
   SendMessageRequest,
 } from "./types";
 
@@ -100,6 +103,51 @@ export function useSendMessageMutation() {
 
       queryClient.invalidateQueries({
         queryKey: chatKeys.channels(),
+      });
+    },
+  });
+}
+
+export function useForwardMessagesMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<ForwardMessageResponse, Error, ForwardMessageRequest>({
+    mutationFn: (request) => chatService.forwardMessages(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.all,
+      });
+    },
+  });
+}
+
+
+export function useUpdateMessageMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    MessageResponse,
+    Error,
+    { messageId: string; content: string }
+  >({
+    mutationFn: ({ messageId, content }) =>
+      chatService.updateMessage(messageId, { content }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.all,
+      });
+    },
+  });
+}
+
+export function useDeleteMessageMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<MessageResponse, Error, { messageId: string }>({
+    mutationFn: ({ messageId }) => chatService.deleteMessage(messageId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.all,
       });
     },
   });

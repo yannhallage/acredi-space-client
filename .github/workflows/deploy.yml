@@ -1,3 +1,41 @@
+# name: Build & Push Frontend
+
+# on:
+#   push:
+#     branches: [deploy]
+#   workflow_dispatch:
+
+# env:
+#   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/acredispace-front
+
+# jobs:
+#   build-and-push:
+#     name: Build et push de l'image Docker
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v3
+
+#       - name: Login Docker Hub
+#         uses: docker/login-action@v3
+#         with:
+#           username: ${{ secrets.DOCKERHUB_USERNAME }}
+#           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+#       - name: Build et push
+#         uses: docker/build-push-action@v6
+#         with:
+#           context: .
+#           push: true
+#           tags: |
+#             ${{ env.IMAGE_NAME }}:latest
+#             ${{ env.IMAGE_NAME }}:${{ github.sha }}
+#           cache-from: type=gha
+#           cache-to: type=gha,mode=max
+
 name: Build & Push Frontend
 
 on:
@@ -6,11 +44,7 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/acredispace-prod-front
-
-permissions:
-  contents: read
-  packages: write
+  IMAGE_NAME: ${{ vars.DOCKERHUB_USERNAME }}/acredispace-front
 
 jobs:
   build-and-push:
@@ -21,32 +55,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Build
-        run: npm run build
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
-
-      - name: Prepare image names
-        run: |
-          OWNER="${GITHUB_REPOSITORY_OWNER:-${GITHUB_REPOSITORY%%/*}}"
-          OWNER="${OWNER,,}"
-          echo "GHCR_IMAGE=ghcr.io/${OWNER}/acredispace-prod-front" >> "$GITHUB_ENV"
 
       - name: Login Docker Hub
         uses: docker/login-action@v4
@@ -54,70 +64,13 @@ jobs:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Login GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Build et push
         uses: docker/build-push-action@v7
         with:
           context: .
           push: true
           tags: |
-            ${{ env.DOCKERHUB_IMAGE }}:latest
-            ${{ env.DOCKERHUB_IMAGE }}:${{ github.sha }}
-            ${{ env.GHCR_IMAGE }}:latest
-            ${{ env.GHCR_IMAGE }}:${{ github.sha }}
-          labels: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Notification email - image prête
-        if: success()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: ${{ secrets.MAIL_SERVER }}
-          server_port: ${{ secrets.MAIL_PORT }}
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "[AcrediSpace Front] Image prête sur Docker Hub"
-          to: ${{ vars.MAIL_TO || secrets.MAIL_USERNAME }}
-          from: AcrediSpace CI <${{ secrets.MAIL_USERNAME }}>
-          body: |
-            L'image Docker du frontend a été poussée avec succès sur Docker Hub.
-
-            Docker Hub : ${{ env.DOCKERHUB_IMAGE }}:latest
-            GitHub CR  : ${{ env.GHCR_IMAGE }}:latest
-            Tag SHA DH : ${{ env.DOCKERHUB_IMAGE }}:${{ github.sha }}
-            Tag SHA GH : ${{ env.GHCR_IMAGE }}:${{ github.sha }}
-            Commit : ${{ github.sha }}
-            Branche: ${{ github.ref_name }}
-
-            ➡️ Action requise : mettre à jour le conteneur dans Portainer
-               (pull de la nouvelle image puis redeploy).
-
-            Une fois Portainer mis à jour, lancez le workflow "Vérification déploiement"
-            pour tester le front et recevoir la confirmation finale.
-
-      - name: Notification email - échec build/push
-        if: failure()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: ${{ secrets.MAIL_SERVER }}
-          server_port: ${{ secrets.MAIL_PORT }}
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "[AcrediSpace Front] ÉCHEC du build/push"
-          to: ${{ vars.MAIL_TO || secrets.MAIL_USERNAME }}
-          from: AcrediSpace CI <${{ secrets.MAIL_USERNAME }}>
-          body: |
-            Le workflow de build & push du frontend a échoué.
-
-            Commit : ${{ github.sha }}
-            Branche: ${{ github.ref_name }}
-            Détails: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

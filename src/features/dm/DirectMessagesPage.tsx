@@ -1,14 +1,19 @@
+import { useTeamsQuery } from "../../shared/api/teams";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
+import { ForwardMessageModal } from "./components/modals/ForwardMessageModal";
 import {
   useChannelsQuery,
   useMessagesQueries,
   useMessagesQuery,
+  useForwardMessagesMutation,
+  useUpdateMessageMutation,
+  useDeleteMessageMutation,
 } from "../../shared/api/dm/hooks";
 import type { ChannelResponse, MessageResponse } from "../../shared/api/dm/types";
 import { useUsersQuery } from "../../shared/api/users";
 import type { User } from "../../shared/types";
+import { useAuth } from "../../shared/context";
 
 import {
   DirectConversationEmpty,
@@ -45,10 +50,14 @@ export function DirectMessagesPage() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const isMobileLayout = useDmMobileLayout();
-
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? "";
+  
   const [selectedConversationId, setSelectedConversationId] = useState(
     conversationId ?? ""
   );
+  const [selectedMessages, setSelectedMessages] = useState<MessageResponse[]>([]);
+  const [forwardModalOpen, setForwardModalOpen] = useState(false);
 
   const {
     data: channels = [],
@@ -59,6 +68,10 @@ export function DirectMessagesPage() {
   } = useChannelsQuery();
 
   const usersQuery = useUsersQuery();
+  const teamsQuery = useTeamsQuery();
+  const forwardMessagesMutation = useForwardMessagesMutation();
+  const updateMessageMutation = useUpdateMessageMutation();
+  const deleteMessageMutation = useDeleteMessageMutation();
 
   const directChannels = useMemo(
     () => channels.filter((channel) => channel.privateChannel),
@@ -123,9 +136,55 @@ export function DirectMessagesPage() {
     return usersByName.get(displayName.toLowerCase()) ?? null;
   }, [activeConversation, usersByName]);
 
+  // const forwardTargets = useMemo(() => {
+  //   const userTargets = (usersQuery.data ?? [])
+  //     .filter((targetUser) => targetUser.id !== currentUserId)
+  //     .map((targetUser) => ({
+  //       id: targetUser.id,
+  //       name: targetUser.name,
+  //       type: "user" as const,
+  //     }));
+
+  //   const channelTargets = directChannels
+  //     .filter((channel) => channel.id !== activeConversationId)
+  //     .map((channel) => ({
+  //       id: channel.id,
+  //       name: getChannelDisplayName(channel),
+  //       type: "channel" as const,
+  //     }));
+
+  //   return [...userTargets, ...channelTargets];
+  // }, [usersQuery.data, directChannels, activeConversationId, currentUserId]);
+
+
+
+const forwardTargets = useMemo(() => {
+  const userTargets = (usersQuery.data ?? [])
+    .filter((targetUser) => targetUser.id !== currentUserId)
+    .map((targetUser) => ({
+      id: targetUser.id,
+      name: targetUser.name,
+      type: "user" as const,
+    }));
+const teamTargets = (teamsQuery.data ?? []).map((team) => ({
+  id: team.id,
+  name: team.name,
+  type: "team" as const,
+}));
+
+  return [...userTargets, ...teamTargets];
+}, [usersQuery.data, teamsQuery.data, currentUserId]);
+
+
+
+
   useEffect(() => {
     setSelectedConversationId(conversationId ?? "");
   }, [conversationId]);
+
+  useEffect(() => {
+    setSelectedMessages([]);
+  }, [activeConversationId]);
 
   function handleSelectConversation(nextConversationId: string) {
     setSelectedConversationId(nextConversationId);
@@ -149,25 +208,130 @@ export function DirectMessagesPage() {
     ]);
   }
 
+  function toggleMessageSelection(message: MessageResponse) {
+    setSelectedMessages((current) => {
+      const alreadySelected = current.some((item) => item.id === message.id);
+
+      if (alreadySelected) {
+        return current.filter((item) => item.id !== message.id);
+      }
+
+      return [...current, message];
+    });
+  }
+
+  function clearMessageSelection() {
+    setSelectedMessages([]);
+  }
+
   const isRefreshingDiscussion =
     (channelsFetching && !channelsLoading) ||
     (messagesFetching && !messagesLoading);
 
-  if (channelsLoading) {
-    return <DmPageSkeleton />;
-  }
-
-  if (channelsError) {
-    return (
-      <div className="dm-page">
-        <div className="dm-error">
-          Impossible de charger les conversations.
-        </div>
-      </div>
-    );
-  }
-
   const threadSubtitle = activeParticipant?.role ?? "Message direct";
+
+
+
+
+  function handleEditSelectedMessage() {
+  if (selectedMessages.length !== 1) {
+    alert("Sélectionne un seul message à modifier.");
+    return;
+  }
+
+  const message = selectedMessages[0];
+
+  if (message.senderId !== currentUserId) {
+    alert("Tu ne peux modifier que tes propres messages.");
+    return;
+  }
+
+  if (message.deleted) {
+    alert("Impossible de modifier un message supprimé.");
+    return;
+  }
+
+  const nextContent = window.prompt(
+    "Modifier le message",
+    message.content ?? ""
+  );
+
+  if (nextContent === null) {
+    return;
+  }
+
+  const trimmedContent = nextContent.trim();
+
+  if (!trimmedContent) {
+    alert("Le message ne peut pas être vide.");
+    return;
+  }
+
+  updateMessageMutation.mutate(
+    {
+      messageId: message.id,
+      content: trimmedContent,
+    },
+    {
+      onSuccess: () => {
+        clearMessageSelection();
+
+        if (activeConversationId) {
+          void refetchMessages();
+        }
+
+        void refetchChannels();
+      },
+      onError: (error) => {
+        console.error("Erreur modification message", error);
+      },
+    }
+  );
+}
+async function handleDeleteSelectedMessages() {
+  if (!selectedMessages.length) {
+    return;
+  }
+
+  const notOwnedMessage = selectedMessages.find(
+    (message) => message.senderId !== currentUserId
+  );
+
+  if (notOwnedMessage) {
+    alert("Tu ne peux supprimer que tes propres messages.");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    selectedMessages.length === 1
+      ? "Supprimer ce message ?"
+      : `Supprimer ${selectedMessages.length} messages ?`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    for (const message of selectedMessages) {
+      await deleteMessageMutation.mutateAsync({
+        messageId: message.id,
+      });
+    }
+
+    clearMessageSelection();
+
+    if (activeConversationId) {
+      await refetchMessages();
+    }
+
+    await refetchChannels();
+  } catch (error) {
+    console.error("Erreur suppression message", error);
+    alert("Impossible de supprimer le message.");
+  }
+}
+
 
   const threadProps = activeConversation
     ? {
@@ -180,8 +344,30 @@ export function DirectMessagesPage() {
         loading: messagesLoading,
         refreshing: isRefreshingDiscussion,
         onRefresh: handleRefreshDiscussion,
+
+        selectedMessages,
+        currentUserId,
+        onToggleMessageSelection: toggleMessageSelection,
+        onClearMessageSelection: clearMessageSelection,
+        onForwardSelectedMessages: () => {
+          setForwardModalOpen(true);
+        },
+        onEditSelectedMessage: handleEditSelectedMessage,
+        onDeleteSelectedMessages: handleDeleteSelectedMessages,
       }
     : null;
+
+  if (channelsLoading) {
+    return <DmPageSkeleton />;
+  }
+
+  if (channelsError) {
+    return (
+      <div className="dm-page">
+        <div className="dm-error">Impossible de charger les conversations.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="dm-page">
@@ -196,26 +382,80 @@ export function DirectMessagesPage() {
       />
 
       {isMobileLayout ? (
-        <>
-          <DirectConversationDrawer
-            isOpen={Boolean(activeConversation && threadProps)}
-            title={threadProps?.title ?? "Conversation"}
-            onClose={handleCloseConversation}
-          >
-            {threadProps ? (
-              <DirectConversationThread
-                {...threadProps}
-                showBackButton
-                onClose={handleCloseConversation}
-              />
-            ) : null}
-          </DirectConversationDrawer>
-        </>
+        <DirectConversationDrawer
+          isOpen={Boolean(activeConversation && threadProps)}
+          title={threadProps?.title ?? "Conversation"}
+          onClose={handleCloseConversation}
+        >
+          {threadProps ? (
+            <DirectConversationThread
+              {...threadProps}
+              showBackButton
+              onClose={handleCloseConversation}
+            />
+          ) : null}
+        </DirectConversationDrawer>
       ) : !activeConversation ? (
         <DirectConversationEmpty />
       ) : threadProps ? (
         <DirectConversationThread {...threadProps} />
       ) : null}
+
+  <ForwardMessageModal
+  open={forwardModalOpen}
+  selectedMessagesCount={selectedMessages.length}
+  targets={forwardTargets}
+  onClose={() => setForwardModalOpen(false)}
+  onConfirm={(payload) => {
+    // const rawPayload = payload as {
+    //   targetUserIds?: string[];
+    //   targetChannelIds?: string[];
+    //   targets?: Array<{
+    //     id: string;
+    //     type: "user" | "channel";
+    //   }>;
+    // };
+
+    // const targetUserIds =
+    //   rawPayload.targetUserIds ??
+    //   rawPayload.targets
+    //     ?.filter((target) => target.type === "user")
+    //     .map((target) => target.id) ??
+    //   [];
+
+    // const targetChannelIds =
+    //   rawPayload.targetChannelIds ??
+    //   rawPayload.targets
+    //     ?.filter((target) => target.type === "channel")
+    //     .map((target) => target.id) ??
+    //   [];
+      
+   forwardMessagesMutation.mutate(
+  {
+    sourceType: "CHAT",
+    sourceMessageIds: selectedMessages.map((message) => message.id),
+    targetUserIds: payload.targetUserIds,
+    targetChannelIds: payload.targetChannelIds,
+    targetTeamIds: payload.targetTeamIds,
+  },
+  {
+    onSuccess: () => {
+      setForwardModalOpen(false);
+      clearMessageSelection();
+
+      void refetchChannels();
+
+      if (activeConversationId) {
+        void refetchMessages();
+      }
+    },
+    onError: (error) => {
+      console.error("Erreur transfert message", error);
+    },
+  }
+);
+  }}
+/>
     </div>
   );
 }

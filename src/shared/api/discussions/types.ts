@@ -50,7 +50,6 @@ export interface GroupDiscussionResponse {
   updatedAt?: string | null;
   members?: GroupDiscussionMemberResponse[];
 }
-
 export interface GroupMessageResponse {
   id: string;
   discussionId: string;
@@ -59,6 +58,9 @@ export interface GroupMessageResponse {
   content: string;
   createdAt: string;
   editedAt?: string | null;
+  deletedAt?: string | null;
+  deletedById?: string | null;
+  deleted: boolean;
 }
 
 export interface SendGroupMessageRequest {
@@ -69,4 +71,8 @@ export interface CreateGroupDiscussionRequest {
   name: string;
   description?: string;
   memberIds?: string[];
+}
+
+export interface UpdateGroupMessageRequest {
+  content: string;
 }
