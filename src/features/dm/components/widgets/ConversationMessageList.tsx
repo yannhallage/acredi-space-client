@@ -1,4 +1,9 @@
-import { useEffect, useState, type RefObject } from "react";
+import {
+  useEffect,
+  useState,
+  type MouseEvent,
+  type RefObject,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { loadAssetUrl, type LoadedAssetUrl } from "../../../../shared/api/http";
@@ -35,7 +40,9 @@ function getAttachmentImageExtension(attachment: LocalAttachment) {
   const nameExtension = attachment.name.includes(".")
     ? attachment.name.split(".").pop()?.toLowerCase()
     : undefined;
+
   const contentType = attachment.contentType?.toLowerCase().split(";")[0] ?? "";
+
   const mimeExtension = contentType.startsWith("image/")
     ? contentType.slice("image/".length)
     : undefined;
@@ -113,13 +120,15 @@ function MessageAttachmentFileItem({
         className="dm-attachment-item"
         type="button"
         disabled={attachment.pending || downloading}
-        onClick={() => {
+        onClick={(event) => {
+          event.stopPropagation();
           void downloadAttachment();
         }}
       >
         <span className="dm-attachment-icon">
           <Icon name={attachment.pending ? "upload" : "file"} size={15} />
         </span>
+
         <span className="dm-attachment-copy">
           <strong>{attachment.name}</strong>
           <small>
@@ -130,8 +139,10 @@ function MessageAttachmentFileItem({
                 : meta}
           </small>
         </span>
+
         <Icon name={attachment.pending ? "upload" : "download"} size={14} />
       </button>
+
       {downloadError ? (
         <small className="dm-attachment-error">{downloadError}</small>
       ) : null}
@@ -149,6 +160,7 @@ function MessageImagePreviewDialog({
   const [preview, setPreview] = useState<LoadedAssetUrl | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+
   const { downloadAttachment, downloadError, downloading } =
     useAttachmentDownload(attachment);
 
@@ -232,7 +244,8 @@ function MessageImagePreviewDialog({
             type="button"
             aria-label={`Telecharger ${attachment.name}`}
             disabled={downloading}
-            onClick={() => {
+            onClick={(event) => {
+              event.stopPropagation();
               void downloadAttachment();
             }}
           >
@@ -276,6 +289,7 @@ function MessageImagePreviewDialog({
         </div>
 
         <p className="dm-message-image-preview-name">{attachment.name}</p>
+
         {downloadError ? (
           <small className="dm-attachment-error">{downloadError}</small>
         ) : null}
@@ -314,6 +328,7 @@ function MessageAttachmentImageItem({
   const [preview, setPreview] = useState<LoadedAssetUrl | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+
   const { downloadAttachment, downloadError, downloading } =
     useAttachmentDownload(attachment);
 
@@ -367,11 +382,15 @@ function MessageAttachmentImageItem({
           type="button"
           aria-label={`Voir ${attachment.name}`}
           disabled={!preview}
-          onClick={() => onPreview(attachment)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onPreview(attachment);
+          }}
         >
           {!imageLoaded ? (
             <span className="dm-image-attachment-loading" aria-hidden="true" />
           ) : null}
+
           {preview ? (
             <img
               alt={attachment.name}
@@ -389,7 +408,8 @@ function MessageAttachmentImageItem({
           type="button"
           aria-label={`Telecharger ${attachment.name}`}
           disabled={downloading}
-          onClick={() => {
+          onClick={(event) => {
+            event.stopPropagation();
             void downloadAttachment();
           }}
         >
@@ -402,6 +422,7 @@ function MessageAttachmentImageItem({
           </span>
         ) : null}
       </div>
+
       {downloadError ? (
         <small className="dm-attachment-error">{downloadError}</small>
       ) : null}
@@ -443,7 +464,9 @@ function MessageAttachmentList({
 
   return (
     <div
-      className={`dm-attachment-list ${hasInlineImage ? "has-inline-image" : ""}`}
+      className={`dm-attachment-list ${
+        hasInlineImage ? "has-inline-image" : ""
+      }`}
     >
       {attachments.map((attachment) => (
         <MessageAttachmentItem
@@ -456,43 +479,29 @@ function MessageAttachmentList({
   );
 }
 
-// function DirectMessageRow({
-//   message,
-//   isMine,
-//   senderLabel,
-//   presence,
-//   avatarSrc,
-//   onPreviewImage,
-// }: {
-//   message: LocalMessage;
-//   isMine: boolean;
-//   senderLabel: string;
-//   presence?: Presence;
-//   avatarSrc?: string | null;
-//   onPreviewImage: (attachment: LocalAttachment) => void;
-// }) {
-
 function DirectMessageRow({
   message,
   isMine,
   senderLabel,
   presence,
   avatarSrc,
-  selected,
+  active,
   onPreviewImage,
-  onToggleMessageSelection,
+  onOpenMessageMenu,
 }: {
   message: LocalMessage;
   isMine: boolean;
   senderLabel: string;
   presence?: Presence;
   avatarSrc?: string | null;
-  selected: boolean;
+  active: boolean;
   onPreviewImage: (attachment: LocalAttachment) => void;
-  onToggleMessageSelection: (message: LocalMessage) => void;
+  onOpenMessageMenu: (
+    event: MouseEvent<HTMLElement>,
+    message: LocalMessage
+  ) => void;
 }) {
   const time = formatTime(message.createdAt);
-
   const isDeleted = Boolean(message.deleted);
 
   const status = message.failed
@@ -504,24 +513,27 @@ function DirectMessageRow({
   const attachments = isDeleted ? [] : message.attachments ?? [];
   const hasContent = !isDeleted && Boolean(message.content?.trim());
 
-  function handleSelectMessage() {
+  function handleOpenMenu(event: MouseEvent<HTMLElement>) {
+    const target = event.target as HTMLElement;
+
+    if (target.closest("button, a, input, textarea")) {
+      return;
+    }
+
     if (message.pending || message.failed || isDeleted) {
       return;
     }
 
-    onToggleMessageSelection(message);
+    onOpenMessageMenu(event, message);
   }
 
   return (
     <article
       className={`dm-message-row ${isMine ? "mine" : ""} ${
-        selected ? "selected" : ""
+        active ? "selected" : ""
       } ${isDeleted ? "deleted" : ""}`}
-      onContextMenu={(event) => {
-        event.preventDefault();
-        handleSelectMessage();
-      }}
-      onDoubleClick={handleSelectMessage}
+      onClick={handleOpenMenu}
+      onContextMenu={handleOpenMenu}
     >
       {!isMine ? (
         <Avatar
@@ -601,21 +613,6 @@ function DirectMessageRow({
   );
 }
 
-// interface ConversationMessageListProps {
-//   title: string;
-//   presence: Presence;
-//   avatarUrl?: string | null;
-//   messageGroups: Array<{
-//     dateKey: string;
-//     label: string;
-//     items: LocalMessage[];
-//   }>;
-//   messageListRef: RefObject<HTMLDivElement | null>;
-//   currentUserId?: string;
-//   currentUserName?: string;
-//   currentUserAvatarUrl?: string | null;
-// }
-
 interface ConversationMessageListProps {
   title: string;
   presence: Presence;
@@ -629,20 +626,12 @@ interface ConversationMessageListProps {
   currentUserId?: string;
   currentUserName?: string;
   currentUserAvatarUrl?: string | null;
-  selectedMessageIds: string[];
-  onToggleMessageSelection: (message: LocalMessage) => void;
+  activeMessageId?: string;
+  onOpenMessageMenu: (
+    event: MouseEvent<HTMLElement>,
+    message: LocalMessage
+  ) => void;
 }
-
-// export function ConversationMessageList({
-//   title,
-//   presence,
-//   avatarUrl,
-//   messageGroups,
-//   messageListRef,
-//   currentUserId,
-//   currentUserName,
-//   currentUserAvatarUrl,
-// }: ConversationMessageListProps) {
 
 export function ConversationMessageList({
   title,
@@ -653,8 +642,8 @@ export function ConversationMessageList({
   currentUserId,
   currentUserName,
   currentUserAvatarUrl,
-  selectedMessageIds,
-  onToggleMessageSelection,
+  activeMessageId,
+  onOpenMessageMenu,
 }: ConversationMessageListProps) {
   const [previewAttachment, setPreviewAttachment] =
     useState<LocalAttachment | null>(null);
@@ -679,35 +668,24 @@ export function ConversationMessageList({
 
               {group.items.map((message) => {
                 const isMine = currentUserId === message.senderId;
+
                 const senderLabel = isMine
                   ? currentUserName || message.senderName || "Vous"
                   : message.senderName || title;
 
-                // return (
-                //   <DirectMessageRow
-                //     key={message.id}
-                //     message={message}
-                //     isMine={isMine}
-                //     senderLabel={senderLabel}
-                //     presence={presence}
-                //     avatarSrc={isMine ? currentUserAvatarUrl : avatarUrl}
-                //     onPreviewImage={setPreviewAttachment}
-                //   />
-                // );
-                const selected = selectedMessageIds.includes(message.id);
                 return (
-                <DirectMessageRow
-                key={message.id}
-                message={message}
-                isMine={isMine}
-                senderLabel={senderLabel}
-                presence={presence}
-                avatarSrc={isMine ? currentUserAvatarUrl : avatarUrl}
-                selected={selected}
-                onPreviewImage={setPreviewAttachment}
-                onToggleMessageSelection={onToggleMessageSelection}
-                />
-              );
+                  <DirectMessageRow
+                    key={message.id}
+                    message={message}
+                    isMine={isMine}
+                    senderLabel={senderLabel}
+                    presence={presence}
+                    avatarSrc={isMine ? currentUserAvatarUrl : avatarUrl}
+                    active={activeMessageId === message.id}
+                    onPreviewImage={setPreviewAttachment}
+                    onOpenMessageMenu={onOpenMessageMenu}
+                  />
+                );
               })}
             </div>
           ))

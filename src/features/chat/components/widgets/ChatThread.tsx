@@ -1,4 +1,10 @@
-import type { ReactNode, RefObject } from "react";
+import {
+  useEffect,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 
 import { Avatar, EmptyState, Icon } from "../../../../shared/ui";
 
@@ -7,6 +13,7 @@ import {
   type LocalGroupMessage,
 } from "../../utils/messageFormat";
 import { messageSkeletons } from "../skeletons/ChatThreadSkeleton";
+import { MessageActionMenu } from "./MessageActionMenu";
 import { MessageBubble } from "./MessageBubble";
 
 interface ChatThreadProps {
@@ -21,13 +28,10 @@ interface ChatThreadProps {
   getUserAvatarUrl: (userId: string) => string | null | undefined;
   composer: ReactNode;
 
-  selectedMessages: LocalGroupMessage[];
   currentUserId: string;
-  onToggleMessageSelection: (message: LocalGroupMessage) => void;
-  onClearMessageSelection: () => void;
-  onForwardSelectedMessages: () => void;
-  onEditSelectedMessage: () => void;
-  onDeleteSelectedMessages: () => void;
+  onForwardMessage: (message: LocalGroupMessage) => void;
+  onEditMessage: (message: LocalGroupMessage) => void;
+  onDeleteMessage: (message: LocalGroupMessage) => void;
 }
 
 export function ChatThread({
@@ -42,107 +46,87 @@ export function ChatThread({
   getUserAvatarUrl,
   composer,
 
-  selectedMessages,
   currentUserId,
-  onToggleMessageSelection,
-  onClearMessageSelection,
-  onForwardSelectedMessages,
-  onEditSelectedMessage,
-  onDeleteSelectedMessages,
+  onForwardMessage,
+  onEditMessage,
+  onDeleteMessage,
 }: ChatThreadProps) {
-  const hasSelection = selectedMessages.length > 0;
+  const [activeMenu, setActiveMenu] = useState<{
+    message: LocalGroupMessage;
+    x: number;
+    y: number;
+  } | null>(null);
 
-  const canEditSelectedMessage =
-  selectedMessages.length === 1 &&
-  selectedMessages[0]?.senderId === currentUserId &&
-  !selectedMessages[0]?.deleted;
-  
-  const canDeleteSelectedMessages =
-  selectedMessages.length > 0 &&
-  selectedMessages.every(
-    (message) => message.senderId === currentUserId && !message.deleted
-  );
-  function isMessageSelected(messageId: string) {
-    return selectedMessages.some((message) => message.id === messageId);
+  useEffect(() => {
+    function closeMenu() {
+      setActiveMenu(null);
+    }
+
+    if (activeMenu) {
+      document.addEventListener("click", closeMenu);
+      window.addEventListener("scroll", closeMenu, true);
+    }
+
+    return () => {
+      document.removeEventListener("click", closeMenu);
+      window.removeEventListener("scroll", closeMenu, true);
+    };
+  }, [activeMenu]);
+
+  function openMessageMenu(
+    event: MouseEvent<HTMLDivElement>,
+    message: LocalGroupMessage
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (message.deleted) {
+      return;
+    }
+
+    const menuWidth = 180;
+    const menuHeight = 150;
+
+    const x = Math.min(
+      event.clientX + 8,
+      window.innerWidth - menuWidth - 8
+    );
+
+    const y = Math.min(
+      event.clientY + 8,
+      window.innerHeight - menuHeight - 8
+    );
+
+    setActiveMenu({
+      message,
+      x: Math.max(8, x),
+      y: Math.max(8, y),
+    });
   }
+
+  const activeMessage = activeMenu?.message;
+  const activeMessageIsMine =
+    activeMessage?.senderId === currentUserId;
 
   return (
     <section className="thread-panel">
       <header className="thread-header dm-thread-header">
-        {hasSelection ? (
-          <>
-            <button
-              className="icon-button"
-              type="button"
-              aria-label="Annuler la sélection"
-              onClick={onClearMessageSelection}
-            >
-              ✕
-            </button>
+        <Avatar name={discussionName} size={36} />
 
-            <span>
-              <strong>
-                {selectedMessages.length} message
-                {selectedMessages.length > 1 ? "s" : ""} sélectionné
-                {selectedMessages.length > 1 ? "s" : ""}
-              </strong>
-              <small>Choisissez une action</small>
-            </span>
+        <span>
+          <strong>{discussionName}</strong>
+          <small>
+            {teamName ? `Equipe ${teamName}` : "Discussion de groupe"}
+          </small>
+        </span>
 
-            <button
-              className="icon-button"
-              type="button"
-              aria-label="Transférer"
-              title="Transférer"
-              onClick={onForwardSelectedMessages}
-            >
-              ↗
-            </button>
+        <button className="icon-button" type="button" aria-label="Rechercher">
+          <Icon name="search" size={16} />
+        </button>
 
-            {canEditSelectedMessage ? (
-              <button
-                className="icon-button"
-                type="button"
-                aria-label="Modifier"
-                title="Modifier"
-                onClick={onEditSelectedMessage}
-              >
-                ✎
-              </button>
-            ) : null}
-
-            {canDeleteSelectedMessages ? (
-              <button
-                className="icon-button"
-                type="button"
-                aria-label="Supprimer"
-                title="Supprimer"
-                onClick={onDeleteSelectedMessages}
-              >
-                🗑
-              </button>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <Avatar name={discussionName} size={36} />
-
-            <span>
-              <strong>{discussionName}</strong>
-              <small>
-                {teamName ? `Equipe ${teamName}` : "Discussion de groupe"}
-              </small>
-            </span>
-
-            <button className="icon-button" type="button" aria-label="Rechercher">
-              <Icon name="search" size={16} />
-            </button>
-
-            <button className="icon-button" type="button" aria-label="Options">
-              <Icon name="moreH" size={16} />
-            </button>
-          </>
-        )}
+        <button className="icon-button" type="button" aria-label="Options">
+          <Icon name="moreH" size={16} />
+        </button>
       </header>
 
       <div className="message-list" ref={messageListRef}>
@@ -158,6 +142,7 @@ export function ChatThread({
               aria-hidden="true"
             >
               {index % 2 === 0 ? <span className="skeleton-avatar" /> : null}
+
               <div className="skeleton-copy">
                 <span className="skeleton-line chat-skeleton-message-meta" />
                 <span className="skeleton-line" />
@@ -184,42 +169,35 @@ export function ChatThread({
               </div>
 
               {group.items.map((message: LocalGroupMessage) => {
-  const selected = isMessageSelected(message.id);
-  const isDeleted = Boolean(message.deleted);
+                const isDeleted = Boolean(message.deleted);
 
-  return (
-    <div
-      key={message.id}
-      onContextMenu={(event) => {
-        event.preventDefault();
+                return (
+                  <div
+                    key={message.id}
+                    className="chat-message-selection-wrapper"
+                    onClick={(event) => {
+                      if (isDeleted) {
+                        return;
+                      }
 
-        if (isDeleted) {
-          return;
-        }
+                      openMessageMenu(event, message);
+                    }}
+                    onContextMenu={(event) => {
+                      if (isDeleted) {
+                        return;
+                      }
 
-        onToggleMessageSelection(message);
-      }}
-      onDoubleClick={() => {
-        if (isDeleted) {
-          return;
-        }
-
-        onToggleMessageSelection(message);
-      }}
-      className={
-        selected
-          ? "chat-message-selection-wrapper selected"
-          : "chat-message-selection-wrapper"
-      }
-    >
-      <MessageBubble
-        message={message}
-        avatarSrc={getUserAvatarUrl(message.senderId)}
-        currentUserId={currentUserId}
-      />
-    </div>
-  );
-})}
+                      openMessageMenu(event, message);
+                    }}
+                  >
+                    <MessageBubble
+                      message={message}
+                      avatarSrc={getUserAvatarUrl(message.senderId)}
+                      currentUserId={currentUserId}
+                    />
+                  </div>
+                );
+              })}
             </div>
           ))
         ) : (
@@ -233,6 +211,20 @@ export function ChatThread({
           <p className="chat-refresh-hint">Actualisation...</p>
         ) : null}
       </div>
+
+      {activeMenu && activeMessage ? (
+        <MessageActionMenu
+  open={true}
+  x={activeMenu.x}
+  y={activeMenu.y}
+  canEdit={Boolean(activeMessageIsMine && !activeMessage.deleted)}
+  canDelete={Boolean(activeMessageIsMine && !activeMessage.deleted)}
+  onForward={() => onForwardMessage(activeMessage)}
+  onEdit={() => onEditMessage(activeMessage)}
+  onDelete={() => onDeleteMessage(activeMessage)}
+  onClose={() => setActiveMenu(null)}
+/>
+      ) : null}
 
       {composer}
     </section>

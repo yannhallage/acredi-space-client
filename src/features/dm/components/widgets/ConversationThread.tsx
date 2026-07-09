@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type MouseEvent,
 } from "react";
 import type { EmojiClickData } from "emoji-picker-react";
 
@@ -28,6 +29,7 @@ import { AvatarPreviewOverlay } from "./AvatarPreviewOverlay";
 import { ConversationComposer } from "./ConversationComposer";
 import { ConversationHeader } from "./ConversationHeader";
 import { ConversationMessageList } from "./ConversationMessageList";
+import { DmMessageActionMenu } from "./DmMessageActionMenu";
 
 const SCROLL_BOTTOM_THRESHOLD = 120;
 
@@ -44,13 +46,10 @@ interface DirectConversationThreadProps {
   onRefresh?: () => void;
   onClose?: () => void;
 
-  selectedMessages: MessageResponse[];
   currentUserId: string;
-  onToggleMessageSelection: (message: MessageResponse) => void;
-  onClearMessageSelection: () => void;
-  onForwardSelectedMessages: () => void;
-  onEditSelectedMessage: () => void;
-  onDeleteSelectedMessages: () => void;
+  onForwardMessage: (message: MessageResponse) => void;
+  onEditMessage: (message: MessageResponse) => void;
+  onDeleteMessage: (message: MessageResponse) => void;
 }
 
 export function DirectConversationThread({
@@ -65,13 +64,10 @@ export function DirectConversationThread({
   showBackButton = false,
   onRefresh,
   onClose,
-  selectedMessages,
   currentUserId,
-  onToggleMessageSelection,
-  onClearMessageSelection,
-  onForwardSelectedMessages,
-  onEditSelectedMessage,
-  onDeleteSelectedMessages,
+  onForwardMessage,
+  onEditMessage,
+  onDeleteMessage,
 }: DirectConversationThreadProps) {
   const { user } = useAuth();
 
@@ -81,6 +77,12 @@ export function DirectConversationThread({
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [showScrollAnchor, setShowScrollAnchor] = useState(false);
+
+  const [activeMenu, setActiveMenu] = useState<{
+    message: LocalMessage;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const sendMessageMutation = useSendMessageMutation();
 
@@ -102,19 +104,8 @@ export function DirectConversationThread({
     (Boolean(content.trim()) || selectedFiles.length > 0) &&
     !sendMessageMutation.isPending;
 
-  const hasSelectedMessages = selectedMessages.length > 0;
-
-  const canEditSelectedMessage =
-  selectedMessages.length === 1 &&
-  selectedMessages[0]?.senderId === currentUserId &&
-  !selectedMessages[0]?.deleted;
-
-  const canDeleteSelectedMessages =
-  selectedMessages.length > 0 &&
-  selectedMessages.every(
-    (message) => message.senderId === currentUserId && !message.deleted
-  );
-  const selectedMessageIds = selectedMessages.map((message) => message.id);
+  const activeMessage = activeMenu?.message;
+  const activeMessageIsMine = activeMessage?.senderId === currentUserId;
 
   const getBottomDistance = useCallback((list: HTMLDivElement) => {
     return Math.max(0, list.scrollHeight - list.scrollTop - list.clientHeight);
@@ -212,11 +203,28 @@ export function DirectConversationThread({
     setContent("");
     setSelectedFiles([]);
     setEmojiPickerOpen(false);
+    setActiveMenu(null);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   }, [channelId]);
+
+  useEffect(() => {
+    function closeMenu() {
+      setActiveMenu(null);
+    }
+
+    if (activeMenu) {
+      document.addEventListener("click", closeMenu);
+      window.addEventListener("scroll", closeMenu, true);
+    }
+
+    return () => {
+      document.removeEventListener("click", closeMenu);
+      window.removeEventListener("scroll", closeMenu, true);
+    };
+  }, [activeMenu]);
 
   useEffect(() => {
     if (!emojiPickerOpen) return;
@@ -244,13 +252,54 @@ export function DirectConversationThread({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [emojiPickerOpen]);
-function handleToggleMessageSelection(message: LocalMessage) {
-  if (message.pending || message.failed || message.deleted) {
-    return;
+
+  function openMessageMenu(
+    event: MouseEvent<HTMLElement>,
+    message: LocalMessage
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (message.pending || message.failed || message.deleted) {
+      return;
+    }
+
+    const menuWidth = 180;
+    const menuHeight = 150;
+
+    const x = Math.min(event.clientX + 8, window.innerWidth - menuWidth - 8);
+    const y = Math.min(event.clientY + 8, window.innerHeight - menuHeight - 8);
+
+    setActiveMenu({
+      message,
+      x: Math.max(8, x),
+      y: Math.max(8, y),
+    });
   }
 
-  onToggleMessageSelection(message as MessageResponse);
-}
+  function handleForwardActiveMessage() {
+    if (!activeMessage) {
+      return;
+    }
+
+    onForwardMessage(activeMessage as MessageResponse);
+  }
+
+  function handleEditActiveMessage() {
+    if (!activeMessage) {
+      return;
+    }
+
+    onEditMessage(activeMessage as MessageResponse);
+  }
+
+  function handleDeleteActiveMessage() {
+    if (!activeMessage) {
+      return;
+    }
+
+    onDeleteMessage(activeMessage as MessageResponse);
+  }
 
   function handleFileInputChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -295,20 +344,21 @@ function handleToggleMessageSelection(message: LocalMessage) {
     }
 
     const temporaryId = `temp-${channelId}-${Date.now()}`;
-const temporaryMessage: LocalMessage = {
-  id: temporaryId,
-  channelId,
-  senderId: user.id,
-  senderName: user.name || "Vous",
-  content: value,
-  createdAt: new Date().toISOString(),
-  editedAt: null,
-  deletedAt: null,
-  deletedById: null,
-  deleted: false,
-  attachments: createPendingAttachments(files),
-  pending: true,
-};
+
+    const temporaryMessage: LocalMessage = {
+      id: temporaryId,
+      channelId,
+      senderId: user.id,
+      senderName: user.name || "Vous",
+      content: value,
+      createdAt: new Date().toISOString(),
+      editedAt: null,
+      deletedAt: null,
+      deletedById: null,
+      deleted: false,
+      attachments: createPendingAttachments(files),
+      pending: true,
+    };
 
     shouldStickToBottomRef.current = true;
 
@@ -387,77 +437,18 @@ const temporaryMessage: LocalMessage = {
   return (
     <section className="dm-thread">
       <div className="dm-thread-main">
-        {hasSelectedMessages ? (
-          <div className="dm-selection-header">
-            <div className="dm-selection-header-left">
-              <button
-                className="icon-button"
-                type="button"
-                aria-label="Annuler la sélection"
-                onClick={onClearMessageSelection}
-              >
-                ✕
-              </button>
-
-              <span>
-                <strong>
-                  {selectedMessages.length} message
-                  {selectedMessages.length > 1 ? "s" : ""} sélectionné
-                  {selectedMessages.length > 1 ? "s" : ""}
-                </strong>
-              </span>
-            </div>
-
-            <div className="dm-selection-header-actions">
-              <button
-                className="icon-button"
-                type="button"
-                aria-label="Transférer"
-                title="Transférer"
-                onClick={onForwardSelectedMessages}
-              >
-                ↗
-              </button>
-
-              {canEditSelectedMessage ? (
-                <button
-                  className="icon-button"
-                  type="button"
-                  aria-label="Modifier"
-                  title="Modifier"
-                  onClick={onEditSelectedMessage}
-                >
-                  ✎
-                </button>
-              ) : null}
-
-             {canDeleteSelectedMessages ? (
-  <button
-    className="icon-button"
-    type="button"
-    aria-label="Supprimer"
-    title="Supprimer"
-    onClick={onDeleteSelectedMessages}
-  >
-    🗑
-  </button>
-) : null}
-            </div>
-          </div>
-        ) : (
-          <ConversationHeader
-            title={title}
-            subtitle={subtitle}
-            presence={presence}
-            avatarUrl={avatarUrl}
-            canPreviewAvatar={canPreviewAvatar}
-            refreshing={refreshing}
-            showBackButton={showBackButton}
-            onAvatarPreview={() => setAvatarPreviewOpen(true)}
-            onRefresh={onRefresh}
-            onClose={onClose}
-          />
-        )}
+        <ConversationHeader
+          title={title}
+          subtitle={subtitle}
+          presence={presence}
+          avatarUrl={avatarUrl}
+          canPreviewAvatar={canPreviewAvatar}
+          refreshing={refreshing}
+          showBackButton={showBackButton}
+          onAvatarPreview={() => setAvatarPreviewOpen(true)}
+          onRefresh={onRefresh}
+          onClose={onClose}
+        />
 
         <div className="dm-thread-body-shell">
           <ConversationMessageList
@@ -469,8 +460,8 @@ const temporaryMessage: LocalMessage = {
             currentUserId={currentUserId}
             currentUserName={user?.name}
             currentUserAvatarUrl={user?.avatarUrl}
-            selectedMessageIds={selectedMessageIds}
-            onToggleMessageSelection={handleToggleMessageSelection}
+            activeMessageId={activeMenu?.message.id}
+            onOpenMessageMenu={openMessageMenu}
           />
 
           <button
@@ -487,6 +478,20 @@ const temporaryMessage: LocalMessage = {
             <Icon name="chevDown" size={20} strokeWidth={2} />
           </button>
         </div>
+
+        {activeMenu && activeMessage ? (
+          <DmMessageActionMenu
+            open={true}
+            x={activeMenu.x}
+            y={activeMenu.y}
+            canEdit={Boolean(activeMessageIsMine && !activeMessage.deleted)}
+            canDelete={Boolean(activeMessageIsMine && !activeMessage.deleted)}
+            onForward={handleForwardActiveMessage}
+            onEdit={handleEditActiveMessage}
+            onDelete={handleDeleteActiveMessage}
+            onClose={() => setActiveMenu(null)}
+          />
+        ) : null}
 
         <ConversationComposer
           title={title}
