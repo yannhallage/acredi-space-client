@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type MouseEvent,
 } from "react";
 import type { EmojiClickData } from "emoji-picker-react";
 
@@ -28,6 +29,7 @@ import { AvatarPreviewOverlay } from "./AvatarPreviewOverlay";
 import { ConversationComposer } from "./ConversationComposer";
 import { ConversationHeader } from "./ConversationHeader";
 import { ConversationMessageList } from "./ConversationMessageList";
+import { DmMessageActionMenu } from "./DmMessageActionMenu";
 
 const SCROLL_BOTTOM_THRESHOLD = 120;
 
@@ -43,6 +45,11 @@ interface DirectConversationThreadProps {
   showBackButton?: boolean;
   onRefresh?: () => void;
   onClose?: () => void;
+
+  currentUserId: string;
+  onForwardMessage: (message: MessageResponse) => void;
+  onEditMessage: (message: MessageResponse) => void;
+  onDeleteMessage: (message: MessageResponse) => void;
 }
 
 export function DirectConversationThread({
@@ -57,15 +64,28 @@ export function DirectConversationThread({
   showBackButton = false,
   onRefresh,
   onClose,
+  currentUserId,
+  onForwardMessage,
+  onEditMessage,
+  onDeleteMessage,
 }: DirectConversationThreadProps) {
   const { user } = useAuth();
+
   const [content, setContent] = useState("");
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [showScrollAnchor, setShowScrollAnchor] = useState(false);
+
+  const [activeMenu, setActiveMenu] = useState<{
+    message: LocalMessage;
+    x: number;
+    y: number;
+  } | null>(null);
+
   const sendMessageMutation = useSendMessageMutation();
+
   const messageListRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,10 +97,15 @@ export function DirectConversationThread({
     () => groupMessagesByDay(localMessages),
     [localMessages]
   );
+
   const canPreviewAvatar = Boolean(resolveAssetUrl(avatarUrl));
+
   const canSend =
     (Boolean(content.trim()) || selectedFiles.length > 0) &&
     !sendMessageMutation.isPending;
+
+  const activeMessage = activeMenu?.message;
+  const activeMessageIsMine = activeMessage?.senderId === currentUserId;
 
   const getBottomDistance = useCallback((list: HTMLDivElement) => {
     return Math.max(0, list.scrollHeight - list.scrollTop - list.clientHeight);
@@ -106,6 +131,7 @@ export function DirectConversationThread({
         top: list.scrollHeight,
         behavior,
       });
+
       shouldStickToBottomRef.current = true;
       setShowScrollAnchor(false);
     },
@@ -159,6 +185,7 @@ export function DirectConversationThread({
     if (!list || loading) return;
 
     syncScrollAnchorVisibility();
+
     list.addEventListener("scroll", syncScrollAnchorVisibility, {
       passive: true,
     });
@@ -176,11 +203,28 @@ export function DirectConversationThread({
     setContent("");
     setSelectedFiles([]);
     setEmojiPickerOpen(false);
+    setActiveMenu(null);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   }, [channelId]);
+
+  useEffect(() => {
+    function closeMenu() {
+      setActiveMenu(null);
+    }
+
+    if (activeMenu) {
+      document.addEventListener("click", closeMenu);
+      window.addEventListener("scroll", closeMenu, true);
+    }
+
+    return () => {
+      document.removeEventListener("click", closeMenu);
+      window.removeEventListener("scroll", closeMenu, true);
+    };
+  }, [activeMenu]);
 
   useEffect(() => {
     if (!emojiPickerOpen) return;
@@ -208,6 +252,54 @@ export function DirectConversationThread({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [emojiPickerOpen]);
+
+  function openMessageMenu(
+    event: MouseEvent<HTMLElement>,
+    message: LocalMessage
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (message.pending || message.failed || message.deleted) {
+      return;
+    }
+
+    const menuWidth = 180;
+    const menuHeight = 150;
+
+    const x = Math.min(event.clientX + 8, window.innerWidth - menuWidth - 8);
+    const y = Math.min(event.clientY + 8, window.innerHeight - menuHeight - 8);
+
+    setActiveMenu({
+      message,
+      x: Math.max(8, x),
+      y: Math.max(8, y),
+    });
+  }
+
+  function handleForwardActiveMessage() {
+    if (!activeMessage) {
+      return;
+    }
+
+    onForwardMessage(activeMessage as MessageResponse);
+  }
+
+  function handleEditActiveMessage() {
+    if (!activeMessage) {
+      return;
+    }
+
+    onEditMessage(activeMessage as MessageResponse);
+  }
+
+  function handleDeleteActiveMessage() {
+    if (!activeMessage) {
+      return;
+    }
+
+    onDeleteMessage(activeMessage as MessageResponse);
+  }
 
   function handleFileInputChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -252,6 +344,7 @@ export function DirectConversationThread({
     }
 
     const temporaryId = `temp-${channelId}-${Date.now()}`;
+
     const temporaryMessage: LocalMessage = {
       id: temporaryId,
       channelId,
@@ -259,15 +352,21 @@ export function DirectConversationThread({
       senderName: user.name || "Vous",
       content: value,
       createdAt: new Date().toISOString(),
+      editedAt: null,
+      deletedAt: null,
+      deletedById: null,
+      deleted: false,
       attachments: createPendingAttachments(files),
       pending: true,
     };
 
     shouldStickToBottomRef.current = true;
+
     setLocalMessages((currentMessages) => [
       ...currentMessages,
       temporaryMessage,
     ]);
+
     setContent("");
     setSelectedFiles([]);
 
@@ -310,10 +409,12 @@ export function DirectConversationThread({
     const textarea = textareaRef.current;
     const cursorStart = textarea?.selectionStart ?? content.length;
     const cursorEnd = textarea?.selectionEnd ?? content.length;
+
     const nextContent =
       content.slice(0, cursorStart) +
       emojiData.emoji +
       content.slice(cursorEnd);
+
     const nextCursorPosition = cursorStart + emojiData.emoji.length;
 
     setContent(nextContent);
@@ -356,9 +457,11 @@ export function DirectConversationThread({
             avatarUrl={avatarUrl}
             messageGroups={messageGroups}
             messageListRef={messageListRef}
-            currentUserId={user?.id}
+            currentUserId={currentUserId}
             currentUserName={user?.name}
             currentUserAvatarUrl={user?.avatarUrl}
+            activeMessageId={activeMenu?.message.id}
+            onOpenMessageMenu={openMessageMenu}
           />
 
           <button
@@ -375,6 +478,20 @@ export function DirectConversationThread({
             <Icon name="chevDown" size={20} strokeWidth={2} />
           </button>
         </div>
+
+        {activeMenu && activeMessage ? (
+          <DmMessageActionMenu
+            open={true}
+            x={activeMenu.x}
+            y={activeMenu.y}
+            canEdit={Boolean(activeMessageIsMine && !activeMessage.deleted)}
+            canDelete={Boolean(activeMessageIsMine && !activeMessage.deleted)}
+            onForward={handleForwardActiveMessage}
+            onEdit={handleEditActiveMessage}
+            onDelete={handleDeleteActiveMessage}
+            onClose={() => setActiveMenu(null)}
+          />
+        ) : null}
 
         <ConversationComposer
           title={title}

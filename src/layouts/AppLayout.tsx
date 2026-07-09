@@ -23,7 +23,7 @@ import { useTheme } from "../shared/theme";
 import { AccessDeniedState, AcrediLockup, Avatar, Icon, type IconName } from "../shared/ui";
 import ModalSetting from "../shared/others/ModalSetting";
 import { DesktopNotificationBanner } from "../shared/notifications/DesktopNotificationBanner";
-import { getNotificationTarget } from "../shared/notifications/routing";
+// import { getNotificationTarget } from "../shared/notifications/routing";
 import { playNotificationSound } from "../shared/notifications/sound";
 
 const pageMeta: Record<string, { title: string; crumb: string }> = {

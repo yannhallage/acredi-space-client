@@ -1,4 +1,9 @@
-import { useEffect, useState, type RefObject } from "react";
+import {
+  useEffect,
+  useState,
+  type MouseEvent,
+  type RefObject,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { loadAssetUrl, type LoadedAssetUrl } from "../../../../shared/api/http";
@@ -35,7 +40,9 @@ function getAttachmentImageExtension(attachment: LocalAttachment) {
   const nameExtension = attachment.name.includes(".")
     ? attachment.name.split(".").pop()?.toLowerCase()
     : undefined;
+
   const contentType = attachment.contentType?.toLowerCase().split(";")[0] ?? "";
+
   const mimeExtension = contentType.startsWith("image/")
     ? contentType.slice("image/".length)
     : undefined;
@@ -113,13 +120,15 @@ function MessageAttachmentFileItem({
         className="dm-attachment-item"
         type="button"
         disabled={attachment.pending || downloading}
-        onClick={() => {
+        onClick={(event) => {
+          event.stopPropagation();
           void downloadAttachment();
         }}
       >
         <span className="dm-attachment-icon">
           <Icon name={attachment.pending ? "upload" : "file"} size={15} />
         </span>
+
         <span className="dm-attachment-copy">
           <strong>{attachment.name}</strong>
           <small>
@@ -130,8 +139,10 @@ function MessageAttachmentFileItem({
                 : meta}
           </small>
         </span>
+
         <Icon name={attachment.pending ? "upload" : "download"} size={14} />
       </button>
+
       {downloadError ? (
         <small className="dm-attachment-error">{downloadError}</small>
       ) : null}
@@ -149,6 +160,7 @@ function MessageImagePreviewDialog({
   const [preview, setPreview] = useState<LoadedAssetUrl | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+
   const { downloadAttachment, downloadError, downloading } =
     useAttachmentDownload(attachment);
 
@@ -232,7 +244,8 @@ function MessageImagePreviewDialog({
             type="button"
             aria-label={`Telecharger ${attachment.name}`}
             disabled={downloading}
-            onClick={() => {
+            onClick={(event) => {
+              event.stopPropagation();
               void downloadAttachment();
             }}
           >
@@ -276,6 +289,7 @@ function MessageImagePreviewDialog({
         </div>
 
         <p className="dm-message-image-preview-name">{attachment.name}</p>
+
         {downloadError ? (
           <small className="dm-attachment-error">{downloadError}</small>
         ) : null}
@@ -314,6 +328,7 @@ function MessageAttachmentImageItem({
   const [preview, setPreview] = useState<LoadedAssetUrl | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+
   const { downloadAttachment, downloadError, downloading } =
     useAttachmentDownload(attachment);
 
@@ -367,11 +382,15 @@ function MessageAttachmentImageItem({
           type="button"
           aria-label={`Voir ${attachment.name}`}
           disabled={!preview}
-          onClick={() => onPreview(attachment)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onPreview(attachment);
+          }}
         >
           {!imageLoaded ? (
             <span className="dm-image-attachment-loading" aria-hidden="true" />
           ) : null}
+
           {preview ? (
             <img
               alt={attachment.name}
@@ -389,7 +408,8 @@ function MessageAttachmentImageItem({
           type="button"
           aria-label={`Telecharger ${attachment.name}`}
           disabled={downloading}
-          onClick={() => {
+          onClick={(event) => {
+            event.stopPropagation();
             void downloadAttachment();
           }}
         >
@@ -402,6 +422,7 @@ function MessageAttachmentImageItem({
           </span>
         ) : null}
       </div>
+
       {downloadError ? (
         <small className="dm-attachment-error">{downloadError}</small>
       ) : null}
@@ -443,7 +464,9 @@ function MessageAttachmentList({
 
   return (
     <div
-      className={`dm-attachment-list ${hasInlineImage ? "has-inline-image" : ""}`}
+      className={`dm-attachment-list ${
+        hasInlineImage ? "has-inline-image" : ""
+      }`}
     >
       {attachments.map((attachment) => (
         <MessageAttachmentItem
@@ -462,26 +485,56 @@ function DirectMessageRow({
   senderLabel,
   presence,
   avatarSrc,
+  active,
   onPreviewImage,
+  onOpenMessageMenu,
 }: {
   message: LocalMessage;
   isMine: boolean;
   senderLabel: string;
   presence?: Presence;
   avatarSrc?: string | null;
+  active: boolean;
   onPreviewImage: (attachment: LocalAttachment) => void;
+  onOpenMessageMenu: (
+    event: MouseEvent<HTMLElement>,
+    message: LocalMessage
+  ) => void;
 }) {
   const time = formatTime(message.createdAt);
+  const isDeleted = Boolean(message.deleted);
+
   const status = message.failed
     ? "Echec d'envoi"
     : message.pending
       ? "Envoi..."
       : "Envoye";
-  const attachments = message.attachments ?? [];
-  const hasContent = Boolean(message.content?.trim());
+
+  const attachments = isDeleted ? [] : message.attachments ?? [];
+  const hasContent = !isDeleted && Boolean(message.content?.trim());
+
+  function handleOpenMenu(event: MouseEvent<HTMLElement>) {
+    const target = event.target as HTMLElement;
+
+    if (target.closest("button, a, input, textarea")) {
+      return;
+    }
+
+    if (message.pending || message.failed || isDeleted) {
+      return;
+    }
+
+    onOpenMessageMenu(event, message);
+  }
 
   return (
-    <article className={`dm-message-row ${isMine ? "mine" : ""}`}>
+    <article
+      className={`dm-message-row ${isMine ? "mine" : ""} ${
+        active ? "selected" : ""
+      } ${isDeleted ? "deleted" : ""}`}
+      onClick={handleOpenMenu}
+      onContextMenu={handleOpenMenu}
+    >
       {!isMine ? (
         <Avatar
           name={senderLabel}
@@ -498,26 +551,39 @@ function DirectMessageRow({
         </div>
 
         <div className="dm-message-bubble">
-          {hasContent ? (
-            <p>
-              <LinkifiedText
-                linkClassName="dm-message-link"
-                text={message.content}
-              />
+          {isDeleted ? (
+            <p className="deleted-message-text">
+              <span aria-hidden="true">🚫</span>{" "}
+              {isMine
+                ? "Vous avez supprimé ce message"
+                : "Ce message a été supprimé"}
             </p>
-          ) : null}
-          <MessageAttachmentList
-            attachments={attachments}
-            onPreviewImage={onPreviewImage}
-          />
-          {!hasContent && !attachments.length ? (
-            <p>
-              <LinkifiedText
-                linkClassName="dm-message-link"
-                text={message.content}
+          ) : (
+            <>
+              {hasContent ? (
+                <p>
+                  <LinkifiedText
+                    linkClassName="dm-message-link"
+                    text={message.content}
+                  />
+                </p>
+              ) : null}
+
+              <MessageAttachmentList
+                attachments={attachments}
+                onPreviewImage={onPreviewImage}
               />
-            </p>
-          ) : null}
+
+              {!hasContent && !attachments.length ? (
+                <p>
+                  <LinkifiedText
+                    linkClassName="dm-message-link"
+                    text={message.content}
+                  />
+                </p>
+              ) : null}
+            </>
+          )}
         </div>
 
         <div className="dm-message-footer">
@@ -527,7 +593,7 @@ function DirectMessageRow({
             <span>Recu</span>
           )}
 
-          {!message.pending && !message.failed ? (
+          {!message.pending && !message.failed && !isDeleted ? (
             <div className="dm-message-tools" aria-hidden="true">
               <button type="button" tabIndex={-1}>
                 <Icon name="smile" size={13} />
@@ -560,6 +626,11 @@ interface ConversationMessageListProps {
   currentUserId?: string;
   currentUserName?: string;
   currentUserAvatarUrl?: string | null;
+  activeMessageId?: string;
+  onOpenMessageMenu: (
+    event: MouseEvent<HTMLElement>,
+    message: LocalMessage
+  ) => void;
 }
 
 export function ConversationMessageList({
@@ -571,6 +642,8 @@ export function ConversationMessageList({
   currentUserId,
   currentUserName,
   currentUserAvatarUrl,
+  activeMessageId,
+  onOpenMessageMenu,
 }: ConversationMessageListProps) {
   const [previewAttachment, setPreviewAttachment] =
     useState<LocalAttachment | null>(null);
@@ -595,6 +668,7 @@ export function ConversationMessageList({
 
               {group.items.map((message) => {
                 const isMine = currentUserId === message.senderId;
+
                 const senderLabel = isMine
                   ? currentUserName || message.senderName || "Vous"
                   : message.senderName || title;
@@ -607,7 +681,9 @@ export function ConversationMessageList({
                     senderLabel={senderLabel}
                     presence={presence}
                     avatarSrc={isMine ? currentUserAvatarUrl : avatarUrl}
+                    active={activeMessageId === message.id}
                     onPreviewImage={setPreviewAttachment}
+                    onOpenMessageMenu={onOpenMessageMenu}
                   />
                 );
               })}

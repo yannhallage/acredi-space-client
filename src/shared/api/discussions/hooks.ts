@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { discussionService } from "./service";
-import type { SendGroupMessageRequest } from "./types";
+import type {
+  GroupMessageResponse,
+  SendGroupMessageRequest,
+  UpdateGroupMessageRequest,
+} from "./types";
 
 interface UseDiscussionQueryOptions {
   enabled?: boolean;
@@ -14,6 +18,20 @@ export const discussionKeys = {
   messages: (discussionId: string) =>
     [...discussionKeys.all, "messages", discussionId] as const,
 };
+
+
+function replaceMessageInCache(
+  oldMessages: GroupMessageResponse[] | undefined,
+  updatedMessage: GroupMessageResponse
+) {
+  if (!oldMessages) {
+    return oldMessages;
+  }
+
+  return oldMessages.map((message) =>
+    message.id === updatedMessage.id ? updatedMessage : message
+  );
+}
 
 export function useMyDiscussions(options: UseDiscussionQueryOptions = {}) {
   const { enabled = true } = options;
@@ -85,6 +103,62 @@ export function useSendDiscussionMessage() {
         queryKey: discussionKeys.messages(message.discussionId),
       });
       queryClient.invalidateQueries({ queryKey: discussionKeys.mine() });
+    },
+  });
+}
+
+export function useUpdateDiscussionMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      discussionId,
+      messageId,
+      request,
+    }: {
+      discussionId: string;
+      messageId: string;
+      request: UpdateGroupMessageRequest;
+    }) => discussionService.updateMessage(discussionId, messageId, request),
+
+    onSuccess: (updatedMessage) => {
+      queryClient.setQueryData<GroupMessageResponse[]>(
+        discussionKeys.messages(updatedMessage.discussionId),
+        (oldMessages) => replaceMessageInCache(oldMessages, updatedMessage)
+      );
+
+      queryClient.invalidateQueries({
+        queryKey: discussionKeys.messages(updatedMessage.discussionId),
+      });
+    },
+  });
+}
+
+export function useDeleteDiscussionMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      discussionId,
+      messageId,
+    }: {
+      discussionId: string;
+      messageId: string;
+    }) => discussionService.deleteMessage(discussionId, messageId),
+
+    onSuccess: (deletedMessage) => {
+      queryClient.setQueryData<GroupMessageResponse[]>(
+        discussionKeys.messages(deletedMessage.discussionId),
+        (oldMessages) => replaceMessageInCache(oldMessages, deletedMessage)
+      );
+
+      queryClient.invalidateQueries({
+        queryKey: discussionKeys.messages(deletedMessage.discussionId),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: discussionKeys.mine(),
+      });
     },
   });
 }
