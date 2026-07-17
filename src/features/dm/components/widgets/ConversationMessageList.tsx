@@ -1,8 +1,16 @@
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useState, type MouseEvent, type RefObject } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
+import {
+  DeleteMessageConfirmModal,
+  MessageActionsMenu,
+  MessageShareModal,
+  type MessageAction,
+  type MessageMenuAnchor,
+} from "../../../../shared/components/messaging";
 import { loadAssetUrl, type LoadedAssetUrl } from "../../../../shared/api/http";
-import type { Presence } from "../../../../shared/types";
+import { useUsersQuery } from "../../../../shared/api/users";
+import type { Presence, User } from "../../../../shared/types";
 import {
   downloadFileById,
   downloadFileFromUrl,
@@ -462,14 +470,24 @@ function DirectMessageRow({
   senderLabel,
   presence,
   avatarSrc,
+  menuOpen,
+  menuAnchor,
   onPreviewImage,
+  onOpenMenu,
+  onCloseMenu,
+  onAction,
 }: {
   message: LocalMessage;
   isMine: boolean;
   senderLabel: string;
   presence?: Presence;
   avatarSrc?: string | null;
+  menuOpen: boolean;
+  menuAnchor: MessageMenuAnchor | null;
   onPreviewImage: (attachment: LocalAttachment) => void;
+  onOpenMenu: (anchor: MessageMenuAnchor) => void;
+  onCloseMenu: () => void;
+  onAction: (action: MessageAction) => void;
 }) {
   const time = formatTime(message.createdAt);
   const status = message.failed
@@ -479,6 +497,24 @@ function DirectMessageRow({
       : "Envoye";
   const attachments = message.attachments ?? [];
   const hasContent = Boolean(message.content?.trim());
+  const canAct = !message.pending && !message.failed;
+
+  function handleBubbleContextMenu(event: MouseEvent<HTMLDivElement>) {
+    if (!canAct) return;
+
+    const target = event.target as HTMLElement;
+    if (
+      target.closest(
+        "button, input, textarea, .dm-attachment-item, .dm-image-attachment",
+      )
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    onOpenMenu({ x: event.clientX, y: event.clientY });
+  }
 
   return (
     <article className={`dm-message-row ${isMine ? "mine" : ""}`}>
@@ -497,27 +533,41 @@ function DirectMessageRow({
           {time ? <time>{time}</time> : null}
         </div>
 
-        <div className="dm-message-bubble">
-          {hasContent ? (
-            <p>
-              <LinkifiedText
-                linkClassName="dm-message-link"
-                text={message.content}
-              />
-            </p>
-          ) : null}
-          <MessageAttachmentList
-            attachments={attachments}
-            onPreviewImage={onPreviewImage}
+        <div className="message-actions-shell">
+          <div
+            className={`dm-message-bubble${menuOpen ? " is-menu-open" : ""}`}
+            onContextMenu={handleBubbleContextMenu}
+          >
+            {hasContent ? (
+              <p>
+                <LinkifiedText
+                  linkClassName="dm-message-link"
+                  text={message.content}
+                />
+              </p>
+            ) : null}
+            <MessageAttachmentList
+              attachments={attachments}
+              onPreviewImage={onPreviewImage}
+            />
+            {!hasContent && !attachments.length ? (
+              <p>
+                <LinkifiedText
+                  linkClassName="dm-message-link"
+                  text={message.content}
+                />
+              </p>
+            ) : null}
+          </div>
+
+          <MessageActionsMenu
+            open={menuOpen}
+            anchor={menuAnchor}
+            canEdit={isMine}
+            canDelete={isMine}
+            onClose={onCloseMenu}
+            onAction={onAction}
           />
-          {!hasContent && !attachments.length ? (
-            <p>
-              <LinkifiedText
-                linkClassName="dm-message-link"
-                text={message.content}
-              />
-            </p>
-          ) : null}
         </div>
 
         <div className="dm-message-footer">
@@ -526,17 +576,6 @@ function DirectMessageRow({
           ) : (
             <span>Recu</span>
           )}
-
-          {!message.pending && !message.failed ? (
-            <div className="dm-message-tools" aria-hidden="true">
-              <button type="button" tabIndex={-1}>
-                <Icon name="smile" size={13} />
-              </button>
-              <button type="button" tabIndex={-1}>
-                <Icon name="arrowRight" size={13} />
-              </button>
-            </div>
-          ) : null}
         </div>
       </div>
 
@@ -560,6 +599,8 @@ interface ConversationMessageListProps {
   currentUserId?: string;
   currentUserName?: string;
   currentUserAvatarUrl?: string | null;
+  onEditMessage: (message: LocalMessage) => void;
+  onDeleteMessage: (messageId: string) => void;
 }
 
 export function ConversationMessageList({
@@ -571,9 +612,61 @@ export function ConversationMessageList({
   currentUserId,
   currentUserName,
   currentUserAvatarUrl,
+  onEditMessage,
+  onDeleteMessage,
 }: ConversationMessageListProps) {
   const [previewAttachment, setPreviewAttachment] =
     useState<LocalAttachment | null>(null);
+  const [openMenuMessageId, setOpenMenuMessageId] = useState<string | null>(
+    null,
+  );
+  const [menuAnchor, setMenuAnchor] = useState<MessageMenuAnchor | null>(null);
+  const [messageToDelete, setMessageToDelete] = useState<LocalMessage | null>(
+    null,
+  );
+  const [messageToShare, setMessageToShare] = useState<LocalMessage | null>(
+    null,
+  );
+  const [sharingUserId, setSharingUserId] = useState<string | null>(null);
+
+  const usersQuery = useUsersQuery({ enabled: Boolean(messageToShare) });
+
+  function handleAction(message: LocalMessage, action: MessageAction) {
+    if (action === "copy") {
+      const text = message.content?.trim() ?? "";
+      if (text) {
+        void navigator.clipboard.writeText(text).catch(() => undefined);
+      }
+      return;
+    }
+
+    if (action === "edit") {
+      onEditMessage(message);
+      return;
+    }
+
+    if (action === "delete") {
+      setMessageToDelete(message);
+      return;
+    }
+
+    setMessageToShare(message);
+  }
+
+  function handleConfirmDelete() {
+    if (!messageToDelete) return;
+    onDeleteMessage(messageToDelete.id);
+    setMessageToDelete(null);
+  }
+
+  function handleShareSelect(user: User) {
+    setSharingUserId(user.id);
+
+    window.setTimeout(() => {
+      setSharingUserId(null);
+      setMessageToShare(null);
+    }, 400);
+  }
 
   return (
     <>
@@ -607,7 +700,20 @@ export function ConversationMessageList({
                     senderLabel={senderLabel}
                     presence={presence}
                     avatarSrc={isMine ? currentUserAvatarUrl : avatarUrl}
+                    menuOpen={openMenuMessageId === message.id}
+                    menuAnchor={
+                      openMenuMessageId === message.id ? menuAnchor : null
+                    }
                     onPreviewImage={setPreviewAttachment}
+                    onOpenMenu={(anchor) => {
+                      setMenuAnchor(anchor);
+                      setOpenMenuMessageId(message.id);
+                    }}
+                    onCloseMenu={() => {
+                      setOpenMenuMessageId(null);
+                      setMenuAnchor(null);
+                    }}
+                    onAction={(action) => handleAction(message, action)}
                   />
                 );
               })}
@@ -619,6 +725,28 @@ export function ConversationMessageList({
       <MessageImagePreviewOverlay
         attachment={previewAttachment}
         onClose={() => setPreviewAttachment(null)}
+      />
+
+      <DeleteMessageConfirmModal
+        open={Boolean(messageToDelete)}
+        onClose={() => setMessageToDelete(null)}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <MessageShareModal
+        open={Boolean(messageToShare)}
+        loading={usersQuery.loading}
+        error={usersQuery.error}
+        users={usersQuery.data ?? []}
+        sharingUserId={sharingUserId}
+        onClose={() => {
+          if (sharingUserId) return;
+          setMessageToShare(null);
+        }}
+        onRetry={() => {
+          void usersQuery.refetch();
+        }}
+        onSelect={handleShareSelect}
       />
     </>
   );

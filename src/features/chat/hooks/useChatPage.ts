@@ -30,6 +30,7 @@ import {
 import {
   buildMessageContentWithFile,
   groupMessagesByDay,
+  parseMessageContent,
   type LocalGroupMessage,
 } from "../utils/messageFormat";
 
@@ -71,6 +72,9 @@ export function useChatPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [localMessages, setLocalMessages] = useState<LocalGroupMessage[]>([]);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const deletedMessageIdsRef = useRef(new Set<string>());
+  const editedMessagesRef = useRef(new Map<string, string>());
 
   const {
     data: discussions = [],
@@ -138,10 +142,6 @@ export function useChatPage() {
   }
 
   useEffect(() => {
-    closeMentionSuggestions();
-  }, [activeDiscussion?.id]);
-
-  useEffect(() => {
     setLocalMessages((currentMessages) => {
       const pendingMessages = currentMessages.filter(
         (message) => message.pending || message.failed,
@@ -160,9 +160,27 @@ export function useChatPage() {
           ),
       );
 
-      return [...messages, ...pendingWithoutDuplicate];
+      const syncedMessages = messages
+        .filter((message) => !deletedMessageIdsRef.current.has(message.id))
+        .map((message) => {
+          const editedContent = editedMessagesRef.current.get(message.id);
+          return editedContent
+            ? { ...message, content: editedContent }
+            : message;
+        });
+
+      return [...syncedMessages, ...pendingWithoutDuplicate];
     });
   }, [messages]);
+
+  useEffect(() => {
+    closeMentionSuggestions();
+    setEditingMessageId(null);
+    setDraft("");
+    setSelectedFile(null);
+    deletedMessageIdsRef.current.clear();
+    editedMessagesRef.current.clear();
+  }, [activeDiscussion?.id]);
 
   useEffect(() => {
     if (
@@ -266,6 +284,25 @@ export function useChatPage() {
     const content = draft.trim();
     const fileToSend = selectedFile;
 
+    if (editingMessageId) {
+      if (!content) {
+        return;
+      }
+
+      editedMessagesRef.current.set(editingMessageId, content);
+      setLocalMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          message.id === editingMessageId
+            ? { ...message, content }
+            : message,
+        ),
+      );
+      setEditingMessageId(null);
+      setDraft("");
+      closeMentionSuggestions();
+      return;
+    }
+
     if ((!content && !fileToSend) || !activeDiscussion || !user?.id) {
       return;
     }
@@ -351,6 +388,38 @@ export function useChatPage() {
     } finally {
       setUploadingFile(false);
     }
+  }
+
+  function handleCancelEdit() {
+    setEditingMessageId(null);
+    setDraft("");
+  }
+
+  function handleEditMessage(message: LocalGroupMessage) {
+    const { text } = parseMessageContent(message.content);
+
+    setEditingMessageId(message.id);
+    setDraft(text);
+    setSelectedFile(null);
+    setEmojiOpen(false);
+    closeMentionSuggestions();
+
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+    });
+  }
+
+  function handleDeleteMessage(messageId: string) {
+    deletedMessageIdsRef.current.add(messageId);
+    editedMessagesRef.current.delete(messageId);
+
+    if (editingMessageId === messageId) {
+      handleCancelEdit();
+    }
+
+    setLocalMessages((currentMessages) =>
+      currentMessages.filter((message) => message.id !== messageId),
+    );
   }
 
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -447,5 +516,9 @@ export function useChatPage() {
     handlePickFile,
     handleFileChange,
     removeSelectedFile,
+    isEditing: Boolean(editingMessageId),
+    handleEditMessage,
+    handleDeleteMessage,
+    handleCancelEdit,
   };
 }

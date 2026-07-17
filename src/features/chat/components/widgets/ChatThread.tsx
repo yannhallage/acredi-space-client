@@ -1,8 +1,20 @@
-import type { ReactNode, RefObject } from "react";
+import { useState, type ReactNode, type RefObject } from "react";
 
+import {
+  DeleteMessageConfirmModal,
+  MessageShareModal,
+  type MessageAction,
+  type MessageMenuAnchor,
+} from "../../../../shared/components/messaging";
+import { useUsersQuery } from "../../../../shared/api/users";
+import type { User } from "../../../../shared/types";
 import { Avatar, EmptyState, Icon } from "../../../../shared/ui";
 
-import { groupMessagesByDay, type LocalGroupMessage } from "../../utils/messageFormat";
+import {
+  groupMessagesByDay,
+  parseMessageContent,
+  type LocalGroupMessage,
+} from "../../utils/messageFormat";
 import { messageSkeletons } from "../skeletons/ChatThreadSkeleton";
 import { MessageBubble } from "./MessageBubble";
 
@@ -17,6 +29,8 @@ interface ChatThreadProps {
   messageListRef: RefObject<HTMLDivElement | null>;
   getUserAvatarUrl: (userId: string) => string | null | undefined;
   composer: ReactNode;
+  onEditMessage: (message: LocalGroupMessage) => void;
+  onDeleteMessage: (messageId: string) => void;
 }
 
 export function ChatThread({
@@ -30,7 +44,59 @@ export function ChatThread({
   messageListRef,
   getUserAvatarUrl,
   composer,
+  onEditMessage,
+  onDeleteMessage,
 }: ChatThreadProps) {
+  const [openMenuMessageId, setOpenMenuMessageId] = useState<string | null>(
+    null,
+  );
+  const [menuAnchor, setMenuAnchor] = useState<MessageMenuAnchor | null>(null);
+  const [messageToDelete, setMessageToDelete] =
+    useState<LocalGroupMessage | null>(null);
+  const [messageToShare, setMessageToShare] =
+    useState<LocalGroupMessage | null>(null);
+  const [sharingUserId, setSharingUserId] = useState<string | null>(null);
+
+  const usersQuery = useUsersQuery({ enabled: Boolean(messageToShare) });
+
+  function handleAction(message: LocalGroupMessage, action: MessageAction) {
+    if (action === "copy") {
+      const { text } = parseMessageContent(message.content);
+      const value = text.trim();
+      if (value) {
+        void navigator.clipboard.writeText(value).catch(() => undefined);
+      }
+      return;
+    }
+
+    if (action === "edit") {
+      onEditMessage(message);
+      return;
+    }
+
+    if (action === "delete") {
+      setMessageToDelete(message);
+      return;
+    }
+
+    setMessageToShare(message);
+  }
+
+  function handleConfirmDelete() {
+    if (!messageToDelete) return;
+    onDeleteMessage(messageToDelete.id);
+    setMessageToDelete(null);
+  }
+
+  function handleShareSelect(user: User) {
+    setSharingUserId(user.id);
+
+    window.setTimeout(() => {
+      setSharingUserId(null);
+      setMessageToShare(null);
+    }, 400);
+  }
+
   return (
     <section className="thread-panel">
       <header className="thread-header dm-thread-header">
@@ -94,6 +160,19 @@ export function ChatThread({
                   key={message.id}
                   message={message}
                   avatarSrc={getUserAvatarUrl(message.senderId)}
+                  menuOpen={openMenuMessageId === message.id}
+                  menuAnchor={
+                    openMenuMessageId === message.id ? menuAnchor : null
+                  }
+                  onOpenMenu={(anchor) => {
+                    setMenuAnchor(anchor);
+                    setOpenMenuMessageId(message.id);
+                  }}
+                  onCloseMenu={() => {
+                    setOpenMenuMessageId(null);
+                    setMenuAnchor(null);
+                  }}
+                  onAction={(action) => handleAction(message, action)}
                 />
               ))}
             </div>
@@ -111,6 +190,28 @@ export function ChatThread({
       </div>
 
       {composer}
+
+      <DeleteMessageConfirmModal
+        open={Boolean(messageToDelete)}
+        onClose={() => setMessageToDelete(null)}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <MessageShareModal
+        open={Boolean(messageToShare)}
+        loading={usersQuery.loading}
+        error={usersQuery.error}
+        users={usersQuery.data ?? []}
+        sharingUserId={sharingUserId}
+        onClose={() => {
+          if (sharingUserId) return;
+          setMessageToShare(null);
+        }}
+        onRetry={() => {
+          void usersQuery.refetch();
+        }}
+        onSelect={handleShareSelect}
+      />
     </section>
   );
 }

@@ -176,6 +176,7 @@ export function DirectMessagesPage() {
         subtitle: threadSubtitle,
         presence: activeParticipant?.presence ?? ("offline" as const),
         avatarUrl: activeParticipant?.avatarUrl,
+        contact: activeParticipant,
         messages,
         loading: messagesLoading,
         refreshing: isRefreshingDiscussion,

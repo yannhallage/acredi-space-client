@@ -62,6 +62,8 @@ export function ChatPage() {
         messageGroups={page.messageGroups}
         messageListRef={page.messageListRef}
         getUserAvatarUrl={page.getUserAvatarUrl}
+        onEditMessage={page.handleEditMessage}
+        onDeleteMessage={page.handleDeleteMessage}
         composer={
           <ChatComposer
             discussionName={page.discussionName}
@@ -71,6 +73,7 @@ export function ChatPage() {
             uploadingFile={page.uploadingFile}
             sendError={page.sendError}
             sendPending={page.sendPending}
+            isEditing={page.isEditing}
             mentionActiveIndex={page.mentionActiveIndex}
             filteredMentionMembers={page.filteredMentionMembers}
             mentionDropdownOpen={page.mentionDropdownOpen}
@@ -87,6 +90,7 @@ export function ChatPage() {
             onPickFile={page.handlePickFile}
             onFileChange={page.handleFileChange}
             onRemoveSelectedFile={page.removeSelectedFile}
+            onCancelEdit={page.handleCancelEdit}
           />
         }
       />

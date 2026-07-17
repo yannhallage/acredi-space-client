@@ -15,6 +15,7 @@ interface ConversationHeaderProps {
   showBackButton?: boolean;
   onAvatarPreview: () => void;
   onRefresh?: () => void;
+  onContactDetails?: () => void;
   onClose?: () => void;
 }
 
@@ -28,6 +29,7 @@ export function ConversationHeader({
   showBackButton = false,
   onAvatarPreview,
   onRefresh,
+  onContactDetails,
   onClose,
 }: ConversationHeaderProps) {
   const subtitleLabel = formatSubtitle(subtitle);
@@ -77,6 +79,16 @@ export function ConversationHeader({
       </div>
 
       <div className="dm-thread-actions">
+        {onContactDetails ? (
+          <button
+            type="button"
+            aria-label="Infos du contact"
+            title="Infos du contact"
+            onClick={onContactDetails}
+          >
+            <Icon name="info" size={17} />
+          </button>
+        ) : null}
         <button
           type="button"
           aria-label="Recharger la discussion"
