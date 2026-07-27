@@ -83,7 +83,17 @@ function getMessagePreview(message: MessageResponse) {
     return "";
   }
 
-  return preview;
+  if (/^https?:\/\/\S+$/i.test(preview) || /^www\.\S+$/i.test(preview)) {
+    try {
+      const href = preview.startsWith("www.") ? `https://${preview}` : preview;
+      const host = new URL(href).hostname.replace(/^www\./, "");
+      return `Lien : ${host}`;
+    } catch {
+      return "Lien partage";
+    }
+  }
+
+  return preview.length > 80 ? `${preview.slice(0, 77)}...` : preview;
 }
 
 function getConversationPreview(

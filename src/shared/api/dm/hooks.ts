@@ -104,3 +104,46 @@ export function useSendMessageMutation() {
     },
   });
 }
+
+export function useDeleteMessageMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<MessageResponse, Error, string>({
+    mutationFn: (messageId) => chatService.deleteMessage(messageId),
+    onSuccess: (message) => {
+      queryClient.setQueryData<MessageResponse[]>(
+        chatKeys.messages(message.channelId),
+        (oldMessages = []) =>
+          oldMessages.map((item) => (item.id === message.id ? message : item)),
+      );
+
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.channels(),
+      });
+    },
+  });
+}
+
+export function useUpdateMessageMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    MessageResponse,
+    Error,
+    { messageId: string; content: string }
+  >({
+    mutationFn: ({ messageId, content }) =>
+      chatService.updateMessage(messageId, content),
+    onSuccess: (message) => {
+      queryClient.setQueryData<MessageResponse[]>(
+        chatKeys.messages(message.channelId),
+        (oldMessages = []) =>
+          oldMessages.map((item) => (item.id === message.id ? message : item)),
+      );
+
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.channels(),
+      });
+    },
+  });
+}

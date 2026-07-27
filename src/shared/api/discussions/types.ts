@@ -59,6 +59,7 @@ export interface GroupMessageResponse {
   content: string;
   createdAt: string;
   editedAt?: string | null;
+  deletedAt?: string | null;
 }
 
 export interface SendGroupMessageRequest {

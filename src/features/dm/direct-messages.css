@@ -295,6 +295,7 @@
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .dm-badge {
@@ -831,9 +832,12 @@
 .dm-message-bubble {
   width: fit-content;
   max-width: 100%;
+  min-width: 0;
   border-radius: 14px;
   background: var(--surface-2);
   color: var(--text);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .dm-message-row.mine .dm-message-bubble {
@@ -844,11 +848,33 @@
 .dm-message-bubble p {
   margin: 0;
   padding: 11px 14px;
+  max-width: 100%;
   color: inherit;
   font-size: 14px;
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.dm-message-bubble.is-deleted {
+  background: transparent;
+  border: 1px dashed var(--border-subtle);
+}
+
+.dm-message-row.mine .dm-message-bubble.is-deleted {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.dm-message-deleted {
+  font-style: italic;
+  opacity: 0.78;
+  color: var(--muted) !important;
+}
+
+.dm-message-row.mine .dm-message-deleted {
+  color: color-mix(in srgb, var(--accent) 75%, var(--muted)) !important;
 }
 
 .dm-message-link {
@@ -856,6 +882,8 @@
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .dm-message-link:hover,
@@ -1698,4 +1726,336 @@
 
 .dm-page .dm-thread-actions {
   margin-left: auto;
+}
+
+.dm-message-bubble {
+  cursor: default;
+  user-select: text;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.dm-message-bubble.is-menu-open {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.dm-composer-edit-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dm-composer-edit-banner strong {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.dm-composer-edit-banner button {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.contact-details-overlay {
+  padding: 28px;
+}
+
+.contact-details-modal {
+  width: min(560px, calc(100vw - 56px));
+  height: auto;
+  max-height: none;
+  margin: 0;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: visible;
+}
+
+.contact-details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  min-width: 0;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.contact-details-header h2 {
+  margin: 0;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.contact-details-body,
+.contact-details-skeleton {
+  padding: 0 0 22px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  overflow: visible;
+}
+
+.contact-details-body > *,
+.contact-details-skeleton > * {
+  min-width: 0;
+}
+
+.contact-details-hero {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 24px 28px 14px;
+  text-align: center;
+  background:
+    radial-gradient(
+      120% 80% at 50% 0%,
+      color-mix(in srgb, var(--accent) 14%, transparent),
+      transparent 62%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-2) 85%, transparent) 0%,
+      transparent 100%
+    );
+}
+
+.contact-details-avatar-wrap {
+  position: relative;
+  margin-bottom: 4px;
+}
+
+.contact-details-avatar-wrap::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  pointer-events: none;
+}
+
+.contact-details-profile h3,
+.contact-details-hero h3 {
+  margin: 0;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 24px;
+  font-weight: 750;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.contact-details-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: 4px;
+}
+
+.contact-details-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.contact-details-chip.role {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.contact-details-chip.presence {
+  color: var(--muted);
+}
+
+.contact-details-meta {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0 24px;
+}
+
+.contact-details-meta-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.contact-details-meta-text {
+  min-width: 0;
+}
+
+.contact-details-meta-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.contact-details-meta-row small {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.contact-details-meta-row strong {
+  display: block;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.contact-details-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0 24px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  text-align: left;
+}
+
+.contact-details-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.contact-details-section-head h4,
+.contact-details-section h4 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.contact-details-bio-placeholder {
+  margin: 0;
+  min-width: 0;
+  color: var(--muted-soft, var(--muted));
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.contact-details-skeleton {
+  gap: 18px;
+}
+
+.contact-details-hero-skeleton {
+  min-height: 180px;
+}
+
+.contact-details-skeleton-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 999px;
+}
+
+.contact-details-skeleton-name {
+  width: 56%;
+  height: 22px;
+}
+
+.contact-details-skeleton-chips {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.contact-details-skeleton-chips .skeleton-pill {
+  width: 88px;
+  height: 30px;
+  border-radius: 999px;
+}
+
+.contact-details-skeleton-meta,
+.contact-details-skeleton-bio {
+  margin: 0 24px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  display: grid;
+  gap: 10px;
+}
+
+@media (max-width: 720px) {
+  .contact-details-overlay {
+    padding: 16px;
+  }
+
+  .contact-details-modal {
+    width: min(560px, calc(100vw - 32px));
+    max-height: none;
+  }
+
+  .contact-details-hero {
+    padding: 20px 20px 12px;
+  }
+
+  .contact-details-meta,
+  .contact-details-section,
+  .contact-details-skeleton-meta,
+  .contact-details-skeleton-bio {
+    margin-left: 16px;
+    margin-right: 16px;
+  }
 }

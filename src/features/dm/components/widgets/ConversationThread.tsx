@@ -9,13 +9,14 @@ import {
 } from "react";
 import type { EmojiClickData } from "emoji-picker-react";
 
-import { useSendMessageMutation } from "../../../../shared/api/dm/hooks";
+import { useDeleteMessageMutation, useSendMessageMutation, useUpdateMessageMutation } from "../../../../shared/api/dm/hooks";
 import type { MessageResponse } from "../../../../shared/api/dm/types";
 import { resolveAssetUrl } from "../../../../shared/api/http";
 import { useAuth } from "../../../../shared/context";
-import type { Presence } from "../../../../shared/types";
+import type { Presence, User } from "../../../../shared/types";
 import { Icon } from "../../../../shared/ui";
 
+import { ContactDetailsModal } from "../modals/ContactDetailsModal";
 import { DmConversationThreadLoadingSkeleton } from "../skeletons/DmSkeletons";
 import {
   createPendingAttachments,
@@ -37,6 +38,7 @@ interface DirectConversationThreadProps {
   subtitle?: string;
   presence?: Presence;
   avatarUrl?: string | null;
+  contact?: User | null;
   messages: MessageResponse[];
   loading?: boolean;
   refreshing?: boolean;
@@ -51,6 +53,7 @@ export function DirectConversationThread({
   subtitle = "Message direct",
   presence = "offline",
   avatarUrl,
+  contact = null,
   messages,
   loading = false,
   refreshing = false,
@@ -62,24 +65,30 @@ export function DirectConversationThread({
   const [content, setContent] = useState("");
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
+  const [contactDetailsOpen, setContactDetailsOpen] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [showScrollAnchor, setShowScrollAnchor] = useState(false);
   const sendMessageMutation = useSendMessageMutation();
+  const deleteMessageMutation = useDeleteMessageMutation();
+  const updateMessageMutation = useUpdateMessageMutation();
   const messageListRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
   const previousChannelIdRef = useRef<string | null>(null);
+  const editedMessagesRef = useRef(new Map<string, string>());
 
   const messageGroups = useMemo(
     () => groupMessagesByDay(localMessages),
     [localMessages]
   );
   const canPreviewAvatar = Boolean(resolveAssetUrl(avatarUrl));
+  const isEditing = Boolean(editingMessageId);
   const canSend =
-    (Boolean(content.trim()) || selectedFiles.length > 0) &&
+    (Boolean(content.trim()) || (!isEditing && selectedFiles.length > 0)) &&
     !sendMessageMutation.isPending;
 
   const getBottomDistance = useCallback((list: HTMLDivElement) => {
@@ -125,7 +134,14 @@ export function DirectConversationThread({
           )
       );
 
-      return [...messages, ...pendingWithoutDuplicate];
+      const syncedMessages = messages.map((message) => {
+          const editedContent = editedMessagesRef.current.get(message.id);
+          return editedContent && !message.deletedAt
+            ? { ...message, content: editedContent }
+            : message;
+        });
+
+      return [...syncedMessages, ...pendingWithoutDuplicate];
     });
   }, [messages]);
 
@@ -170,12 +186,16 @@ export function DirectConversationThread({
 
   useEffect(() => {
     setAvatarPreviewOpen(false);
+    setContactDetailsOpen(false);
+    setEditingMessageId(null);
+    editedMessagesRef.current.clear();
   }, [channelId]);
 
   useEffect(() => {
     setContent("");
     setSelectedFiles([]);
     setEmojiPickerOpen(false);
+    setEditingMessageId(null);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -241,11 +261,81 @@ export function DirectConversationThread({
     );
   }
 
+  function handleCancelEdit() {
+    setEditingMessageId(null);
+    setContent("");
+  }
+
+  function handleEditMessage(message: LocalMessage) {
+    setEditingMessageId(message.id);
+    setContent(message.content ?? "");
+    setSelectedFiles([]);
+    setEmojiPickerOpen(false);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+    });
+  }
+
+  function handleDeleteMessage(messageId: string) {
+    editedMessagesRef.current.delete(messageId);
+
+    if (editingMessageId === messageId) {
+      handleCancelEdit();
+    }
+
+    const deletedAt = new Date().toISOString();
+
+    setLocalMessages((currentMessages) =>
+      currentMessages.map((message) =>
+        message.id === messageId
+          ? { ...message, content: "", attachments: [], deletedAt }
+          : message,
+      ),
+    );
+
+    if (messageId.startsWith("temp-") || messageId.startsWith("pending-")) {
+      return;
+    }
+
+    deleteMessageMutation.mutate(messageId);
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const value = content.trim();
     const files = [...selectedFiles];
+
+    if (editingMessageId) {
+      if (!value) {
+        return;
+      }
+
+      const editedAt = new Date().toISOString();
+      editedMessagesRef.current.set(editingMessageId, value);
+      setLocalMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          message.id === editingMessageId
+            ? { ...message, content: value, editedAt }
+            : message
+        )
+      );
+
+      const messageId = editingMessageId;
+      setEditingMessageId(null);
+      setContent("");
+
+      if (!messageId.startsWith("temp-") && !messageId.startsWith("pending-")) {
+        updateMessageMutation.mutate({ messageId, content: value });
+      }
+
+      return;
+    }
 
     if ((!value && !files.length) || !user?.id || sendMessageMutation.isPending) {
       return;
@@ -345,6 +435,7 @@ export function DirectConversationThread({
           refreshing={refreshing}
           showBackButton={showBackButton}
           onAvatarPreview={() => setAvatarPreviewOpen(true)}
+          onContactDetails={() => setContactDetailsOpen(true)}
           onRefresh={onRefresh}
           onClose={onClose}
         />
@@ -359,6 +450,8 @@ export function DirectConversationThread({
             currentUserId={user?.id}
             currentUserName={user?.name}
             currentUserAvatarUrl={user?.avatarUrl}
+            onEditMessage={handleEditMessage}
+            onDeleteMessage={handleDeleteMessage}
           />
 
           <button
@@ -382,6 +475,7 @@ export function DirectConversationThread({
           selectedFiles={selectedFiles}
           canSend={canSend}
           isSending={sendMessageMutation.isPending}
+          isEditing={isEditing}
           emojiPickerOpen={emojiPickerOpen}
           textareaRef={textareaRef}
           fileInputRef={fileInputRef}
@@ -392,6 +486,7 @@ export function DirectConversationThread({
           onRemoveSelectedFile={handleRemoveSelectedFile}
           onToggleEmojiPicker={() => setEmojiPickerOpen((current) => !current)}
           onEmojiSelect={handleEmojiSelect}
+          onCancelEdit={handleCancelEdit}
         />
       </div>
 
@@ -401,6 +496,16 @@ export function DirectConversationThread({
         presence={presence}
         src={avatarUrl}
         onClose={() => setAvatarPreviewOpen(false)}
+      />
+
+      <ContactDetailsModal
+        open={contactDetailsOpen}
+        contact={contact}
+        fallbackName={title}
+        fallbackPresence={presence}
+        fallbackAvatarUrl={avatarUrl}
+        fallbackRole={subtitle}
+        onClose={() => setContactDetailsOpen(false)}
       />
     </section>
   );

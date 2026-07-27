@@ -1,12 +1,21 @@
 import { http } from "../http";
 import { profileEndpoints } from "./endpoints";
-import type { ApiResponse, ProfileResponse } from "./types";
+import type { ApiResponse, CreateProfileRequest, ProfileResponse } from "./types";
 
 function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
   return response.data;
 }
 
 export const profileService = {
+  async create(request: CreateProfileRequest): Promise<ProfileResponse> {
+    const response = await http.post<ApiResponse<ProfileResponse>>(
+      profileEndpoints.create,
+      request
+    );
+
+    return unwrapApiResponse(response);
+  },
+
   async findAll(): Promise<ProfileResponse[]> {
     const response = await http.get<ApiResponse<ProfileResponse[]>>(
       profileEndpoints.findAll

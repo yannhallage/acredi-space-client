@@ -20,6 +20,8 @@ export interface MessageResponse {
   senderName: string;
   content: string;
   createdAt: string;
+  editedAt?: string | null;
+  deletedAt?: string | null;
 }
 
 export interface SendMessageRequest {

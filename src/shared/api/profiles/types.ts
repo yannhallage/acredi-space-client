@@ -6,6 +6,11 @@ export interface ProfileResponse {
   updatedAt?: string;
 }
 
+export interface CreateProfileRequest {
+  name: string;
+  description?: string | null;
+}
+
 export interface ApiResponse<TData = unknown> {
   data: TData;
   message: string;

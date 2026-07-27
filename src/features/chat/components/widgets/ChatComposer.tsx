@@ -25,6 +25,7 @@ interface ChatComposerProps {
   uploadingFile: boolean;
   sendError: string | null;
   sendPending: boolean;
+  isEditing?: boolean;
   mentionActiveIndex: number;
   filteredMentionMembers: MentionMemberOption[];
   mentionDropdownOpen: boolean;
@@ -41,6 +42,7 @@ interface ChatComposerProps {
   onPickFile: () => void;
   onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onRemoveSelectedFile: () => void;
+  onCancelEdit?: () => void;
 }
 
 export function ChatComposer({
@@ -51,6 +53,7 @@ export function ChatComposer({
   uploadingFile,
   sendError,
   sendPending,
+  isEditing = false,
   mentionActiveIndex,
   filteredMentionMembers,
   mentionDropdownOpen,
@@ -67,9 +70,21 @@ export function ChatComposer({
   onPickFile,
   onFileChange,
   onRemoveSelectedFile,
+  onCancelEdit,
 }: ChatComposerProps) {
   return (
     <form className="composer" onSubmit={onSubmit}>
+      {isEditing ? (
+        <div className="composer-edit-banner">
+          <span>
+            <strong>Modification</strong> — editez votre message
+          </span>
+          <button type="button" onClick={onCancelEdit}>
+            Annuler
+          </button>
+        </div>
+      ) : null}
+
       <div className="composer-input-wrapper">
         <MentionSuggestions
           activeIndex={mentionActiveIndex}
@@ -96,11 +111,15 @@ export function ChatComposer({
               event.currentTarget.selectionStart,
             );
           }}
-          placeholder={`Ecrire dans ${discussionName}...`}
+          placeholder={
+            isEditing
+              ? "Modifier le message..."
+              : `Ecrire dans ${discussionName}...`
+          }
         />
       </div>
 
-      {selectedFile ? (
+      {selectedFile && !isEditing ? (
         <div className="composer-file-preview">
           <Icon name="paperclip" size={14} />
           <span>{selectedFile.name}</span>
@@ -145,14 +164,16 @@ export function ChatComposer({
           ) : null}
         </div>
 
-        <button
-          className="icon-button"
-          type="button"
-          aria-label="Joindre un fichier"
-          onClick={onPickFile}
-        >
-          <Icon name="paperclip" size={15} />
-        </button>
+        {!isEditing ? (
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="Joindre un fichier"
+            onClick={onPickFile}
+          >
+            <Icon name="paperclip" size={15} />
+          </button>
+        ) : null}
 
         <input ref={fileInputRef} type="file" hidden onChange={onFileChange} />
 
@@ -160,16 +181,22 @@ export function ChatComposer({
 
         {sendError ? <small className="chat-send-error">{sendError}</small> : null}
 
-        <small>{uploadingFile ? "Upload..." : "Entree envoyer"}</small>
+        <small>
+          {uploadingFile
+            ? "Upload..."
+            : isEditing
+              ? "Entree enregistrer"
+              : "Entree envoyer"}
+        </small>
         <button
           className="button primary"
           type="submit"
           disabled={
             (!draft.trim() && !selectedFile) || sendPending || uploadingFile
           }
-          aria-label="Envoyer"
+          aria-label={isEditing ? "Enregistrer" : "Envoyer"}
         >
-          <Icon name="send" size={14} />
+          <Icon name={isEditing ? "check" : "send"} size={14} />
         </button>
       </div>
     </form>

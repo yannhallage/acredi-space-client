@@ -1,5 +1,6 @@
 export { ChatComposer } from "./widgets/ChatComposer";
 export { ChatDetailsPanel } from "./widgets/ChatDetailsPanel";
+export { ChatDiscussionDrawer } from "./widgets/ChatDiscussionDrawer";
 export { ChatSidebar } from "./widgets/ChatSidebar";
 export { ChatThread } from "./widgets/ChatThread";
 export { MessageBubble } from "./widgets/MessageBubble";
