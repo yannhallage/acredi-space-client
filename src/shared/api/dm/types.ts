@@ -36,6 +36,8 @@ export interface MessageResponse {
   senderName?: string;
   content: string;
   createdAt: string;
+  editedAt?: string | null;
+  deletedAt?: string | null;
   attachments?: ChatAttachmentResponse[];
 }
 
@@ -43,4 +45,8 @@ export interface SendMessageRequest {
   channelId: string;
   content: string;
   files?: globalThis.File[];
+}
+
+export interface UpdateMessageRequest {
+  content: string;
 }

@@ -88,4 +88,22 @@ export const chatService = {
 
     return unwrapApiResponse(response);
   },
+
+  async deleteMessage(messageId: string): Promise<MessageResponse> {
+    const response = await http.delete<ApiResponse<MessageResponse>>(
+      chatEndpoints.message(messageId)
+    );
+    return unwrapApiResponse(response);
+  },
+
+  async updateMessage(
+    messageId: string,
+    content: string
+  ): Promise<MessageResponse> {
+    const response = await http.patch<ApiResponse<MessageResponse>>(
+      chatEndpoints.message(messageId),
+      { content }
+    );
+    return unwrapApiResponse(response);
+  },
 };

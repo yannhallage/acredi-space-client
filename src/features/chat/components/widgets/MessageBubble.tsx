@@ -38,6 +38,7 @@ export function MessageBubble({
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const mine = user?.id === message.senderId;
+  const isDeleted = Boolean(message.deletedAt);
 
   const statusLabel = message.failed
     ? "échec"
@@ -46,7 +47,7 @@ export function MessageBubble({
       : null;
 
   const { text, attachment } = parseMessageContent(message.content);
-  const canAct = !message.pending && !message.failed;
+  const canAct = !isDeleted && !message.pending && !message.failed;
 
   async function handleDownloadAttachment() {
     if (!attachment?.id) {
@@ -89,37 +90,44 @@ export function MessageBubble({
             <strong>{mine ? "Vous" : message.senderName}</strong>
             <small>
               {formatMessageTime(message.createdAt)}
+              {message.editedAt && !isDeleted ? " · modifié" : ""}
               {statusLabel ? ` · ${statusLabel}` : ""}
             </small>
           </header>
 
-          {text ? <p>{text}</p> : null}
+          {isDeleted ? (
+            <p className="message-deleted">Ce message a été supprimé</p>
+          ) : (
+            <>
+              {text ? <p>{text}</p> : null}
 
-          {attachment ? (
-            <button
-              className="message-file-attachment"
-              type="button"
-              disabled={!attachment.id}
-              onClick={() => {
-                void handleDownloadAttachment();
-              }}
-            >
-              <Icon name="paperclip" size={14} />
-              <span>{attachment.name}</span>
-              <small>{attachment.id ? "Télécharger" : "Envoi..."}</small>
-            </button>
-          ) : null}
+              {attachment ? (
+                <button
+                  className="message-file-attachment"
+                  type="button"
+                  disabled={!attachment.id}
+                  onClick={() => {
+                    void handleDownloadAttachment();
+                  }}
+                >
+                  <Icon name="paperclip" size={14} />
+                  <span>{attachment.name}</span>
+                  <small>{attachment.id ? "Télécharger" : "Envoi..."}</small>
+                </button>
+              ) : null}
 
-          {downloadError ? (
-            <small className="chat-send-error">{downloadError}</small>
-          ) : null}
+              {downloadError ? (
+                <small className="chat-send-error">{downloadError}</small>
+              ) : null}
+            </>
+          )}
         </div>
 
         <MessageActionsMenu
           open={menuOpen}
           anchor={menuAnchor}
-          canEdit={mine}
-          canDelete={mine}
+          canEdit={mine && canAct}
+          canDelete={mine && canAct}
           onClose={onCloseMenu}
           onAction={onAction}
         />

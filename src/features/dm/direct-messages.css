@@ -857,6 +857,26 @@
   word-break: break-word;
 }
 
+.dm-message-bubble.is-deleted {
+  background: transparent;
+  border: 1px dashed var(--border-subtle);
+}
+
+.dm-message-row.mine .dm-message-bubble.is-deleted {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.dm-message-deleted {
+  font-style: italic;
+  opacity: 0.78;
+  color: var(--muted) !important;
+}
+
+.dm-message-row.mine .dm-message-deleted {
+  color: color-mix(in srgb, var(--accent) 75%, var(--muted)) !important;
+}
+
 .dm-message-link {
   color: var(--accent);
   font-weight: 600;

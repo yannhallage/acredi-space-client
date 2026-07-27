@@ -126,4 +126,25 @@ export const discussionService = {
 
     return unwrapApiResponse(response);
   },
+
+  async deleteMessage(discussionId: string, messageId: string) {
+    const response = await http.delete<ApiResponse<GroupMessageResponse>>(
+      discussionEndpoints.message(discussionId, messageId)
+    );
+
+    return unwrapApiResponse(response);
+  },
+
+  async updateMessage(
+    discussionId: string,
+    messageId: string,
+    content: string
+  ) {
+    const response = await http.patch<ApiResponse<GroupMessageResponse>>(
+      discussionEndpoints.message(discussionId, messageId),
+      { content }
+    );
+
+    return unwrapApiResponse(response);
+  },
 };

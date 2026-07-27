@@ -9,7 +9,7 @@ import {
 } from "react";
 import type { EmojiClickData } from "emoji-picker-react";
 
-import { useSendMessageMutation } from "../../../../shared/api/dm/hooks";
+import { useDeleteMessageMutation, useSendMessageMutation, useUpdateMessageMutation } from "../../../../shared/api/dm/hooks";
 import type { MessageResponse } from "../../../../shared/api/dm/types";
 import { resolveAssetUrl } from "../../../../shared/api/http";
 import { useAuth } from "../../../../shared/context";
@@ -71,13 +71,14 @@ export function DirectConversationThread({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [showScrollAnchor, setShowScrollAnchor] = useState(false);
   const sendMessageMutation = useSendMessageMutation();
+  const deleteMessageMutation = useDeleteMessageMutation();
+  const updateMessageMutation = useUpdateMessageMutation();
   const messageListRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
   const previousChannelIdRef = useRef<string | null>(null);
-  const deletedMessageIdsRef = useRef(new Set<string>());
   const editedMessagesRef = useRef(new Map<string, string>());
 
   const messageGroups = useMemo(
@@ -133,11 +134,9 @@ export function DirectConversationThread({
           )
       );
 
-      const syncedMessages = messages
-        .filter((message) => !deletedMessageIdsRef.current.has(message.id))
-        .map((message) => {
+      const syncedMessages = messages.map((message) => {
           const editedContent = editedMessagesRef.current.get(message.id);
-          return editedContent
+          return editedContent && !message.deletedAt
             ? { ...message, content: editedContent }
             : message;
         });
@@ -189,7 +188,6 @@ export function DirectConversationThread({
     setAvatarPreviewOpen(false);
     setContactDetailsOpen(false);
     setEditingMessageId(null);
-    deletedMessageIdsRef.current.clear();
     editedMessagesRef.current.clear();
   }, [channelId]);
 
@@ -284,16 +282,27 @@ export function DirectConversationThread({
   }
 
   function handleDeleteMessage(messageId: string) {
-    deletedMessageIdsRef.current.add(messageId);
     editedMessagesRef.current.delete(messageId);
 
     if (editingMessageId === messageId) {
       handleCancelEdit();
     }
 
+    const deletedAt = new Date().toISOString();
+
     setLocalMessages((currentMessages) =>
-      currentMessages.filter((message) => message.id !== messageId)
+      currentMessages.map((message) =>
+        message.id === messageId
+          ? { ...message, content: "", attachments: [], deletedAt }
+          : message,
+      ),
     );
+
+    if (messageId.startsWith("temp-") || messageId.startsWith("pending-")) {
+      return;
+    }
+
+    deleteMessageMutation.mutate(messageId);
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -307,16 +316,24 @@ export function DirectConversationThread({
         return;
       }
 
+      const editedAt = new Date().toISOString();
       editedMessagesRef.current.set(editingMessageId, value);
       setLocalMessages((currentMessages) =>
         currentMessages.map((message) =>
           message.id === editingMessageId
-            ? { ...message, content: value }
+            ? { ...message, content: value, editedAt }
             : message
         )
       );
+
+      const messageId = editingMessageId;
       setEditingMessageId(null);
       setContent("");
+
+      if (!messageId.startsWith("temp-") && !messageId.startsWith("pending-")) {
+        updateMessageMutation.mutate({ messageId, content: value });
+      }
+
       return;
     }
 

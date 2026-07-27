@@ -28,7 +28,10 @@ interface ChatThreadProps {
   messageGroups: ReturnType<typeof groupMessagesByDay>;
   messageListRef: RefObject<HTMLDivElement | null>;
   getUserAvatarUrl: (userId: string) => string | null | undefined;
+  typingLabel?: string | null;
   composer: ReactNode;
+  showBackButton?: boolean;
+  onClose?: () => void;
   onEditMessage: (message: LocalGroupMessage) => void;
   onDeleteMessage: (messageId: string) => void;
 }
@@ -43,7 +46,10 @@ export function ChatThread({
   messageGroups,
   messageListRef,
   getUserAvatarUrl,
+  typingLabel = null,
   composer,
+  showBackButton = false,
+  onClose,
   onEditMessage,
   onDeleteMessage,
 }: ChatThreadProps) {
@@ -100,6 +106,18 @@ export function ChatThread({
   return (
     <section className="thread-panel">
       <header className="thread-header dm-thread-header">
+        {showBackButton && onClose ? (
+          <button
+            type="button"
+            className="chat-thread-back-button"
+            aria-label="Retour aux discussions"
+            title="Retour"
+            onClick={onClose}
+          >
+            <Icon name="arrowLeft" size={18} />
+          </button>
+        ) : null}
+
         <Avatar name={discussionName} size={36} />
         <span>
           <strong>{discussionName}</strong>
@@ -188,6 +206,17 @@ export function ChatThread({
           <p className="chat-refresh-hint">Actualisation...</p>
         ) : null}
       </div>
+
+      {typingLabel ? (
+        <div className="typing-row" aria-live="polite">
+          <span className="typing-row-dots" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+          <span>{typingLabel}</span>
+        </div>
+      ) : null}
 
       {composer}
 

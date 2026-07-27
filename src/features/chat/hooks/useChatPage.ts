@@ -12,10 +12,13 @@ import type { EmojiClickData } from "emoji-picker-react";
 
 import {
   formatDiscussionMemberName,
+  useDeleteDiscussionMessage,
   useDiscussion,
   useDiscussionMessages,
+  useDiscussionMessagesSocket,
   useMyDiscussions,
   useSendDiscussionMessage,
+  useUpdateDiscussionMessage,
 } from "../../../shared/api/discussions";
 import { fileService } from "../../../shared/api/files/service";
 import { useUsersQuery } from "../../../shared/api/users";
@@ -33,11 +36,13 @@ import {
   parseMessageContent,
   type LocalGroupMessage,
 } from "../utils/messageFormat";
+import { useChatMobileLayout } from "./useChatMobileLayout";
 
 export function useChatPage() {
   const { channelId: discussionId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isMobileLayout = useChatMobileLayout();
 
   const usersQuery = useUsersQuery();
 
@@ -73,7 +78,6 @@ export function useChatPage() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [localMessages, setLocalMessages] = useState<LocalGroupMessage[]>([]);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const deletedMessageIdsRef = useRef(new Set<string>());
   const editedMessagesRef = useRef(new Map<string, string>());
 
   const {
@@ -88,11 +92,19 @@ export function useChatPage() {
       return null;
     }
 
-    return (
-      discussions.find((discussion) => discussion.id === discussionId) ??
-      discussions[0]
-    );
-  }, [discussionId, discussions]);
+    if (discussionId) {
+      return (
+        discussions.find((discussion) => discussion.id === discussionId) ??
+        (isMobileLayout ? null : discussions[0])
+      );
+    }
+
+    if (isMobileLayout) {
+      return null;
+    }
+
+    return discussions[0];
+  }, [discussionId, discussions, isMobileLayout]);
 
   const {
     data: discussionDetail,
@@ -133,7 +145,39 @@ export function useChatPage() {
     enabled: Boolean(activeDiscussion?.id),
   });
 
+  const { typingUsers, publishTyping } = useDiscussionMessagesSocket(
+    activeDiscussion?.id,
+  );
+
   const sendMessage = useSendDiscussionMessage();
+  const deleteMessage = useDeleteDiscussionMessage();
+  const updateMessage = useUpdateDiscussionMessage();
+  const lastTypingSentRef = useRef(false);
+  const typingStopTimeoutRef = useRef<number | null>(null);
+
+  function stopTypingSignal() {
+    if (typingStopTimeoutRef.current) {
+      window.clearTimeout(typingStopTimeoutRef.current);
+      typingStopTimeoutRef.current = null;
+    }
+
+    if (lastTypingSentRef.current) {
+      lastTypingSentRef.current = false;
+      publishTyping(false);
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (typingStopTimeoutRef.current) {
+        window.clearTimeout(typingStopTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    stopTypingSignal();
+  }, [activeDiscussion?.id]);
 
   function closeMentionSuggestions() {
     setMentionQuery(null);
@@ -160,11 +204,9 @@ export function useChatPage() {
           ),
       );
 
-      const syncedMessages = messages
-        .filter((message) => !deletedMessageIdsRef.current.has(message.id))
-        .map((message) => {
+      const syncedMessages = messages.map((message) => {
           const editedContent = editedMessagesRef.current.get(message.id);
-          return editedContent
+          return editedContent && !message.deletedAt
             ? { ...message, content: editedContent }
             : message;
         });
@@ -178,19 +220,29 @@ export function useChatPage() {
     setEditingMessageId(null);
     setDraft("");
     setSelectedFile(null);
-    deletedMessageIdsRef.current.clear();
     editedMessagesRef.current.clear();
   }, [activeDiscussion?.id]);
 
   useEffect(() => {
     if (
       !discussionsLoading &&
+      !isMobileLayout &&
       activeDiscussion &&
       discussionId !== activeDiscussion.id
     ) {
       navigate(`/app/chat/${activeDiscussion.id}`, { replace: true });
     }
-  }, [activeDiscussion, discussionId, discussionsLoading, navigate]);
+  }, [
+    activeDiscussion,
+    discussionId,
+    discussionsLoading,
+    isMobileLayout,
+    navigate,
+  ]);
+
+  function handleCloseDiscussion() {
+    navigate("/app/chat");
+  }
 
   useEffect(() => {
     const list = messageListRef.current;
@@ -229,6 +281,23 @@ export function useChatPage() {
     const { value, selectionStart } = event.target;
     setDraft(value);
     syncMentionContext(value, selectionStart);
+
+    if (value.trim()) {
+      if (!lastTypingSentRef.current) {
+        lastTypingSentRef.current = true;
+        publishTyping(true);
+      }
+
+      if (typingStopTimeoutRef.current) {
+        window.clearTimeout(typingStopTimeoutRef.current);
+      }
+
+      typingStopTimeoutRef.current = window.setTimeout(() => {
+        stopTypingSignal();
+      }, 2500);
+    } else {
+      stopTypingSignal();
+    }
   }
 
   function selectMentionMember(member: MentionMemberOption) {
@@ -280,6 +349,7 @@ export function useChatPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    stopTypingSignal();
 
     const content = draft.trim();
     const fileToSend = selectedFile;
@@ -289,17 +359,37 @@ export function useChatPage() {
         return;
       }
 
-      editedMessagesRef.current.set(editingMessageId, content);
+      const currentMessage = localMessages.find(
+        (message) => message.id === editingMessageId,
+      );
+      const { attachment } = parseMessageContent(currentMessage?.content ?? "");
+      const nextContent = attachment
+        ? buildMessageContentWithFile(content, attachment)
+        : content;
+      const editedAt = new Date().toISOString();
+
+      editedMessagesRef.current.set(editingMessageId, nextContent);
       setLocalMessages((currentMessages) =>
         currentMessages.map((message) =>
           message.id === editingMessageId
-            ? { ...message, content }
+            ? { ...message, content: nextContent, editedAt }
             : message,
         ),
       );
+
+      const messageId = editingMessageId;
       setEditingMessageId(null);
       setDraft("");
       closeMentionSuggestions();
+
+      if (activeDiscussion?.id && !messageId.startsWith("temp-")) {
+        updateMessage.mutate({
+          discussionId: activeDiscussion.id,
+          messageId,
+          content: nextContent,
+        });
+      }
+
       return;
     }
 
@@ -410,16 +500,30 @@ export function useChatPage() {
   }
 
   function handleDeleteMessage(messageId: string) {
-    deletedMessageIdsRef.current.add(messageId);
     editedMessagesRef.current.delete(messageId);
 
     if (editingMessageId === messageId) {
       handleCancelEdit();
     }
 
+    const deletedAt = new Date().toISOString();
+
     setLocalMessages((currentMessages) =>
-      currentMessages.filter((message) => message.id !== messageId),
+      currentMessages.map((message) =>
+        message.id === messageId
+          ? { ...message, content: "", deletedAt }
+          : message,
+      ),
     );
+
+    if (!activeDiscussion?.id || messageId.startsWith("temp-")) {
+      return;
+    }
+
+    deleteMessage.mutate({
+      discussionId: activeDiscussion.id,
+      messageId,
+    });
   }
 
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -475,7 +579,24 @@ export function useChatPage() {
   const discussionName = discussionDetail?.name ?? activeDiscussion?.name ?? "";
   const teamName = discussionDetail?.teamName ?? activeDiscussion?.teamName;
 
+  const typingLabel = useMemo(() => {
+    if (!typingUsers.length) {
+      return null;
+    }
+
+    if (typingUsers.length === 1) {
+      return `${typingUsers[0].userName} est en train d'ecrire…`;
+    }
+
+    if (typingUsers.length === 2) {
+      return `${typingUsers[0].userName} et ${typingUsers[1].userName} ecrivent…`;
+    }
+
+    return `${typingUsers.length} personnes ecrivent…`;
+  }, [typingUsers]);
+
   return {
+    isMobileLayout,
     discussions,
     discussionsLoading,
     discussionsError,
@@ -520,5 +641,8 @@ export function useChatPage() {
     handleEditMessage,
     handleDeleteMessage,
     handleCancelEdit,
+    handleCloseDiscussion,
+    typingUsers,
+    typingLabel,
   };
 }

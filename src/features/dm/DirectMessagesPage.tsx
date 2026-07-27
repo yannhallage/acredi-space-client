@@ -3,9 +3,10 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import {
   useChannelsQuery,
+  useChannelMessagesSocket,
   useMessagesQueries,
   useMessagesQuery,
-} from "../../shared/api/dm/hooks";
+} from "../../shared/api/dm";
 import type { ChannelResponse, MessageResponse } from "../../shared/api/dm/types";
 import { useUsersQuery } from "../../shared/api/users";
 import type { User } from "../../shared/types";
@@ -69,6 +70,8 @@ export function DirectMessagesPage() {
     () => directChannels.map((channel) => channel.id),
     [directChannels]
   );
+
+  useChannelMessagesSocket(directChannelIds);
 
   const channelMessagesQueries = useMessagesQueries(directChannelIds);
 

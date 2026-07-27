@@ -490,14 +490,17 @@ function DirectMessageRow({
   onAction: (action: MessageAction) => void;
 }) {
   const time = formatTime(message.createdAt);
+  const isDeleted = Boolean(message.deletedAt);
   const status = message.failed
     ? "Echec d'envoi"
     : message.pending
       ? "Envoi..."
-      : "Envoye";
+      : message.editedAt
+        ? "Modifié"
+        : "Envoye";
   const attachments = message.attachments ?? [];
   const hasContent = Boolean(message.content?.trim());
-  const canAct = !message.pending && !message.failed;
+  const canAct = !isDeleted && !message.pending && !message.failed;
 
   function handleBubbleContextMenu(event: MouseEvent<HTMLDivElement>) {
     if (!canAct) return;
@@ -535,36 +538,42 @@ function DirectMessageRow({
 
         <div className="message-actions-shell">
           <div
-            className={`dm-message-bubble${menuOpen ? " is-menu-open" : ""}`}
+            className={`dm-message-bubble${menuOpen ? " is-menu-open" : ""}${isDeleted ? " is-deleted" : ""}`}
             onContextMenu={handleBubbleContextMenu}
           >
-            {hasContent ? (
-              <p>
-                <LinkifiedText
-                  linkClassName="dm-message-link"
-                  text={message.content}
+            {isDeleted ? (
+              <p className="dm-message-deleted">Ce message a été supprimé</p>
+            ) : (
+              <>
+                {hasContent ? (
+                  <p>
+                    <LinkifiedText
+                      linkClassName="dm-message-link"
+                      text={message.content}
+                    />
+                  </p>
+                ) : null}
+                <MessageAttachmentList
+                  attachments={attachments}
+                  onPreviewImage={onPreviewImage}
                 />
-              </p>
-            ) : null}
-            <MessageAttachmentList
-              attachments={attachments}
-              onPreviewImage={onPreviewImage}
-            />
-            {!hasContent && !attachments.length ? (
-              <p>
-                <LinkifiedText
-                  linkClassName="dm-message-link"
-                  text={message.content}
-                />
-              </p>
-            ) : null}
+                {!hasContent && !attachments.length ? (
+                  <p>
+                    <LinkifiedText
+                      linkClassName="dm-message-link"
+                      text={message.content}
+                    />
+                  </p>
+                ) : null}
+              </>
+            )}
           </div>
 
           <MessageActionsMenu
             open={menuOpen}
             anchor={menuAnchor}
-            canEdit={isMine}
-            canDelete={isMine}
+            canEdit={isMine && canAct}
+            canDelete={isMine && canAct}
             onClose={onCloseMenu}
             onAction={onAction}
           />
