@@ -36,7 +36,56 @@
 #           cache-from: type=gha
 #           cache-to: type=gha,mode=max
 
+# name: Build & Push Frontend
+
+# on:
+#   push:
+#     branches: [deploy]
+#   workflow_dispatch:
+
+# env:
+#   # IMAGE_NAME: ${{ vars.DOCKERHUB_USERNAME }}/acredispace-front
+#   IMAGE_NAME: ${{ vars.DOCKERHUB_USERNAME }}/acredispace-prod-front
+
+# jobs:
+#   build-and-push:
+#     name: Build et push de l'image Docker
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v6
+
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v4
+
+#       - name: Login Docker Hub
+#         uses: docker/login-action@v4
+#         with:
+#           username: ${{ vars.DOCKERHUB_USERNAME }}
+#           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+#       - name: Build et push
+#         uses: docker/build-push-action@v7
+#         with:
+#           context: .
+#           push: true
+#           tags: |
+#             ${{ env.IMAGE_NAME }}:latest
+#             ${{ env.IMAGE_NAME }}:${{ github.sha }}
+#           cache-from: type=gha
+#           cache-to: type=gha,mode=max
+
+
+
+# name: Build & Push Frontend
+
 name: Build & Push Frontend
+
+# Necessary permissions so the workflow can push to GHCR
+permissions:
+  contents: read
+  packages: write
 
 on:
   push:
@@ -44,8 +93,10 @@ on:
   workflow_dispatch:
 
 env:
-  # IMAGE_NAME: ${{ vars.DOCKERHUB_USERNAME }}/acredispace-front
-  IMAGE_NAME: ${{ vars.DOCKERHUB_USERNAME }}/acredispace-prod-front
+  # Docker Hub image name (uses repository variable)
+  IMAGE_NAME_DH: ${{ vars.DOCKERHUB_USERNAME }}/acredispace-prod-front
+  # GitHub Container Registry image name
+  IMAGE_NAME_GHCR: ghcr.io/${{ github.repository_owner }}/acredispace-prod-front
 
 jobs:
   build-and-push:
@@ -65,13 +116,22 @@ jobs:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Login GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build et push
         uses: docker/build-push-action@v7
         with:
           context: .
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME_DH }}:latest
+            ${{ env.IMAGE_NAME_DH }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME_GHCR }}:latest
+            ${{ env.IMAGE_NAME_GHCR }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
