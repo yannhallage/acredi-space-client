@@ -38,6 +38,93 @@ function applyCachedPresence(users: User[]) {
   });
 }
 
+interface UseUserQueryOptions {
+  enabled?: boolean;
+  userId?: string | null;
+}
+
+export function useUserQuery(options: UseUserQueryOptions = {}) {
+  const { enabled = true, userId } = options;
+  const canFetch = Boolean(enabled && userId);
+  const [state, setState] = useState<QueryState<User>>({
+    data: null,
+    error: null,
+    loading: canFetch,
+  });
+
+  const refetch = useCallback(async () => {
+    if (!canFetch || !userId) {
+      setState({ data: null, error: null, loading: false });
+      return null;
+    }
+
+    setState((current) => ({ ...current, error: null, loading: true }));
+
+    try {
+      const data = applyCachedPresence([await userService.findById(userId)])[0];
+      setState({ data, error: null, loading: false });
+      return data;
+    } catch (error) {
+      const normalizedError = toError(error);
+      setState({ data: null, error: normalizedError, loading: false });
+      throw normalizedError;
+    }
+  }, [canFetch, userId]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!canFetch || !userId) {
+      setState({ data: null, error: null, loading: false });
+      return () => {
+        active = false;
+      };
+    }
+
+    setState((current) => ({ ...current, error: null, loading: true }));
+    userService
+      .findById(userId)
+      .then((user) => applyCachedPresence([user])[0])
+      .then((data) => {
+        if (active) {
+          setState({ data, error: null, loading: false });
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setState({ data: null, error: toError(error), loading: false });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [canFetch, userId]);
+
+  useEffect(() => {
+    if (!canFetch || !userId) {
+      return undefined;
+    }
+
+    return addPresenceListener((entry) => {
+      if (entry.userId !== userId) {
+        return;
+      }
+
+      setState((current) => {
+        if (!current.data) {
+          return current;
+        }
+
+        const [patched] = patchUsersPresence([current.data], entry);
+        return { ...current, data: patched };
+      });
+    });
+  }, [canFetch, userId]);
+
+  return { ...state, refetch };
+}
+
 export function useUsersQuery(options: UseUsersQueryOptions = {}) {
   const { enabled = true } = options;
   const [state, setState] = useState<QueryState<User[]>>({
