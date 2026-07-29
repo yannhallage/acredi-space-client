@@ -10,6 +10,7 @@ import {
 import type { EmojiClickData } from "emoji-picker-react";
 
 import { useDeleteMessageMutation, useSendMessageMutation, useUpdateMessageMutation } from "../../../../shared/api/dm/hooks";
+import type { ChannelTypingUser } from "../../../../shared/api/dm/useChannelMessagesSocket";
 import type { MessageResponse } from "../../../../shared/api/dm/types";
 import { resolveAssetUrl } from "../../../../shared/api/http";
 import { useAuth } from "../../../../shared/context";
@@ -43,6 +44,8 @@ interface DirectConversationThreadProps {
   loading?: boolean;
   refreshing?: boolean;
   showBackButton?: boolean;
+  typingUsers?: ChannelTypingUser[];
+  publishTyping?: (typing: boolean) => void;
   onRefresh?: () => void;
   onClose?: () => void;
 }
@@ -58,6 +61,8 @@ export function DirectConversationThread({
   loading = false,
   refreshing = false,
   showBackButton = false,
+  typingUsers = [],
+  publishTyping,
   onRefresh,
   onClose,
 }: DirectConversationThreadProps) {
@@ -80,6 +85,8 @@ export function DirectConversationThread({
   const shouldStickToBottomRef = useRef(true);
   const previousChannelIdRef = useRef<string | null>(null);
   const editedMessagesRef = useRef(new Map<string, string>());
+  const lastTypingSentRef = useRef(false);
+  const typingStopTimeoutRef = useRef<number | null>(null);
 
   const messageGroups = useMemo(
     () => groupMessagesByDay(localMessages),
@@ -90,6 +97,48 @@ export function DirectConversationThread({
   const canSend =
     (Boolean(content.trim()) || (!isEditing && selectedFiles.length > 0)) &&
     !sendMessageMutation.isPending;
+
+  const isTyping = typingUsers.length > 0;
+
+  const stopTypingSignal = useCallback(() => {
+    if (typingStopTimeoutRef.current) {
+      window.clearTimeout(typingStopTimeoutRef.current);
+      typingStopTimeoutRef.current = null;
+    }
+
+    if (lastTypingSentRef.current) {
+      lastTypingSentRef.current = false;
+      publishTyping?.(false);
+    }
+  }, [publishTyping]);
+
+  const handleContentChange = useCallback(
+    (value: string) => {
+      setContent(value);
+
+      if (isEditing) {
+        return;
+      }
+
+      if (value.trim()) {
+        if (!lastTypingSentRef.current) {
+          lastTypingSentRef.current = true;
+          publishTyping?.(true);
+        }
+
+        if (typingStopTimeoutRef.current) {
+          window.clearTimeout(typingStopTimeoutRef.current);
+        }
+
+        typingStopTimeoutRef.current = window.setTimeout(() => {
+          stopTypingSignal();
+        }, 2500);
+      } else {
+        stopTypingSignal();
+      }
+    },
+    [isEditing, publishTyping, stopTypingSignal],
+  );
 
   const getBottomDistance = useCallback((list: HTMLDivElement) => {
     return Math.max(0, list.scrollHeight - list.scrollTop - list.clientHeight);
@@ -164,6 +213,7 @@ export function DirectConversationThread({
     syncScrollAnchorVisibility();
   }, [
     channelId,
+    isTyping,
     localMessages,
     scrollMessageListToBottom,
     syncScrollAnchorVisibility,
@@ -192,6 +242,7 @@ export function DirectConversationThread({
   }, [channelId]);
 
   useEffect(() => {
+    stopTypingSignal();
     setContent("");
     setSelectedFiles([]);
     setEmojiPickerOpen(false);
@@ -200,7 +251,15 @@ export function DirectConversationThread({
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  }, [channelId]);
+  }, [channelId, stopTypingSignal]);
+
+  useEffect(() => {
+    return () => {
+      if (typingStopTimeoutRef.current) {
+        window.clearTimeout(typingStopTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!emojiPickerOpen) return;
@@ -267,6 +326,7 @@ export function DirectConversationThread({
   }
 
   function handleEditMessage(message: LocalMessage) {
+    stopTypingSignal();
     setEditingMessageId(message.id);
     setContent(message.content ?? "");
     setSelectedFiles([]);
@@ -307,6 +367,7 @@ export function DirectConversationThread({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    stopTypingSignal();
 
     const value = content.trim();
     const files = [...selectedFiles];
@@ -406,7 +467,7 @@ export function DirectConversationThread({
       content.slice(cursorEnd);
     const nextCursorPosition = cursorStart + emojiData.emoji.length;
 
-    setContent(nextContent);
+    handleContentChange(nextContent);
     setEmojiPickerOpen(false);
 
     requestAnimationFrame(() => {
@@ -450,6 +511,7 @@ export function DirectConversationThread({
             currentUserId={user?.id}
             currentUserName={user?.name}
             currentUserAvatarUrl={user?.avatarUrl}
+            isTyping={isTyping}
             onEditMessage={handleEditMessage}
             onDeleteMessage={handleDeleteMessage}
           />
@@ -480,7 +542,7 @@ export function DirectConversationThread({
           textareaRef={textareaRef}
           fileInputRef={fileInputRef}
           emojiPickerRef={emojiPickerRef}
-          onContentChange={setContent}
+          onContentChange={handleContentChange}
           onSubmit={handleSubmit}
           onFileInputChange={handleFileInputChange}
           onRemoveSelectedFile={handleRemoveSelectedFile}

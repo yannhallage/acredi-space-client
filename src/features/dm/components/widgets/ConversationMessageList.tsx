@@ -7,10 +7,14 @@ import {
   MessageShareModal,
   type MessageAction,
   type MessageMenuAnchor,
+  type MessageShareTarget,
 } from "../../../../shared/components/messaging";
 import { loadAssetUrl, type LoadedAssetUrl } from "../../../../shared/api/http";
+import { useShareMessageMutation } from "../../../../shared/api/dm/hooks";
+import { discussionService } from "../../../../shared/api/discussions/service";
+import { useTeamsQuery } from "../../../../shared/api/teams";
 import { useUsersQuery } from "../../../../shared/api/users";
-import type { Presence, User } from "../../../../shared/types";
+import type { Presence } from "../../../../shared/types";
 import {
   downloadFileById,
   downloadFileFromUrl,
@@ -501,6 +505,8 @@ function DirectMessageRow({
   const attachments = message.attachments ?? [];
   const hasContent = Boolean(message.content?.trim());
   const canAct = !isDeleted && !message.pending && !message.failed;
+  const isShared = message.kind === "SHARED";
+  const forwardedFrom = message.forwardedFrom;
 
   function handleBubbleContextMenu(event: MouseEvent<HTMLDivElement>) {
     if (!canAct) return;
@@ -545,6 +551,26 @@ function DirectMessageRow({
               <p className="dm-message-deleted">Ce message a été supprimé</p>
             ) : (
               <>
+                {isShared ? (
+                  <div className="dm-message-shared">
+                    <span className="dm-message-shared-label">
+                      <Icon name="share" size={12} />
+                      Message partagé
+                    </span>
+                    {/* {forwardedFrom ? (
+                      <div className="dm-message-shared-quote">
+                        <strong>
+                          {forwardedFrom.deletedAt
+                            ? "Message original indisponible"
+                            : forwardedFrom.senderName}
+                        </strong>
+                        {!forwardedFrom.deletedAt && forwardedFrom.content ? (
+                          <p>{forwardedFrom.content}</p>
+                        ) : null}
+                      </div>
+                    ) : null} */}
+                  </div>
+                ) : null}
                 {hasContent ? (
                   <p>
                     <LinkifiedText
@@ -608,6 +634,7 @@ interface ConversationMessageListProps {
   currentUserId?: string;
   currentUserName?: string;
   currentUserAvatarUrl?: string | null;
+  isTyping?: boolean;
   onEditMessage: (message: LocalMessage) => void;
   onDeleteMessage: (messageId: string) => void;
 }
@@ -621,6 +648,7 @@ export function ConversationMessageList({
   currentUserId,
   currentUserName,
   currentUserAvatarUrl,
+  isTyping = false,
   onEditMessage,
   onDeleteMessage,
 }: ConversationMessageListProps) {
@@ -636,9 +664,15 @@ export function ConversationMessageList({
   const [messageToShare, setMessageToShare] = useState<LocalMessage | null>(
     null,
   );
-  const [sharingUserId, setSharingUserId] = useState<string | null>(null);
+  const [sharingTargetId, setSharingTargetId] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   const usersQuery = useUsersQuery({ enabled: Boolean(messageToShare) });
+  const teamsQuery = useTeamsQuery({ enabled: Boolean(messageToShare) });
+  const shareMessageMutation = useShareMessageMutation();
+
+  const shareLoading = usersQuery.loading || teamsQuery.loading;
+  const shareQueryError = usersQuery.error ?? teamsQuery.error;
 
   function handleAction(message: LocalMessage, action: MessageAction) {
     if (action === "copy") {
@@ -659,6 +693,7 @@ export function ConversationMessageList({
       return;
     }
 
+    setShareError(null);
     setMessageToShare(message);
   }
 
@@ -668,13 +703,45 @@ export function ConversationMessageList({
     setMessageToDelete(null);
   }
 
-  function handleShareSelect(user: User) {
-    setSharingUserId(user.id);
+  async function handleShareSelect(target: MessageShareTarget) {
+    if (!messageToShare || sharingTargetId) return;
 
-    window.setTimeout(() => {
-      setSharingUserId(null);
+    const targetId = target.type === "user" ? target.user.id : target.team.id;
+    setSharingTargetId(targetId);
+    setShareError(null);
+
+    try {
+      if (target.type === "user") {
+        await shareMessageMutation.mutateAsync({
+          messageId: messageToShare.id,
+          request: { userId: target.user.id },
+        });
+      } else {
+        const discussions = await discussionService.findByTeam(target.team.id);
+        const discussion = discussions[0];
+
+        if (!discussion) {
+          throw new Error(
+            "Cette equipe n'a pas encore de discussion de groupe.",
+          );
+        }
+
+        await shareMessageMutation.mutateAsync({
+          messageId: messageToShare.id,
+          request: { discussionId: discussion.id },
+        });
+      }
+
       setMessageToShare(null);
-    }, 400);
+    } catch (error) {
+      setShareError(
+        error instanceof Error
+          ? error.message
+          : "Impossible de partager ce message.",
+      );
+    } finally {
+      setSharingTargetId(null);
+    }
   }
 
   return (
@@ -729,6 +796,25 @@ export function ConversationMessageList({
             </div>
           ))
         )}
+
+        {isTyping ? (
+          <article
+            className="dm-message-row dm-typing-indicator"
+            aria-live="polite"
+            aria-label="En train d'ecrire"
+          >
+            <Avatar name={title} presence={presence} size={34} src={avatarUrl} />
+            <div className="dm-message-content">
+              <div className="dm-message-bubble dm-typing-bubble">
+                <span className="typing-row-dots">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+              </div>
+            </div>
+          </article>
+        ) : null}
       </main>
 
       <MessageImagePreviewOverlay
@@ -744,16 +830,22 @@ export function ConversationMessageList({
 
       <MessageShareModal
         open={Boolean(messageToShare)}
-        loading={usersQuery.loading}
-        error={usersQuery.error}
+        loading={shareLoading}
+        error={
+          shareQueryError ??
+          (shareError ? new Error(shareError) : null)
+        }
         users={usersQuery.data ?? []}
-        sharingUserId={sharingUserId}
+        teams={teamsQuery.data ?? []}
+        sharingTargetId={sharingTargetId}
         onClose={() => {
-          if (sharingUserId) return;
+          if (sharingTargetId) return;
+          setShareError(null);
           setMessageToShare(null);
         }}
         onRetry={() => {
           void usersQuery.refetch();
+          void teamsQuery.refetch();
         }}
         onSelect={handleShareSelect}
       />

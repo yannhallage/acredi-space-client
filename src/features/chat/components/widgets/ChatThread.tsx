@@ -5,9 +5,12 @@ import {
   MessageShareModal,
   type MessageAction,
   type MessageMenuAnchor,
+  type MessageShareTarget,
 } from "../../../../shared/components/messaging";
+import { useShareDiscussionMessage } from "../../../../shared/api/discussions/hooks";
+import { discussionService } from "../../../../shared/api/discussions/service";
+import { useTeamsQuery } from "../../../../shared/api/teams";
 import { useUsersQuery } from "../../../../shared/api/users";
-import type { User } from "../../../../shared/types";
 import { Avatar, EmptyState, Icon } from "../../../../shared/ui";
 
 import {
@@ -19,6 +22,7 @@ import { messageSkeletons } from "../skeletons/ChatThreadSkeleton";
 import { MessageBubble } from "./MessageBubble";
 
 interface ChatThreadProps {
+  discussionId: string;
   discussionName: string;
   teamName?: string | null;
   messagesLoading: boolean;
@@ -37,6 +41,7 @@ interface ChatThreadProps {
 }
 
 export function ChatThread({
+  discussionId,
   discussionName,
   teamName,
   messagesLoading,
@@ -61,9 +66,15 @@ export function ChatThread({
     useState<LocalGroupMessage | null>(null);
   const [messageToShare, setMessageToShare] =
     useState<LocalGroupMessage | null>(null);
-  const [sharingUserId, setSharingUserId] = useState<string | null>(null);
+  const [sharingTargetId, setSharingTargetId] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   const usersQuery = useUsersQuery({ enabled: Boolean(messageToShare) });
+  const teamsQuery = useTeamsQuery({ enabled: Boolean(messageToShare) });
+  const shareDiscussionMessage = useShareDiscussionMessage();
+
+  const shareLoading = usersQuery.loading || teamsQuery.loading;
+  const shareQueryError = usersQuery.error ?? teamsQuery.error;
 
   function handleAction(message: LocalGroupMessage, action: MessageAction) {
     if (action === "copy") {
@@ -85,6 +96,7 @@ export function ChatThread({
       return;
     }
 
+    setShareError(null);
     setMessageToShare(message);
   }
 
@@ -94,13 +106,55 @@ export function ChatThread({
     setMessageToDelete(null);
   }
 
-  function handleShareSelect(user: User) {
-    setSharingUserId(user.id);
+  async function handleShareSelect(target: MessageShareTarget) {
+    if (!messageToShare || sharingTargetId) return;
 
-    window.setTimeout(() => {
-      setSharingUserId(null);
+    const targetId = target.type === "user" ? target.user.id : target.team.id;
+    setSharingTargetId(targetId);
+    setShareError(null);
+
+    try {
+      if (target.type === "user") {
+        await shareDiscussionMessage.mutateAsync({
+          discussionId,
+          messageId: messageToShare.id,
+          userId: target.user.id,
+        });
+      } else {
+        const discussions = await discussionService.findByTeam(target.team.id);
+        const destination =
+          discussions.find((item) => item.id !== discussionId) ??
+          discussions[0];
+
+        if (!destination) {
+          throw new Error(
+            "Cette equipe n'a pas encore de discussion de groupe.",
+          );
+        }
+
+        if (destination.id === discussionId) {
+          throw new Error(
+            "Le message est deja dans la seule discussion de cette equipe.",
+          );
+        }
+
+        await shareDiscussionMessage.mutateAsync({
+          discussionId,
+          messageId: messageToShare.id,
+          targetDiscussionId: destination.id,
+        });
+      }
+
       setMessageToShare(null);
-    }, 400);
+    } catch (error) {
+      setShareError(
+        error instanceof Error
+          ? error.message
+          : "Impossible de partager ce message.",
+      );
+    } finally {
+      setSharingTargetId(null);
+    }
   }
 
   return (
@@ -208,13 +262,12 @@ export function ChatThread({
       </div>
 
       {typingLabel ? (
-        <div className="typing-row" aria-live="polite">
-          <span className="typing-row-dots" aria-hidden="true">
+        <div className="typing-row" aria-live="polite" aria-label="En train d'ecrire">
+          <span className="typing-row-dots">
             <i />
             <i />
             <i />
           </span>
-          <span>{typingLabel}</span>
         </div>
       ) : null}
 
@@ -228,16 +281,22 @@ export function ChatThread({
 
       <MessageShareModal
         open={Boolean(messageToShare)}
-        loading={usersQuery.loading}
-        error={usersQuery.error}
+        loading={shareLoading}
+        error={
+          shareQueryError ??
+          (shareError ? new Error(shareError) : null)
+        }
         users={usersQuery.data ?? []}
-        sharingUserId={sharingUserId}
+        teams={teamsQuery.data ?? []}
+        sharingTargetId={sharingTargetId}
         onClose={() => {
-          if (sharingUserId) return;
+          if (sharingTargetId) return;
+          setShareError(null);
           setMessageToShare(null);
         }}
         onRetry={() => {
           void usersQuery.refetch();
+          void teamsQuery.refetch();
         }}
         onSelect={handleShareSelect}
       />

@@ -45,6 +45,7 @@ export function ChatPage() {
 
   const thread = page.activeDiscussion ? (
     <ChatThread
+      discussionId={page.activeDiscussion.id}
       discussionName={page.discussionName}
       teamName={page.teamName}
       messagesLoading={page.messagesLoading}

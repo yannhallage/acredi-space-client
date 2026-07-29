@@ -117,6 +117,8 @@ export function useTeamsPageController() {
     resetAddMember();
     setForm(createInitialTeamForm());
     setFormError(null);
+    setEditTargetTeam(null);
+    setEditTeamError(null);
     setIsDrawerOpen(true);
   }
 
@@ -195,6 +197,8 @@ export function useTeamsPageController() {
       return;
     }
 
+    setIsDrawerOpen(false);
+    setIsUserPickerOpen(false);
     setEditTeamError(null);
     setEditTargetTeam(team);
   }

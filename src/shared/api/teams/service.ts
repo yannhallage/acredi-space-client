@@ -32,6 +32,13 @@ export const teamService = {
     }
   },
 
+  async findByUser(userId: string): Promise<TeamResponse[]> {
+    const response = await http.get<ApiResponse<TeamResponse[]>>(
+      teamEndpoints.findByUser(userId)
+    );
+    return unwrapApiResponse(response);
+  },
+
   async create(request: CreateTeamRequest): Promise<TeamResponse> {
     try {
       const response = await http.post<ApiResponse<TeamResponse>>(
@@ -67,6 +74,13 @@ export const teamService = {
     const response = await http.post<ApiResponse<TeamResponse>>(
       teamEndpoints.addMember(id),
       request
+    );
+    return unwrapApiResponse(response);
+  },
+
+  async removeMember(id: string, userId: string): Promise<TeamResponse> {
+    const response = await http.delete<ApiResponse<TeamResponse>>(
+      teamEndpoints.removeMember(id, userId)
     );
     return unwrapApiResponse(response);
   },

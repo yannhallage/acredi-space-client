@@ -71,8 +71,6 @@ export function DirectMessagesPage() {
     [directChannels]
   );
 
-  useChannelMessagesSocket(directChannelIds);
-
   const channelMessagesQueries = useMessagesQueries(directChannelIds);
 
   const latestMessagesByChannelId = useMemo(() => {
@@ -111,6 +109,11 @@ export function DirectMessagesPage() {
   }, [directChannels, selectedConversationId]);
 
   const activeConversationId = activeConversation?.id ?? "";
+
+  const { typingUsers, publishTyping } = useChannelMessagesSocket(
+    directChannelIds,
+    activeConversationId || selectedConversationId || null,
+  );
 
   const {
     data: messages = [],
@@ -183,6 +186,8 @@ export function DirectMessagesPage() {
         messages,
         loading: messagesLoading,
         refreshing: isRefreshingDiscussion,
+        typingUsers,
+        publishTyping,
         onRefresh: handleRefreshDiscussion,
       }
     : null;

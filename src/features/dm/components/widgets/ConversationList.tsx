@@ -173,6 +173,11 @@ export function DirectConversationList({
             : null;
         const latestMessage =
           latestActiveMessage ?? latestMessagesByChannelId[conversation.id];
+        const lastActivityAt =
+          latestMessage?.createdAt ||
+          conversation.lastMessageAt ||
+          conversation.createdAt ||
+          "";
 
         return {
           conversation,
@@ -180,9 +185,8 @@ export function DirectConversationList({
           participant,
           presence: participant?.presence ?? "offline",
           preview: getConversationPreview(conversation, latestMessage),
-          time: formatConversationTime(
-            latestMessage?.createdAt || conversation.lastMessageAt
-          ),
+          lastActivityAt,
+          time: formatConversationTime(lastActivityAt),
           unreadCount: conversation.unreadCount ?? 0,
         };
       }),
@@ -198,31 +202,42 @@ export function DirectConversationList({
   const filteredConversations = useMemo(() => {
     const value = search.trim().toLowerCase();
 
-    return enrichedConversations.filter((item) => {
-      const matchesSearch =
-        !value ||
-        item.name.toLowerCase().includes(value) ||
-        item.preview.toLowerCase().includes(value) ||
-        item.participant?.role.toLowerCase().includes(value);
+    return enrichedConversations
+      .filter((item) => {
+        const matchesSearch =
+          !value ||
+          item.name.toLowerCase().includes(value) ||
+          item.preview.toLowerCase().includes(value) ||
+          item.participant?.role.toLowerCase().includes(value);
 
-      if (!matchesSearch) {
-        return false;
-      }
+        if (!matchesSearch) {
+          return false;
+        }
 
-      if (filter === "unread") {
-        return item.unreadCount > 0;
-      }
+        if (filter === "unread") {
+          return item.unreadCount > 0;
+        }
 
-      if (filter === "online") {
-        return (
-          item.presence === "online" ||
-          item.presence === "busy" ||
-          item.presence === "away"
-        );
-      }
+        if (filter === "online") {
+          return (
+            item.presence === "online" ||
+            item.presence === "busy" ||
+            item.presence === "away"
+          );
+        }
 
-      return true;
-    });
+        return true;
+      })
+      .sort((left, right) => {
+        const leftTime = left.lastActivityAt
+          ? new Date(left.lastActivityAt).getTime()
+          : 0;
+        const rightTime = right.lastActivityAt
+          ? new Date(right.lastActivityAt).getTime()
+          : 0;
+
+        return rightTime - leftTime;
+      });
   }, [enrichedConversations, filter, search]);
 
   const filters: Array<{

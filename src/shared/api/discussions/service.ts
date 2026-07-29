@@ -1,5 +1,6 @@
 import { http } from "../http";
 import { discussionEndpoints } from "./endpoints";
+import type { MessageResponse } from "../dm/types";
 import type {
   ApiResponse,
   CreateGroupDiscussionRequest,
@@ -144,6 +145,18 @@ export const discussionService = {
       discussionEndpoints.message(discussionId, messageId),
       { content }
     );
+
+    return unwrapApiResponse(response);
+  },
+
+  async shareMessage(
+    discussionId: string,
+    messageId: string,
+    request: { userId?: string; discussionId?: string }
+  ) {
+    const response = await http.post<
+      ApiResponse<MessageResponse | GroupMessageResponse>
+    >(discussionEndpoints.shareMessage(discussionId, messageId), request);
 
     return unwrapApiResponse(response);
   },

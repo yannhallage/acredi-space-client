@@ -11,7 +11,7 @@ import {
   AddExistingTeamMemberModal,
   CreateTeamDrawer,
   DeleteTeamConfirmModal,
-  EditTeamModal,
+  EditTeamDrawer,
   TeamCard,
   TeamCardSkeleton,
   TeamDetailsModal,
@@ -126,6 +126,15 @@ export function TeamsPage() {
         onUpdateMemberRole={controller.updateDraftMemberRole}
       />
 
+      <EditTeamDrawer
+        error={controller.editTeamError}
+        isOpen={Boolean(controller.editTargetTeam)}
+        isUpdating={controller.isUpdatingTeam}
+        onClose={controller.closeEditTeamModal}
+        onSubmit={controller.handleUpdateTeam}
+        team={controller.editTargetTeam}
+      />
+
       <TeamUserPickerModal
         error={controller.usersQuery.error}
         isOpen={controller.isUserPickerOpen}
@@ -141,6 +150,7 @@ export function TeamsPage() {
         {controller.detailsTeam ? (
           <TeamDetailsModal
             key={controller.detailsTeam.id}
+            canManageMembers
             onClose={() => controller.setDetailsTeam(null)}
             team={controller.detailsTeam}
           />
@@ -156,19 +166,6 @@ export function TeamsPage() {
             onClose={controller.closeDeleteTeamModal}
             onConfirm={controller.handleConfirmDeleteTeam}
             team={controller.deleteTargetTeam}
-          />
-        ) : null}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {controller.editTargetTeam ? (
-          <EditTeamModal
-            key={controller.editTargetTeam.id}
-            error={controller.editTeamError}
-            isUpdating={controller.isUpdatingTeam}
-            onClose={controller.closeEditTeamModal}
-            onSubmit={controller.handleUpdateTeam}
-            team={controller.editTargetTeam}
           />
         ) : null}
       </AnimatePresence>

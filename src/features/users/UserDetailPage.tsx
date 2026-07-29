@@ -1,50 +1,93 @@
-import { Navigate, useLocation, useParams } from 'react-router-dom';
-import { users, workspaces } from '../../shared/api/mockData';
-import type { User } from '../../shared/types';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { useUserTeamsQuery } from '../../shared/api/teams';
+import { useUserQuery } from '../../shared/api/users';
+import type { Presence } from '../../shared/types';
 import { Avatar, Icon } from '../../shared/ui';
+import { presenceLabel, roleLabel, themePreferenceLabel } from './utils';
 
-function statusLabel(status: string) {
-  if (status.toLowerCase().includes('reunion')) {
-    return 'Occupe';
-  }
-
-  if (status.toLowerCase().includes('concentration')) {
-    return 'Ne pas deranger';
-  }
-
-  if (status.toLowerCase().includes('retour')) {
-    return 'Hors ligne';
-  }
-
-  return 'Disponible';
-}
-
-function userRoleLabel(user: User) {
-  if (user.adminRole === 'admin' || user.adminRole === 'owner') {
-    return 'Admin';
-  }
-
-  if (user.adminRole === 'manager') {
-    return 'Manager';
-  }
-
-  return 'Collaborateur';
-}
+const PRESENCE_OPTIONS: Presence[] = ['online', 'busy', 'dnd', 'offline'];
 
 export function UserDetailPage() {
   const { userId } = useParams();
-  const location = useLocation();
-  const stateUser = (location.state as { user?: User } | null)?.user;
-  const user = users.find((item) => item.id === userId) ?? (stateUser?.id === userId ? stateUser : undefined);
+  const navigate = useNavigate();
+  const userQuery = useUserQuery({ userId });
+  const teamsQuery = useUserTeamsQuery({
+    userId,
+    enabled: Boolean(userId),
+  });
 
-  if (!user) {
+  const user = userQuery.data;
+  const teams = teamsQuery.data ?? [];
+
+  if (!userId) {
     return <Navigate to="/app/users" replace />;
   }
 
-  const userTeams = workspaces.filter((workspace) => workspace.name === user.team || workspace.id === 'direction' || workspace.id === 'product');
+  if (userQuery.loading) {
+    return (
+      <div className="user-detail-page">
+        <button
+          className="user-detail-back-button"
+          type="button"
+          onClick={() => navigate('/app/users')}
+        >
+          <Icon name="arrowLeft" size={13} />
+          Retour aux utilisateurs
+        </button>
+        <section className="user-detail-card user-detail-state">
+          <p>Chargement du profil...</p>
+        </section>
+      </div>
+    );
+  }
+
+  if (userQuery.error || !user) {
+    return (
+      <div className="user-detail-page">
+        <button
+          className="user-detail-back-button"
+          type="button"
+          onClick={() => navigate('/app/users')}
+        >
+          <Icon name="arrowLeft" size={13} />
+          Retour aux utilisateurs
+        </button>
+        <section className="user-detail-card user-detail-state">
+          <Icon name="alert" size={18} />
+          <p>{userQuery.error?.message ?? 'Utilisateur introuvable.'}</p>
+          <button
+            className="button ghost mini"
+            type="button"
+            onClick={() => {
+              void userQuery.refetch();
+            }}
+          >
+            Reessayer
+          </button>
+        </section>
+      </div>
+    );
+  }
+
+  const profileName =
+    typeof user.profile === 'string'
+      ? user.profile
+      : typeof user.profile === 'object' && user.profile
+        ? user.profile.role || user.role
+        : user.role;
+  const teamLabel = user.team || 'Sans equipe';
 
   return (
     <div className="user-detail-page">
+      <button
+        className="user-detail-back-button"
+        type="button"
+        onClick={() => navigate('/app/users')}
+      >
+        <Icon name="arrowLeft" size={13} />
+        Retour aux utilisateurs
+      </button>
+
       <section className="user-profile-hero">
         <div className="user-profile-pattern" />
         <Avatar
@@ -55,22 +98,25 @@ export function UserDetailPage() {
           src={user.avatarUrl}
         />
         <div className="user-profile-main">
-          <span>{user.team} - Acredi Group</span>
+          <span>
+            {teamLabel} - {roleLabel(user)}
+          </span>
           <h1>{user.name}</h1>
-          <p>{user.role} - {user.status}</p>
-          <button className="user-status-pill" type="button">
-            <i />
-            {statusLabel(user.status)}
-            <small>jusqu'a 17:00</small>
-            <b>Modifier</b>
+          <p>
+            {profileName}
+            {user.enabled === false ? ' - Compte desactive' : ''}
+          </p>
+          <button className="user-status-pill" type="button" disabled>
+            <i data-presence={user.presence} />
+            {presenceLabel(user.presence)}
           </button>
         </div>
         <div className="user-profile-actions">
-          <button className="button primary" type="button">
+          <button className="button primary" type="button" disabled title="Bientot disponible">
             <Icon name="message" size={14} />
             Message
           </button>
-          <button className="button ghost" type="button">
+          <button className="button ghost" type="button" disabled title="Bientot disponible">
             <Icon name="phoneOff" size={14} />
             Appeler
           </button>
@@ -85,72 +131,113 @@ export function UserDetailPage() {
               <Icon name="mail" size={15} />
               <dt>E-mail</dt>
               <dd>{user.email}</dd>
-              <button type="button">Modifier</button>
             </div>
             <div>
               <Icon name="phoneOff" size={15} />
               <dt>Telephone</dt>
-              <dd>{user.phoneNumber ?? 'Non renseigne'}</dd>
-              <button type="button">Modifier</button>
+              <dd>{user.phoneNumber?.trim() || 'Non renseigne'}</dd>
             </div>
             <div>
-              <Icon name="clock" size={15} />
-              <dt>Fuseau</dt>
-              <dd>Abidjan - GMT+0 - 09:42</dd>
-              <button type="button">Modifier</button>
+              <Icon name="shield" size={15} />
+              <dt>Role</dt>
+              <dd>{roleLabel(user)}</dd>
             </div>
             <div>
-              <Icon name="message" size={15} />
-              <dt>Langue</dt>
-              <dd>Francais</dd>
-              <button type="button">Modifier</button>
+              <Icon name="users" size={15} />
+              <dt>Profil</dt>
+              <dd>{profileName || 'Non renseigne'}</dd>
+            </div>
+            <div>
+              <Icon name="check" size={15} />
+              <dt>Statut compte</dt>
+              <dd>
+                {user.enabled === false ? 'Desactive' : 'Active'}
+                {user.invitationStatus ? ` • ${user.invitationStatus}` : ''}
+              </dd>
             </div>
           </dl>
         </article>
 
         <article className="user-detail-card">
-          <h2>Mon statut</h2>
+          <h2>Presence</h2>
           <div className="user-status-list">
-            {['Disponible', 'Occupe', 'Ne pas deranger', 'Hors ligne'].map((status, index) => (
-              <button key={status} className={index === 0 ? 'active' : ''} type="button">
-                <i />
-                {status}
+            {PRESENCE_OPTIONS.map((presence) => (
+              <button
+                key={presence}
+                className={user.presence === presence ? 'active' : ''}
+                type="button"
+                disabled
+              >
+                <i data-presence={presence} />
+                {presenceLabel(presence)}
               </button>
             ))}
           </div>
           <div className="user-message-box">
-            <span>MESSAGE</span>
-            <strong>En revue design Acredi Space</strong>
+            <span>EQUIPE</span>
+            <strong>{teamLabel}</strong>
           </div>
         </article>
 
         <article className="user-detail-card user-teams-card">
           <header>
-            <h2>Mes equipes</h2>
-            <span>{userTeams.length} equipes</span>
+            <h2>Equipes</h2>
+            <span>
+              {teamsQuery.loading
+                ? 'Chargement...'
+                : `${teams.length} equipe${teams.length > 1 ? 's' : ''}`}
+            </span>
           </header>
-          {userTeams.map((team, index) => (
+
+          {teamsQuery.error ? (
+            <div className="user-detail-inline-state error">
+              <Icon name="alert" size={16} />
+              <span>{teamsQuery.error.message}</span>
+            </div>
+          ) : null}
+
+          {!teamsQuery.loading && !teamsQuery.error && teams.length === 0 ? (
+            <div className="user-detail-inline-state">
+              <Icon name="users" size={16} />
+              <span>Cet utilisateur n appartient a aucune equipe.</span>
+            </div>
+          ) : null}
+
+          {teams.map((team) => (
             <div key={team.id} className="user-team-row">
-              <span style={{ color: team.color, background: `${team.color}22` }}>
+              <span
+                style={{
+                  color: team.teamColor || 'var(--accent)',
+                  background: `${team.teamColor || 'var(--accent)'}22`,
+                }}
+              >
                 <Icon name="users" size={15} />
               </span>
               <div>
                 <strong>{team.name}</strong>
-                <small>{index === 0 ? '4 membres' : '8 membres'}</small>
+                <small>{team.description?.trim() || team.slug || 'Sans description'}</small>
               </div>
-              <b>{userRoleLabel(user)}</b>
+              <b>{roleLabel(user)}</b>
             </div>
           ))}
         </article>
 
         <article className="user-detail-card user-preferences-card">
           <h2>Preferences</h2>
-          {['Mode sombre', 'Notifications bureau', 'Notifications mobiles', 'Sons'].map((item, index) => (
-            <label key={item}>
-              <span>{item}</span>
-              <input type="checkbox" defaultChecked={index > 0 && index < 3} />
-            </label>
-          ))}
+          <dl className="user-preferences-list">
+            <div>
+              <dt>Theme</dt>
+              <dd>{themePreferenceLabel(user.appThemePreference)}</dd>
+            </div>
+            <div>
+              <dt>Onboarding</dt>
+              <dd>{user.onboardingStatus || 'Non renseigne'}</dd>
+            </div>
+            <div>
+              <dt>Invitation</dt>
+              <dd>{user.invitationStatus || 'Non renseigne'}</dd>
+            </div>
+          </dl>
         </article>
       </section>
     </div>

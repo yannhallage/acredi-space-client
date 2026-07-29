@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   useCalendarEvents,
   useCreateCalendarEvent,
+  useDeleteCalendarEvent,
   useUpdateCalendarEvent,
 } from "../../../shared/api/callendar";
 import type { CalendarEvent } from "../../../shared/api/callendar/types";
@@ -15,13 +16,18 @@ import {
   toDateKey,
 } from "../../../shared/utils/calendarGrid";
 import type { CreateSlot, ToastState, ViewMode } from "../types";
-import { getErrorMessage, sortEvents } from "../utils";
+import { getErrorMessage, isManagedCalendarEvent, sortEvents } from "../utils";
+import {
+  buildMeetingRoomUrl,
+  extractMeetingRoomName,
+} from "../../../shared/api/meeting/room";
 
 export function useCalendarPage() {
   const today = new Date();
   const eventsQuery = useCalendarEvents();
   const createEventMutation = useCreateCalendarEvent();
   const updateEventMutation = useUpdateCalendarEvent();
+  const deleteEventMutation = useDeleteCalendarEvent();
 
   const [calendarDate, setCalendarDate] = useState(today);
   const [view, setView] = useState<ViewMode>("week");
@@ -103,21 +109,38 @@ export function useCalendarPage() {
   }
 
   async function handleCreateEvent(event: {
+    allDay: boolean;
+    color: string;
+    createMeeting: boolean;
+    description: string;
     endsAt: string;
+    location: string;
+    reminders: Array<{ method: "NOTIFICATION" | "EMAIL"; minutesBefore: number }>;
     startsAt: string;
     title: string;
   }) {
     try {
       await createEventMutation.mutateAsync({
+        allDay: event.allDay,
+        color: event.color,
+        createMeeting: event.createMeeting,
+        description: event.description || null,
         endsAt: event.endsAt,
-        location: null,
+        location: event.location || null,
         participantIds: [],
+        reminders: event.reminders,
         startsAt: event.startsAt,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         title: event.title,
       });
 
       setCreateSlot(null);
-      showToast("success", "Evenement cree avec succes");
+      showToast(
+        "success",
+        event.createMeeting
+          ? "Evenement et reunion crees avec succes"
+          : "Evenement cree avec succes",
+      );
     } catch (error) {
       console.error("Erreur creation evenement :", error);
       showToast("error", getErrorMessage(error));
@@ -141,6 +164,48 @@ export function useCalendarPage() {
     } catch (error) {
       showToast("error", getErrorMessage(error));
     }
+  }
+
+  async function handleDeleteEvent(event: CalendarEvent) {
+    if (!isManagedCalendarEvent(event)) {
+      showToast("info", "Les reunions se suppriment depuis le module Reunion");
+      return;
+    }
+
+    try {
+      await deleteEventMutation.mutateAsync(event.id);
+      setSelectedEvent(null);
+      showToast(
+        "success",
+        `Evenement "${event.title}" supprime avec succes`,
+      );
+    } catch (error) {
+      showToast(
+        "error",
+        `Echec de la suppression : ${getErrorMessage(error)}`,
+      );
+    }
+  }
+
+  function handleJoinMeeting(event: CalendarEvent) {
+    const roomName =
+      event.roomName ||
+      extractMeetingRoomName(event.joinUrl) ||
+      (event.type === "MEETING" && event.location
+        ? extractMeetingRoomName(event.location) || event.location
+        : null);
+
+    if (roomName) {
+      window.location.assign(buildMeetingRoomUrl(roomName));
+      return;
+    }
+
+    if (event.joinUrl) {
+      window.location.assign(event.joinUrl);
+      return;
+    }
+
+    showToast("warning", "Lien de reunion indisponible pour cet evenement");
   }
 
   function goToday() {
@@ -180,6 +245,7 @@ export function useCalendarPage() {
     calendarGridClass,
     calendarTimelineMinWidth,
     createSlot,
+    deleteEventMutation,
     eventsQuery,
     isCalendarLoading,
     monthDays,
@@ -197,6 +263,8 @@ export function useCalendarPage() {
     goPrevious,
     goToday,
     handleCreateEvent,
+    handleDeleteEvent,
+    handleJoinMeeting,
     handleUpdateParticipants,
     openCreateModal,
     openEventDetail,

@@ -5,5 +5,6 @@ export const teamEndpoints = {
   update: (id: string) => `/teams/${id}`,
   members: (id: string) => `/teams/${id}/members`,
   addMember: (id: string) => `/teams/${id}/members`,
+  removeMember: (id: string, userId: string) => `/teams/${id}/members/${userId}`,
   delete: (id: string) => `/teams/${id}`,
 } as const;

@@ -1,6 +1,10 @@
 import dayjs from "dayjs";
 import type { CalendarEvent } from "../../../../shared/api/callendar/types";
 import {
+  eventColorSoftBackground,
+  resolveEventColor,
+} from "../../../../shared/api/callendar/normalizers";
+import {
   formatDayName,
   formatDayNumber,
   getCalendarHours,
@@ -35,6 +39,7 @@ type CalendarGridProps = {
   onOpenCreateModal: (dateKey?: string, hour?: string) => void;
   onOpenDayView: (day: Date) => void;
   onOpenEventDetail: (event: CalendarEvent) => void;
+  onEventContextMenu: (event: CalendarEvent, clientX: number, clientY: number) => void;
   onSelectDay: (day: Date) => void;
 };
 
@@ -42,32 +47,34 @@ function CalendarEventCard({
   event,
   absolute = true,
   onOpenEventDetail,
+  onEventContextMenu,
 }: {
   event: CalendarEvent;
   absolute?: boolean;
   onOpenEventDetail: (event: CalendarEvent) => void;
+  onEventContextMenu: (event: CalendarEvent, clientX: number, clientY: number) => void;
 }) {
-  const eventColor = event.color || "#5B6CFF";
+  const eventColor = resolveEventColor(event.color, event.type);
 
   return (
     <button
       className={`${absolute ? "absolute left-[8px] right-[8px] z-20" : "relative"} overflow-hidden rounded-[7px] border-l-4 px-2 py-[6px] pr-8 text-left shadow-sm transition hover:brightness-[0.98]`}
-      style={
-        absolute
+      style={{
+        ...(absolute
           ? {
               top: getEventTop(event),
               height: getEventHeight(event),
-              backgroundColor: `${eventColor}26`,
-              borderLeftColor: eventColor,
-              color: eventColor,
             }
-          : {
-              backgroundColor: `${eventColor}18`,
-              borderLeftColor: eventColor,
-              color: eventColor,
-            }
-      }
+          : {}),
+        backgroundColor: eventColorSoftBackground(eventColor, absolute ? 0.16 : 0.1),
+        borderLeftColor: eventColor,
+      }}
       onClick={() => onOpenEventDetail(event)}
+      onContextMenu={(mouseEvent) => {
+        mouseEvent.preventDefault();
+        mouseEvent.stopPropagation();
+        onEventContextMenu(event, mouseEvent.clientX, mouseEvent.clientY);
+      }}
       type="button"
     >
       <div className="truncate text-[12px] font-bold leading-[15px] text-[var(--text)]">
@@ -102,6 +109,7 @@ export function CalendarGrid({
   onOpenCreateModal,
   onOpenDayView,
   onOpenEventDetail,
+  onEventContextMenu,
   onSelectDay,
 }: CalendarGridProps) {
   const hours = getCalendarHours();
@@ -166,13 +174,22 @@ export function CalendarGrid({
                           ))
                         : null}
 
-                      {dayEvents.slice(0, 3).map((event) => (
+                      {dayEvents.slice(0, 3).map((event) => {
+                        const eventColor = resolveEventColor(
+                          event.color,
+                          event.type,
+                        );
+
+                        return (
                         <div
                           key={event.id}
                           className="truncate rounded border-l-4 px-2 py-1 text-[11px] font-semibold text-[var(--text)]"
                           style={{
-                            backgroundColor: `${event.color}22`,
-                            borderLeftColor: event.color,
+                            backgroundColor: eventColorSoftBackground(
+                              eventColor,
+                              0.14,
+                            ),
+                            borderLeftColor: eventColor,
                           }}
                         >
                           <button
@@ -180,13 +197,23 @@ export function CalendarGrid({
                               mouseEvent.stopPropagation();
                               onOpenEventDetail(event);
                             }}
+                            onContextMenu={(mouseEvent) => {
+                              mouseEvent.preventDefault();
+                              mouseEvent.stopPropagation();
+                              onEventContextMenu(
+                                event,
+                                mouseEvent.clientX,
+                                mouseEvent.clientY,
+                              );
+                            }}
                             className="block w-full truncate text-left"
                             type="button"
                           >
                             {getLocalTime(event.start)} · {event.title}
                           </button>
                         </div>
-                      ))}
+                        );
+                      })}
 
                       {dayEvents.length > 3 ? (
                         <p className="text-[11px] font-semibold text-[var(--muted-soft)]">
@@ -226,13 +253,29 @@ export function CalendarGrid({
                 Aucun evenement pour le moment.
               </div>
             ) : (
-              allEvents.map((event) => (
+              allEvents.map((event) => {
+                const eventColor = resolveEventColor(event.color, event.type);
+
+                return (
                 <div
                   key={event.id}
                   className="relative rounded-[12px] cursor-pointer border border-[var(--border)] bg-[var(--surface)] px-4 py-3 pr-12 hover:bg-[var(--surface-2)]"
+                  style={{
+                    borderLeftWidth: 4,
+                    borderLeftColor: eventColor,
+                    backgroundColor: eventColorSoftBackground(eventColor, 0.08),
+                  }}
                 >
                   <button
                     onClick={() => onOpenEventDetail(event)}
+                    onContextMenu={(mouseEvent) => {
+                      mouseEvent.preventDefault();
+                      onEventContextMenu(
+                        event,
+                        mouseEvent.clientX,
+                        mouseEvent.clientY,
+                      );
+                    }}
                     className="block w-full text-left hover:opacity-80"
                     type="button"
                   >
@@ -244,7 +287,8 @@ export function CalendarGrid({
                     </p>
                   </button>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -341,6 +385,7 @@ export function CalendarGrid({
                         key={event.id}
                         event={event}
                         onOpenEventDetail={onOpenEventDetail}
+                        onEventContextMenu={onEventContextMenu}
                       />
                     ))}
               </div>
@@ -385,6 +430,14 @@ export function CalendarGrid({
               className="min-w-[190px] rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-[12px] shadow-sm hover:bg-[var(--surface-2)]"
               type="button"
               onClick={() => onOpenEventDetail(event)}
+              onContextMenu={(mouseEvent) => {
+                mouseEvent.preventDefault();
+                onEventContextMenu(
+                  event,
+                  mouseEvent.clientX,
+                  mouseEvent.clientY,
+                );
+              }}
             >
               <strong className="block truncate">{event.title}</strong>
               <span className="mt-1 block text-[11px] font-semibold text-[var(--muted-soft)]">

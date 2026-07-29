@@ -1,27 +1,33 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
+import Toast from "../../../../components/app/Toast/Toast";
 import { Avatar, Icon } from "../../../../shared/ui";
-import { useTeamMembers } from "../../hooks";
-import {
-  memberDisplayEmail,
-  memberDisplayName,
-  roleLabels,
-} from "../../teamMemberDisplay";
+import { useRemoveTeamMember, useTeamMembers } from "../../hooks";
+import { memberDisplayName, roleLabels } from "../../teamMemberDisplay";
+import { getErrorMessage } from "../../utils";
 import type { Team } from "../../types";
 
 interface TeamDetailsModalProps {
+  canManageMembers?: boolean;
   onClose: () => void;
   team: Team;
 }
 
-export function TeamDetailsModal({ onClose, team }: TeamDetailsModalProps) {
+export function TeamDetailsModal({
+  canManageMembers = false,
+  onClose,
+  team,
+}: TeamDetailsModalProps) {
   const membersQuery = useTeamMembers(team.id);
+  const removeMemberMutation = useRemoveTeamMember();
   const members = membersQuery.data ?? [];
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !removeMemberMutation.isPending) {
         onClose();
       }
     };
@@ -29,7 +35,32 @@ export function TeamDetailsModal({ onClose, team }: TeamDetailsModalProps) {
     document.addEventListener("keydown", onKeyDown);
 
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, [onClose, removeMemberMutation.isPending]);
+
+  async function handleRemoveMember(userId: string, displayName: string) {
+    if (removeMemberMutation.isPending) {
+      return;
+    }
+
+    setRemoveError(null);
+    setRemovingUserId(userId);
+
+    try {
+      await removeMemberMutation.mutateAsync({
+        teamId: team.id,
+        userId,
+      });
+    } catch (error) {
+      setRemoveError(
+        getErrorMessage(
+          error,
+          `Impossible de retirer ${displayName} de l'equipe.`,
+        ),
+      );
+    } finally {
+      setRemovingUserId(null);
+    }
+  }
 
   return (
     <motion.div
@@ -39,8 +70,14 @@ export function TeamDetailsModal({ onClose, team }: TeamDetailsModalProps) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.16 }}
-      onMouseDown={onClose}
+      onMouseDown={() => {
+        if (!removeMemberMutation.isPending) {
+          onClose();
+        }
+      }}
     >
+      {removeError ? <Toast intent="error" message={removeError} /> : null}
+
       <motion.section
         className="note-modal team-details-modal"
         role="dialog"
@@ -55,12 +92,17 @@ export function TeamDetailsModal({ onClose, team }: TeamDetailsModalProps) {
         <header>
           <div className="team-details-title">
             <i style={{ background: team.color }} />
+            <div>
+              <h2 id="team-details-title">Membres</h2>
+              <small>{team.name}</small>
+            </div>
           </div>
 
           <button
             className="icon-button"
             type="button"
             aria-label="Fermer"
+            disabled={removeMemberMutation.isPending}
             onClick={onClose}
           >
             <Icon name="x" size={16} />
@@ -69,7 +111,7 @@ export function TeamDetailsModal({ onClose, team }: TeamDetailsModalProps) {
 
         <section className="team-details-users">
           <div className="team-details-users-head">
-            <h3>Membres</h3>
+            <h3>Liste des membres</h3>
             <span>{members.length} membre(s)</span>
           </div>
 
@@ -93,32 +135,64 @@ export function TeamDetailsModal({ onClose, team }: TeamDetailsModalProps) {
             {!membersQuery.isLoading &&
             !membersQuery.isError &&
             members.length > 0 ? (
-              <table className="team-details-table">
+              <table
+                className={
+                  canManageMembers
+                    ? "team-details-table team-details-table--manage"
+                    : "team-details-table"
+                }
+              >
                 <thead>
                   <tr>
                     <th>Utilisateur</th>
-                    <th>Email</th>
                     <th>Role</th>
-                    <th>Ajoute le</th>
+                    {canManageMembers ? <th aria-label="Actions" /> : null}
                   </tr>
                 </thead>
                 <tbody>
-                  {members.map((member) => (
-                    <tr key={member.id}>
-                      <td>
-                        <Avatar
-                          name={memberDisplayName(member)}
-                          presence={member.user?.presence}
-                          size={28}
-                          src={member.user?.avatarUrl}
-                        />
-                        <strong>{memberDisplayName(member)}</strong>
-                      </td>
-                      <td>{memberDisplayEmail(member)}</td>
-                      <td>{roleLabels[member.roleName]}</td>
-                      <td>{member.joinedAt.toLocaleDateString("fr-FR")}</td>
-                    </tr>
-                  ))}
+                  {members.map((member) => {
+                    const displayName = memberDisplayName(member);
+                    const isOwner = member.userId === team.ownerId;
+
+                    return (
+                      <tr key={member.id}>
+                        <td>
+                          <div className="team-details-user-cell">
+                            <Avatar
+                              name={displayName}
+                              presence={member.user?.presence}
+                              size={28}
+                              src={member.user?.avatarUrl}
+                            />
+                            <strong>{displayName}</strong>
+                          </div>
+                        </td>
+                        <td>{roleLabels[member.roleName]}</td>
+                        {canManageMembers ? (
+                          <td className="team-details-actions-cell">
+                            {isOwner ? (
+                              <span className="team-details-owner-badge">
+                                Proprietaire
+                              </span>
+                            ) : (
+                              <button
+                                className="icon-button bordered danger"
+                                type="button"
+                                aria-label={`Retirer ${displayName}`}
+                                title="Retirer"
+                                disabled={removeMemberMutation.isPending}
+                                onClick={() =>
+                                  handleRemoveMember(member.userId, displayName)
+                                }
+                              >
+                                <Icon name="trash" size={14} />
+                              </button>
+                            )}
+                          </td>
+                        ) : null}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : null}
@@ -134,16 +208,6 @@ export function TeamDetailsModal({ onClose, team }: TeamDetailsModalProps) {
             ) : null}
           </div>
         </section>
-
-        <footer>
-          <button
-            className="button primary notes-submit"
-            type="button"
-            onClick={onClose}
-          >
-            Fermer
-          </button>
-        </footer>
       </motion.section>
     </motion.div>
   );

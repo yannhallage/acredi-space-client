@@ -862,6 +862,44 @@
   border: 1px dashed var(--border-subtle);
 }
 
+.dm-message-shared {
+  display: grid;
+  gap: 6px;
+  padding: 10px 14px 0;
+}
+
+.dm-message-shared-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.dm-message-shared-quote {
+  border-left: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+  padding: 4px 0 4px 10px;
+  opacity: 0.85;
+}
+
+.dm-message-shared-quote strong {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.dm-message-shared-quote p {
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.9;
+  white-space: pre-wrap;
+}
+
 .dm-message-row.mine .dm-message-bubble.is-deleted {
   background: transparent;
   border-color: color-mix(in srgb, var(--accent) 35%, transparent);
@@ -1164,6 +1202,40 @@
   color: var(--muted);
   font-size: 14px;
   line-height: 1.55;
+}
+
+.dm-typing-indicator {
+  margin-bottom: 6px;
+}
+
+.dm-typing-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  padding: 12px 14px;
+}
+
+.dm-typing-bubble .typing-row-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dm-typing-bubble .typing-row-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: typing-dot 1.2s infinite ease-in-out;
+}
+
+.dm-typing-bubble .typing-row-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dm-typing-bubble .typing-row-dots i:nth-child(3) {
+  animation-delay: 0.3s;
 }
 
 .dm-composer {
