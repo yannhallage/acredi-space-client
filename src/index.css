@@ -1309,6 +1309,156 @@ a {
   font-size: 12px;
 }
 
+.modal-setting-invite-table .modal-setting-invite-row {
+  grid-template-columns: minmax(150px, 1.2fr) minmax(160px, 1.4fr) minmax(90px, 0.7fr) minmax(90px, 0.6fr);
+}
+
+.modal-setting-invite-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.modal-setting-invite-user strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.modal-setting-invite-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, #d97706 28%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, #d97706 12%, transparent);
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.modal-setting-subscription-card {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.modal-setting-subscription-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-setting-subscription-eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.modal-setting-subscription-top h3 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.modal-setting-subscription-top p {
+  margin: 6px 0 0;
+  color: var(--muted-soft);
+  font-size: 14px;
+}
+
+.modal-setting-subscription-status {
+  border-color: color-mix(in srgb, #16a34a 28%, var(--border));
+  background: color-mix(in srgb, #16a34a 12%, transparent);
+  color: #15803d;
+}
+
+.modal-setting-subscription-meta {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.modal-setting-subscription-meta div {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.modal-setting-subscription-meta dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.modal-setting-subscription-meta dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.modal-setting-subscription-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.modal-setting-invoice-table .modal-setting-invoice-row {
+  grid-template-columns:
+    minmax(110px, 1fr)
+    minmax(100px, 0.9fr)
+    minmax(80px, 0.7fr)
+    minmax(90px, 0.8fr)
+    minmax(90px, 0.7fr);
+}
+
+.modal-setting-invoice-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.modal-setting-invoice-badge.status-paid {
+  border-color: color-mix(in srgb, #16a34a 28%, var(--border));
+  background: color-mix(in srgb, #16a34a 12%, transparent);
+  color: #15803d;
+}
+
+.modal-setting-invoice-badge.status-pending {
+  border-color: color-mix(in srgb, #d97706 28%, var(--border));
+  background: color-mix(in srgb, #d97706 12%, transparent);
+  color: #b45309;
+}
+
+.modal-setting-invoice-badge.status-failed {
+  border-color: color-mix(in srgb, #dc2626 28%, var(--border));
+  background: color-mix(in srgb, #dc2626 12%, transparent);
+  color: #b91c1c;
+}
+
 .modal-setting-profile-form {
   display: grid;
   grid-template-columns: minmax(170px, 0.9fr) minmax(240px, 1.35fr) auto;

@@ -17,6 +17,7 @@ import { NotesPage } from '../features/notes/NotesPage';
 import { PreviewPage } from '../features/preview/PreviewPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
 import { ChangePasswordPage } from '../features/settings/ChangePasswordPage';
+import { PlansPage } from '../features/settings/PlansPage';
 import { MyTeamsPage } from '../features/teams/MyTeamsPage';
 import { TeamsPage } from '../features/teams/TeamsPage';
 import { CreateTeamPage } from "../features/teams/CreateTeamPage";
@@ -66,6 +67,7 @@ export default function App() {
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/settings/password" element={<ChangePasswordPage />} />
+                <Route path="/settings/plans" element={<PlansPage />} />
                 <Route path="/app/meeting-room/:roomName" element={<MeetingRoom />} />
 
                 <Route path="/app" element={<AppLayout />}>

@@ -2,12 +2,18 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent 
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useCreateProfileMutation, useProfilesQuery, type ProfileResponse } from '../api/profiles';
-import { useUploadAvatarMutation } from '../api/users';
+import { useUploadAvatarMutation, useUsersQuery } from '../api/users';
 import { PresetAvatarPicker, extractPresetAvatarFile } from '../avatars/PresetAvatarPicker';
 import type { AvatarPreset } from '../avatars/presets';
 import { useAuth } from '../context';
+import type { User } from '../types';
 import { Avatar, Icon, type IconName } from '../ui';
 import { PERMISSIONS, usePermissions, type PermissionCode } from '../permissions';
+import {
+  BILLING_INVOICES,
+  CURRENT_SUBSCRIPTION,
+  type InvoiceStatus,
+} from '../../features/settings/billing/data';
 
 type SettingKey =
   | 'profile'
@@ -23,7 +29,9 @@ type SettingKey =
   | 'emailAccounts'
   | 'emailTemplates'
   | 'assignmentRules'
-  | 'slaPolicies';
+  | 'slaPolicies'
+  | 'subscription'
+  | 'invoices';
 
 type SettingRow = {
   action: string;
@@ -86,6 +94,71 @@ function formatProfileDate(value?: string) {
     year: 'numeric',
   }).format(date);
 }
+
+function formatInviteRole(user: User) {
+  if (user.adminRole === 'admin' || user.adminRole === 'owner') {
+    return 'Admin';
+  }
+
+  if (user.adminRole === 'manager') {
+    return 'Manager';
+  }
+
+  return 'Collaborateur';
+}
+
+function isPendingInvitation(user: User) {
+  return (user.invitationStatus ?? '').toUpperCase() === 'PENDING';
+}
+
+function formatBillingDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatSubscriptionStatus(status: string) {
+  if (status === 'active') {
+    return 'Actif';
+  }
+
+  if (status === 'trial') {
+    return 'Essai';
+  }
+
+  return 'En retard';
+}
+
+function formatInvoiceStatus(status: InvoiceStatus) {
+  if (status === 'paid') {
+    return 'Payee';
+  }
+
+  if (status === 'pending') {
+    return 'En attente';
+  }
+
+  return 'Echouee';
+}
+
+const BILLING_SETTINGS_VIEW_PERMISSIONS = [
+  PERMISSIONS.VIEW_BILLING_SETTINGS,
+  PERMISSIONS.UPDATE_BILLING_SETTINGS,
+  ...GLOBAL_SETTINGS_VIEW_PERMISSIONS,
+] as const satisfies readonly PermissionCode[];
+
+const BILLING_SETTINGS_UPDATE_PERMISSIONS = [
+  PERMISSIONS.UPDATE_BILLING_SETTINGS,
+  ...GLOBAL_SETTINGS_UPDATE_PERMISSIONS,
+] as const satisfies readonly PermissionCode[];
 
 const TEAM_SETTINGS_VIEW_PERMISSIONS = [
   PERMISSIONS.VIEW_TEAM_SETTINGS,
@@ -245,8 +318,8 @@ const groups: SettingGroup[] = [
         label: 'Invitations',
         icon: 'mail',
         title: 'Invitations',
-        subtitle: 'Pilote les invitations envoyees aux futurs collaborateurs.',
-        sectionTitle: 'Invitations equipe',
+        subtitle: 'Consulte les invitations encore en attente.',
+        sectionTitle: 'Invitations en attente',
         permissions: [
           PERMISSIONS.VIEW_INVITATIONS_SETTINGS,
           PERMISSIONS.UPDATE_INVITATIONS_SETTINGS,
@@ -258,18 +331,7 @@ const groups: SettingGroup[] = [
           PERMISSIONS.INVITE_COLLABORATORS,
           ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
         ],
-        rows: [
-          {
-            title: 'Invitations en attente',
-            description: 'Suis les invitations ouvertes et leur statut.',
-            action: 'Voir',
-          },
-          {
-            title: 'Nouvelle invitation',
-            description: 'Invite un collaborateur dans l espace de travail.',
-            action: 'Inviter',
-          },
-        ],
+        rows: [],
       },
       {
         key: 'profiles',
@@ -533,7 +595,34 @@ const groups: SettingGroup[] = [
         ],
       },
     ]
-  }
+  },
+  {
+    title: 'Facturation',
+    items: [
+      {
+        key: 'subscription',
+        label: 'Abonnement',
+        icon: 'star',
+        title: 'Abonnement',
+        subtitle: 'Consulte ton abonnement Acredi Space actuel.',
+        sectionTitle: 'Abonnement actuel',
+        permissions: BILLING_SETTINGS_VIEW_PERMISSIONS,
+        updatePermissions: BILLING_SETTINGS_UPDATE_PERMISSIONS,
+        rows: [],
+      },
+      {
+        key: 'invoices',
+        label: 'Factures',
+        icon: 'file',
+        title: 'Factures',
+        subtitle: 'Consulte l historique de facturation de ton espace.',
+        sectionTitle: 'Historique des factures',
+        permissions: BILLING_SETTINGS_VIEW_PERMISSIONS,
+        updatePermissions: BILLING_SETTINGS_UPDATE_PERMISSIONS,
+        rows: [],
+      },
+    ],
+  },
 ];
 
 interface ModalSettingProps {
@@ -576,12 +665,20 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
   const activeItem = visibleItems.find((item) => item.key === activeKey) ?? visibleItems[0];
   const canUpdateActiveItem = activeItem ? hasAnyPermission(activeItem.updatePermissions) : false;
   const isProfilesSection = activeItem?.key === 'profiles';
+  const isInvitationsSection = activeItem?.key === 'invitations';
+  const isSubscriptionSection = activeItem?.key === 'subscription';
+  const isInvoicesSection = activeItem?.key === 'invoices';
   const canCreateProfiles = user?.adminRole === 'admin';
   const profilesQuery = useProfilesQuery({ enabled: isProfilesSection });
+  const pendingInvitesQuery = useUsersQuery({ enabled: isInvitationsSection });
   const createProfileMutation = useCreateProfileMutation();
   const isUploadingAvatar = uploadAvatarMutation.isPending;
   const avatarSrc = avatarPreviewUrl ?? user?.avatarUrl ?? null;
   const profiles: ProfileResponse[] = profilesQuery.data ?? [];
+  const pendingInvitations = useMemo(
+    () => (pendingInvitesQuery.data ?? []).filter(isPendingInvitation),
+    [pendingInvitesQuery.data]
+  );
 
   useEffect(() => {
     if (activeItem && activeItem.key !== activeKey) {
@@ -930,7 +1027,202 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
                 </section>
               ) : null}
 
-              {!isProfilesSection ? (
+              {isInvitationsSection ? (
+                <section className="modal-setting-section modal-setting-invitations">
+                  <div className="modal-setting-section-heading">
+                    <div>
+                      <h4>Invitations en attente</h4>
+                      <p>Utilisateurs invites qui n ont pas encore finalise leur compte.</p>
+                    </div>
+                    <button
+                      className="button ghost mini"
+                      type="button"
+                      onClick={() => pendingInvitesQuery.refetch().catch(() => undefined)}
+                      disabled={pendingInvitesQuery.loading}
+                    >
+                      {pendingInvitesQuery.loading ? 'Chargement...' : 'Actualiser'}
+                    </button>
+                  </div>
+
+                  {pendingInvitesQuery.error ? (
+                    <div className="modal-setting-inline-state error">
+                      <Icon name="alert" size={16} />
+                      <span>{pendingInvitesQuery.error.message}</span>
+                    </div>
+                  ) : null}
+
+                  <div
+                    className="modal-setting-profile-table modal-setting-invite-table"
+                    role="table"
+                    aria-label="Invitations en attente"
+                  >
+                    <div className="modal-setting-profile-table-head modal-setting-invite-row" role="row">
+                      <span role="columnheader">Utilisateur</span>
+                      <span role="columnheader">Email</span>
+                      <span role="columnheader">Role</span>
+                      <span role="columnheader">Statut</span>
+                    </div>
+
+                    {pendingInvitesQuery.loading ? (
+                      ['invite-skeleton-1', 'invite-skeleton-2', 'invite-skeleton-3'].map((item) => (
+                        <div
+                          className="modal-setting-profile-row modal-setting-invite-row skeleton"
+                          key={item}
+                          role="row"
+                        >
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line" />
+                        </div>
+                      ))
+                    ) : null}
+
+                    {!pendingInvitesQuery.loading &&
+                    pendingInvitations.length === 0 &&
+                    !pendingInvitesQuery.error ? (
+                      <div className="modal-setting-profile-empty">
+                        <Icon name="mail" size={16} />
+                        <strong>Aucune invitation en attente</strong>
+                        <span>Les invitations ouvertes apparaitront ici.</span>
+                      </div>
+                    ) : null}
+
+                    {!pendingInvitesQuery.loading
+                      ? pendingInvitations.map((invite) => (
+                          <div
+                            className="modal-setting-profile-row modal-setting-invite-row"
+                            key={invite.id}
+                            role="row"
+                          >
+                            <div className="modal-setting-invite-user" role="cell">
+                              <Avatar
+                                name={invite.name || invite.email}
+                                size={32}
+                                presence={invite.presence}
+                                src={invite.avatarUrl}
+                              />
+                              <strong>{invite.name || invite.email}</strong>
+                            </div>
+                            <span role="cell">{invite.email}</span>
+                            <span role="cell">{formatInviteRole(invite)}</span>
+                            <span role="cell">
+                              <span className="modal-setting-invite-badge">En attente</span>
+                            </span>
+                          </div>
+                        ))
+                      : null}
+                  </div>
+                </section>
+              ) : null}
+
+              {isSubscriptionSection ? (
+                <section className="modal-setting-section modal-setting-billing">
+                  <div className="modal-setting-section-heading">
+                    <div>
+                      <h4>Abonnement actuel</h4>
+                      <p>Resume de ton plan Acredi Space en cours.</p>
+                    </div>
+                  </div>
+
+                  <article className="modal-setting-subscription-card">
+                    <div className="modal-setting-subscription-top">
+                      <div>
+                        <span className="modal-setting-subscription-eyebrow">Plan en cours</span>
+                        <h3>{CURRENT_SUBSCRIPTION.planName}</h3>
+                        <p>{CURRENT_SUBSCRIPTION.priceLabel}</p>
+                      </div>
+                      <span className="modal-setting-invite-badge modal-setting-subscription-status">
+                        {formatSubscriptionStatus(CURRENT_SUBSCRIPTION.status)}
+                      </span>
+                    </div>
+
+                    <dl className="modal-setting-subscription-meta">
+                      <div>
+                        <dt>Cycle</dt>
+                        <dd>{CURRENT_SUBSCRIPTION.billingCycle}</dd>
+                      </div>
+                      <div>
+                        <dt>Sieges</dt>
+                        <dd>
+                          {CURRENT_SUBSCRIPTION.seatsUsed} / {CURRENT_SUBSCRIPTION.seats}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Debut</dt>
+                        <dd>{formatBillingDate(CURRENT_SUBSCRIPTION.startedAt)}</dd>
+                      </div>
+                      <div>
+                        <dt>Renouvellement</dt>
+                        <dd>{formatBillingDate(CURRENT_SUBSCRIPTION.renewsAt)}</dd>
+                      </div>
+                    </dl>
+
+                    <div className="modal-setting-subscription-actions">
+                      <button
+                        className="button primary"
+                        type="button"
+                        onClick={() => {
+                          navigate('/settings/plans');
+                          onClose();
+                        }}
+                      >
+                        Changer de plan
+                      </button>
+                    </div>
+                  </article>
+                </section>
+              ) : null}
+
+              {isInvoicesSection ? (
+                <section className="modal-setting-section modal-setting-billing">
+                  <div className="modal-setting-section-heading">
+                    <div>
+                      <h4>Historique des factures</h4>
+                      <p>Factures recentes de ton espace de travail.</p>
+                    </div>
+                  </div>
+
+                  <div
+                    className="modal-setting-profile-table modal-setting-invoice-table"
+                    role="table"
+                    aria-label="Factures"
+                  >
+                    <div className="modal-setting-profile-table-head modal-setting-invoice-row" role="row">
+                      <span role="columnheader">Numero</span>
+                      <span role="columnheader">Date</span>
+                      <span role="columnheader">Plan</span>
+                      <span role="columnheader">Montant</span>
+                      <span role="columnheader">Statut</span>
+                    </div>
+
+                    {BILLING_INVOICES.map((invoice) => (
+                      <div
+                        className="modal-setting-profile-row modal-setting-invoice-row"
+                        key={invoice.id}
+                        role="row"
+                      >
+                        <strong role="cell">{invoice.number}</strong>
+                        <span role="cell">{formatBillingDate(invoice.issuedAt)}</span>
+                        <span role="cell">{invoice.planName}</span>
+                        <span role="cell">{invoice.amountLabel}</span>
+                        <span role="cell">
+                          <span
+                            className={`modal-setting-invoice-badge status-${invoice.status}`}
+                          >
+                            {formatInvoiceStatus(invoice.status)}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              {!isProfilesSection &&
+              !isInvitationsSection &&
+              !isSubscriptionSection &&
+              !isInvoicesSection ? (
                 <section className="modal-setting-section">
                   <h4>{activeItem.sectionTitle}</h4>
 
