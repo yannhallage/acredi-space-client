@@ -1,6 +1,7 @@
 import { clearAuthSession } from "./auth/session";
 
-const DEFAULT_API_BASE_URL = "http://localhost:8080/api";
+const PRODUCTION_API_BASE_URL = "https://srv.acredispace.acredigroup.com/api";
+const DEVELOPMENT_API_BASE_URL = "http://localhost:8080/api";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 type QueryParamValue = boolean | number | string | null | undefined;
@@ -34,11 +35,146 @@ export class HttpError extends Error {
 }
 
 export const API_BASE_URL = normalizeBaseUrl(
-  import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
+  import.meta.env.PROD ? PRODUCTION_API_BASE_URL : DEVELOPMENT_API_BASE_URL
 );
 
 function normalizeBaseUrl(url: string) {
   return url.replace(/\/+$/, "");
+}
+
+// Origine du serveur d'API (schema + host + port), sans le suffixe `/api`.
+// Sert a resoudre les chemins relatifs (ex: avatars, fichiers) renvoyes par le
+// backend, qui sinon seraient resolus contre l'origine du frontend.
+export const API_ORIGIN = (() => {
+  try {
+    return new URL(API_BASE_URL).origin;
+  } catch {
+    return API_BASE_URL.replace(/\/api\/?$/, "");
+  }
+})();
+
+function resolveLocalFrontendAssetUrl(value: string) {
+  const normalizedValue = value.replace(/^file:\/\/+/i, "").replace(/\\/g, "/");
+  const lowerValue = normalizedValue.toLowerCase();
+  const isWindowsAbsolutePath = /^[a-z]:\//i.test(normalizedValue);
+
+  if (lowerValue === "/src" || lowerValue.startsWith("/src/")) {
+    return normalizedValue;
+  }
+
+  if (lowerValue === "src" || lowerValue.startsWith("src/")) {
+    return `/${normalizedValue}`;
+  }
+
+  if (lowerValue === "/public" || lowerValue.startsWith("/public/")) {
+    const publicPath = normalizedValue.slice("/public".length);
+    return publicPath || "/";
+  }
+
+  if (lowerValue === "public" || lowerValue.startsWith("public/")) {
+    const publicPath = normalizedValue.slice("public".length);
+    return publicPath.startsWith("/") ? publicPath : `/${publicPath}`;
+  }
+
+  const publicIndex = isWindowsAbsolutePath ? lowerValue.lastIndexOf("/public/") : -1;
+  if (publicIndex >= 0) {
+    const publicPath = normalizedValue.slice(publicIndex + "/public".length);
+    return publicPath.startsWith("/") ? publicPath : `/${publicPath}`;
+  }
+
+  const srcIndex = isWindowsAbsolutePath ? lowerValue.lastIndexOf("/src/") : -1;
+  if (srcIndex >= 0) {
+    return normalizedValue.slice(srcIndex);
+  }
+
+  return undefined;
+}
+
+// Transforme une URL d'asset renvoyee par l'API en URL chargeable par le
+// navigateur. Les URL absolues, blob: et data: sont laissees telles quelles ;
+// les chemins relatifs sont prefixes par l'origine de l'API. Les chemins qui
+// pointent vers un asset frontend local (`src/...`, `public/...`) restent servis
+// par Vite au lieu d'etre envoyes au backend.
+export function resolveAssetUrl(
+  url: string | null | undefined
+): string | undefined {
+  if (!url) {
+    return undefined;
+  }
+
+  const value = url.trim();
+
+  if (!value) {
+    return undefined;
+  }
+
+  if (/^(https?:|blob:|data:)/i.test(value)) {
+    return value;
+  }
+
+  if (value.startsWith("//")) {
+    return `${window.location.protocol}${value}`;
+  }
+
+  const assetPath = value.replace(/\\/g, "/");
+  const localFrontendAssetUrl = resolveLocalFrontendAssetUrl(assetPath);
+
+  if (localFrontendAssetUrl) {
+    return localFrontendAssetUrl;
+  }
+
+  return `${API_ORIGIN}${assetPath.startsWith("/") ? assetPath : `/${assetPath}`}`;
+}
+
+export type LoadedAssetUrl = {
+  revoke?: () => void;
+  url: string;
+};
+
+export function assetUrlNeedsAuth(url: string) {
+  try {
+    const parsed = new URL(url, window.location.origin);
+
+    return (
+      parsed.origin === API_ORIGIN || parsed.origin === window.location.origin
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function loadAssetUrl(
+  url: string | null | undefined
+): Promise<LoadedAssetUrl | null> {
+  const resolvedUrl = resolveAssetUrl(url);
+
+  if (!resolvedUrl) {
+    return null;
+  }
+
+  if (!assetUrlNeedsAuth(resolvedUrl)) {
+    return { url: resolvedUrl };
+  }
+
+  const headers = new Headers();
+  const token = getStoredToken();
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(resolvedUrl, { headers });
+
+  if (!response.ok) {
+    throw new Error("asset-unavailable");
+  }
+
+  const objectUrl = URL.createObjectURL(await response.blob());
+
+  return {
+    revoke: () => URL.revokeObjectURL(objectUrl),
+    url: objectUrl,
+  };
 }
 
 function appendSearchParams(
@@ -72,6 +208,10 @@ function resolveUrl(path: string, params?: Record<string, QueryParamValue>) {
     : `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
   return appendSearchParams(url, params);
+}
+
+export function resolveApiUrl(path: string) {
+  return resolveUrl(path);
 }
 
 function getStoredToken() {
@@ -209,6 +349,58 @@ async function request<T>(path: string, options: HttpRequestOptions = {}) {
   return payload as T;
 }
 
+async function requestRaw(path: string, options: HttpRequestOptions = {}) {
+  const {
+    auth = true,
+    body,
+    headers,
+    method = "GET",
+    params,
+    ...rest
+  } = options;
+  const requestHeaders = new Headers(headers);
+  const serializedBody = serializeBody(body);
+
+  if (
+    body !== undefined &&
+    !isRawBody(body) &&
+    !requestHeaders.has("Content-Type")
+  ) {
+    requestHeaders.set("Content-Type", "application/json");
+  }
+
+  if (auth) {
+    const token = getStoredToken();
+
+    if (token) {
+      requestHeaders.set("Authorization", `Bearer ${token}`);
+    }
+  }
+
+  const response = await fetch(resolveUrl(path, params), {
+    ...rest,
+    body: serializedBody,
+    headers: requestHeaders,
+    method,
+  });
+
+  if (!response.ok) {
+    const payload = await parseResponse(response);
+
+    if (auth && shouldForceLogout(response.status)) {
+      forceFrontendLogout();
+    }
+
+    throw new HttpError(
+      response.status,
+      getErrorMessage(response.status, payload),
+      payload && typeof payload === "object" ? (payload as ApiErrorPayload) : null
+    );
+  }
+
+  return response;
+}
+
 export const http = {
   delete: <T>(path: string, options?: Omit<HttpRequestOptions, "method">) =>
     request<T>(path, { ...options, method: "DELETE" }),
@@ -230,4 +422,5 @@ export const http = {
     options?: Omit<HttpRequestOptions, "body" | "method">
   ) => request<T>(path, { ...options, body, method: "PUT" }),
   request,
+  raw: requestRaw,
 };

@@ -6,6 +6,7 @@ import type {
   CreateDirectChannelRequest,
   MessageResponse,
   SendMessageRequest,
+  ShareMessageRequest,
 } from "./types";
 
 interface ApiResponse<TData> {
@@ -86,6 +87,34 @@ export const chatService = {
       }
     );
 
+    return unwrapApiResponse(response);
+  },
+
+  async deleteMessage(messageId: string): Promise<MessageResponse> {
+    const response = await http.delete<ApiResponse<MessageResponse>>(
+      chatEndpoints.message(messageId)
+    );
+    return unwrapApiResponse(response);
+  },
+
+  async updateMessage(
+    messageId: string,
+    content: string
+  ): Promise<MessageResponse> {
+    const response = await http.patch<ApiResponse<MessageResponse>>(
+      chatEndpoints.message(messageId),
+      { content }
+    );
+    return unwrapApiResponse(response);
+  },
+
+  async shareMessage(
+    messageId: string,
+    request: ShareMessageRequest
+  ): Promise<MessageResponse | { discussionId: string; id: string }> {
+    const response = await http.post<
+      ApiResponse<MessageResponse | { discussionId: string; id: string }>
+    >(chatEndpoints.share(messageId), request);
     return unwrapApiResponse(response);
   },
 };

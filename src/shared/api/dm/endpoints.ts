@@ -11,4 +11,6 @@ export const chatEndpoints = {
 
   messages: (channelId: string) => `/chat/channels/${channelId}/messages`,
   send: "/chat/messages",
+  message: (messageId: string) => `/chat/messages/${messageId}`,
+  share: (messageId: string) => `/chat/messages/${messageId}/share`,
 } as const;

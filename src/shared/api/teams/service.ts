@@ -70,4 +70,11 @@ export const teamService = {
     );
     return unwrapApiResponse(response);
   },
+
+  async removeMember(id: string, userId: string): Promise<TeamResponse> {
+    const response = await http.delete<ApiResponse<TeamResponse>>(
+      teamEndpoints.removeMember(id, userId)
+    );
+    return unwrapApiResponse(response);
+  },
 };

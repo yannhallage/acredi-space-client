@@ -1,5 +1,6 @@
 import { http } from "../http";
 import { discussionEndpoints } from "./endpoints";
+import type { MessageResponse } from "../dm/types";
 import type {
   ApiResponse,
   CreateGroupDiscussionRequest,
@@ -13,18 +14,52 @@ function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
   return response.data;
 }
 
+// export function formatDiscussionMemberName(
+//   member: Pick<
+//     GroupDiscussionMemberResponse,
+//     "name" | "firstName" | "lastName" | "email"
+//   >
+// ) {
+//   if (member.name?.trim()) {
+//     return member.name.trim();
+//   }
+
+//   const firstName = member.firstName?.trim() ?? "";
+//   const lastName = member.lastName?.trim() ?? "";
+
+//   if (firstName && lastName) {
+//     return `${firstName} ${lastName}`;
+//   }
+
+//   if (firstName) {
+//     return firstName;
+//   }
+
+//   if (lastName) {
+//     return lastName;
+//   }
+
+//   return member.email?.trim() || "Membre";
+// }
+
+
 export function formatDiscussionMemberName(
   member: Pick<
     GroupDiscussionMemberResponse,
-    "name" | "firstName" | "lastName" | "email"
+    "displayName" | "name" | "firstName" | "lastName" | "email"
   >
 ) {
+  if (member.displayName?.trim()) {
+    return member.displayName.trim();
+  }
+
   if (member.name?.trim()) {
     return member.name.trim();
   }
 
   const firstName = member.firstName?.trim() ?? "";
   const lastName = member.lastName?.trim() ?? "";
+  
 
   if (firstName && lastName) {
     return `${firstName} ${lastName}`;
@@ -40,6 +75,7 @@ export function formatDiscussionMemberName(
 
   return member.email?.trim() || "Membre";
 }
+
 
 export const discussionService = {
   async findMine() {
@@ -88,6 +124,39 @@ export const discussionService = {
       discussionEndpoints.messages(discussionId),
       request
     );
+
+    return unwrapApiResponse(response);
+  },
+
+  async deleteMessage(discussionId: string, messageId: string) {
+    const response = await http.delete<ApiResponse<GroupMessageResponse>>(
+      discussionEndpoints.message(discussionId, messageId)
+    );
+
+    return unwrapApiResponse(response);
+  },
+
+  async updateMessage(
+    discussionId: string,
+    messageId: string,
+    content: string
+  ) {
+    const response = await http.patch<ApiResponse<GroupMessageResponse>>(
+      discussionEndpoints.message(discussionId, messageId),
+      { content }
+    );
+
+    return unwrapApiResponse(response);
+  },
+
+  async shareMessage(
+    discussionId: string,
+    messageId: string,
+    request: { userId?: string; discussionId?: string }
+  ) {
+    const response = await http.post<
+      ApiResponse<MessageResponse | GroupMessageResponse>
+    >(discussionEndpoints.shareMessage(discussionId, messageId), request);
 
     return unwrapApiResponse(response);
   },

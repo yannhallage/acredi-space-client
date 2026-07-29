@@ -39,7 +39,7 @@ export function MeetingRoom() {
   return (
     <main className="meeting-room-page" aria-label="Salle de reunion">
       <JitsiMeeting
-        domain="meet.jit.si"
+        domain="meet.acredigroup.com"
         roomName={roomName}
         getIFrameRef={(iframe) => {
           iframe.style.height = "100%";

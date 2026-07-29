@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { chatKeys } from "../dm/hooks";
+import type { MessageResponse } from "../dm/types";
 import { discussionService } from "./service";
-import type { SendGroupMessageRequest } from "./types";
+import type { GroupMessageResponse, SendGroupMessageRequest } from "./types";
 
 interface UseDiscussionQueryOptions {
   enabled?: boolean;
@@ -64,7 +66,6 @@ export function useDiscussionMessages(
     queryKey: discussionKeys.messages(discussionId ?? ""),
     queryFn: () => discussionService.findMessages(discussionId!),
     enabled: enabled && Boolean(discussionId),
-    refetchInterval: 15_000,
     staleTime: 1000 * 5,
   });
 }
@@ -81,10 +82,130 @@ export function useSendDiscussionMessage() {
       request: SendGroupMessageRequest;
     }) => discussionService.sendMessage(discussionId, request),
     onSuccess: (message) => {
-      queryClient.invalidateQueries({
-        queryKey: discussionKeys.messages(message.discussionId),
-      });
+      queryClient.setQueryData<GroupMessageResponse[]>(
+        discussionKeys.messages(message.discussionId),
+        (oldMessages = []) => {
+          const alreadyExists = oldMessages.some(
+            (item) => item.id === message.id,
+          );
+
+          if (alreadyExists) {
+            return oldMessages;
+          }
+
+          return [...oldMessages, message];
+        },
+      );
       queryClient.invalidateQueries({ queryKey: discussionKeys.mine() });
+    },
+  });
+}
+
+export function useDeleteDiscussionMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      discussionId,
+      messageId,
+    }: {
+      discussionId: string;
+      messageId: string;
+    }) => discussionService.deleteMessage(discussionId, messageId),
+    onSuccess: (message) => {
+      queryClient.setQueryData<GroupMessageResponse[]>(
+        discussionKeys.messages(message.discussionId),
+        (oldMessages = []) =>
+          oldMessages.map((item) => (item.id === message.id ? message : item)),
+      );
+      queryClient.invalidateQueries({ queryKey: discussionKeys.mine() });
+    },
+  });
+}
+
+export function useUpdateDiscussionMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      discussionId,
+      messageId,
+      content,
+    }: {
+      discussionId: string;
+      messageId: string;
+      content: string;
+    }) => discussionService.updateMessage(discussionId, messageId, content),
+    onSuccess: (message) => {
+      queryClient.setQueryData<GroupMessageResponse[]>(
+        discussionKeys.messages(message.discussionId),
+        (oldMessages = []) =>
+          oldMessages.map((item) => (item.id === message.id ? message : item)),
+      );
+      queryClient.invalidateQueries({ queryKey: discussionKeys.mine() });
+    },
+  });
+}
+
+export function useShareDiscussionMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      discussionId,
+      messageId,
+      userId,
+      targetDiscussionId,
+    }: {
+      discussionId: string;
+      messageId: string;
+      userId?: string;
+      targetDiscussionId?: string;
+    }) =>
+      discussionService.shareMessage(discussionId, messageId, {
+        userId,
+        discussionId: targetDiscussionId,
+      }),
+    onSuccess: (message) => {
+      if ("channelId" in message && message.channelId) {
+        queryClient.setQueryData<MessageResponse[]>(
+          chatKeys.messages(message.channelId),
+          (oldMessages = []) => {
+            const alreadyExists = oldMessages.some(
+              (item) => item.id === message.id,
+            );
+
+            if (alreadyExists) {
+              return oldMessages;
+            }
+
+            return [...oldMessages, message];
+          },
+        );
+
+        queryClient.invalidateQueries({
+          queryKey: chatKeys.channels(),
+        });
+        return;
+      }
+
+      if ("discussionId" in message && message.discussionId) {
+        queryClient.setQueryData<GroupMessageResponse[]>(
+          discussionKeys.messages(message.discussionId),
+          (oldMessages = []) => {
+            const alreadyExists = oldMessages.some(
+              (item) => item.id === message.id,
+            );
+
+            if (alreadyExists) {
+              return oldMessages;
+            }
+
+            return [...oldMessages, message];
+          },
+        );
+        queryClient.invalidateQueries({ queryKey: discussionKeys.mine() });
+      }
     },
   });
 }

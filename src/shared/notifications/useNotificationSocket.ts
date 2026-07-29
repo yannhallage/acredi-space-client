@@ -12,6 +12,8 @@ import {
 import { API_BASE_URL } from "../api/http";
 import { authStorageKeys } from "../api/auth";
 import { useAuth } from "../context";
+import { showDesktopNotification } from "./desktop";
+import { getNotificationTarget } from "./routing";
 import { playNotificationSound } from "./sound";
 
 interface UseNotificationSocketOptions {
@@ -26,7 +28,7 @@ function defaultSocketUrl() {
 }
 
 function socketUrl() {
-  return import.meta.env.VITE_WS_URL || defaultSocketUrl();
+  return defaultSocketUrl();
 }
 
 function readNotification(message: IMessage) {
@@ -92,6 +94,12 @@ export function useNotificationSocket(options: UseNotificationSocketOptions = {}
           queryClient.invalidateQueries({ queryKey: dashboardKeys.notifications() });
           onNotificationRef.current?.(payload);
           playNotificationSound();
+          showDesktopNotification({
+            id: notification.id,
+            title: notification.title,
+            message: notification.message,
+            path: getNotificationTarget(notification),
+          });
         });
       },
     });

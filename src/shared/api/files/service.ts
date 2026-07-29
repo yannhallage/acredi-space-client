@@ -5,12 +5,39 @@ import type {
   ApiResponse,
   FileResponse,
   ShareFileRequest,
-  SharedFile,
   UploadFileRequest,
 } from "./types";
 
 function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
   return response.data;
+}
+
+function unwrapMaybeApiResponse<TData>(response: ApiResponse<TData> | TData) {
+  if (response && typeof response === "object" && "data" in response) {
+    return (response as ApiResponse<TData>).data;
+  }
+
+  return response as TData;
+}
+
+function readDownloadUrl(value: unknown) {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  if (value && typeof value === "object") {
+    const source = value as Record<string, unknown>;
+
+    for (const key of ["url", "downloadUrl", "fileUrl", "previewUrl", "signedUrl"]) {
+      const url = source[key];
+
+      if (typeof url === "string" && url.trim()) {
+        return url.trim();
+      }
+    }
+  }
+
+  throw new Error("Lien de telechargement introuvable.");
 }
 
 function buildUploadFormData(request: UploadFileRequest) {
@@ -39,11 +66,13 @@ export const fileService = {
   },
 
   async downloadUrl(id: string) {
-    const response = await http.get<ApiResponse<{ url: string }>>(
+    const response = await http.get<
+      ApiResponse<{ url?: string } | string> | { url?: string } | string
+    >(
       fileEndpoints.downloadUrl(id),
     );
 
-    return unwrapApiResponse(response).url;
+    return readDownloadUrl(unwrapMaybeApiResponse(response));
   },
 
   async findMine() {

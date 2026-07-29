@@ -29,6 +29,15 @@ export interface ChatAttachmentResponse {
   downloadUrl: string;
 }
 
+export type ChatMessageKind = "NORMAL" | "SHARED";
+
+export interface ForwardedMessagePreview {
+  id: string;
+  senderName: string;
+  content: string;
+  deletedAt?: string | null;
+}
+
 export interface MessageResponse {
   id: string;
   channelId: string;
@@ -36,11 +45,24 @@ export interface MessageResponse {
   senderName?: string;
   content: string;
   createdAt: string;
+  editedAt?: string | null;
+  deletedAt?: string | null;
   attachments?: ChatAttachmentResponse[];
+  kind?: ChatMessageKind;
+  forwardedFrom?: ForwardedMessagePreview | null;
 }
 
 export interface SendMessageRequest {
   channelId: string;
   content: string;
   files?: globalThis.File[];
+}
+
+export interface ShareMessageRequest {
+  userId?: string;
+  discussionId?: string;
+}
+
+export interface UpdateMessageRequest {
+  content: string;
 }

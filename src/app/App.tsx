@@ -3,8 +3,8 @@ import { AdminPage } from '../features/admin/AdminPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { PasswordChangePage } from '../features/auth/PasswordChangePage';
 import { ProfileCompletionPage } from '../features/auth/ProfileCompletionPage';
-import { ForgotPasswordPage } from "../features/auth/pages/ForgotPasswordPage";
-import { ResetPasswordPage } from "../features/auth/pages/ResetPasswordPage";
+import { ForgotPasswordPage } from "../features/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "../features/auth/ResetPasswordPage";
 import { CalendarPage } from '../features/calendar/CalendarPage';
 import { ChatPage } from '../features/chat/ChatPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
@@ -16,12 +16,14 @@ import { MeetingRoom } from '../features/meeting/MeetingRoom';
 import { NotesPage } from '../features/notes/NotesPage';
 import { PreviewPage } from '../features/preview/PreviewPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
+import { ChangePasswordPage } from '../features/settings/ChangePasswordPage';
+import { PlansPage } from '../features/settings/PlansPage';
 import { MyTeamsPage } from '../features/teams/MyTeamsPage';
 import { TeamsPage } from '../features/teams/TeamsPage';
 import { CreateTeamPage } from "../features/teams/CreateTeamPage";
 import { UserDetailPage } from '../features/users/UserDetailPage';
 import { UsersPage } from '../features/users/UsersPage';
-import { OtpPage } from '../features/OtpPage/OtpPage';
+import { OtpPage } from '../features/otp/OtpPage';
 import { AppLayout } from '../layouts/AppLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { AuthProvider, WorkspaceProvider } from '../shared/context';
@@ -64,6 +66,8 @@ export default function App() {
               </Route>
 
               <Route element={<ProtectedRoute />}>
+                <Route path="/settings/password" element={<ChangePasswordPage />} />
+                <Route path="/settings/plans" element={<PlansPage />} />
                 <Route path="/app/meeting-room/:roomName" element={<MeetingRoom />} />
 
                 <Route path="/app" element={<AppLayout />}>

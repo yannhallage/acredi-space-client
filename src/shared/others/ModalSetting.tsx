@@ -1,12 +1,23 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
-import { useUploadAvatarMutation } from '../api/users';
+import { useNavigate } from 'react-router-dom';
+import { useCreateProfileMutation, useProfilesQuery, type ProfileResponse } from '../api/profiles';
+import { useUploadAvatarMutation, useUsersQuery } from '../api/users';
+import { PresetAvatarPicker, extractPresetAvatarFile } from '../avatars/PresetAvatarPicker';
+import type { AvatarPreset } from '../avatars/presets';
 import { useAuth } from '../context';
+import type { User } from '../types';
 import { Avatar, Icon, type IconName } from '../ui';
 import { PERMISSIONS, usePermissions, type PermissionCode } from '../permissions';
+import {
+  BILLING_INVOICES,
+  CURRENT_SUBSCRIPTION,
+  type InvoiceStatus,
+} from '../../features/settings/billing/data';
 
 type SettingKey =
   | 'profile'
+  | 'profiles'
   | 'preferences'
   | 'members'
   | 'roles'
@@ -18,11 +29,14 @@ type SettingKey =
   | 'emailAccounts'
   | 'emailTemplates'
   | 'assignmentRules'
-  | 'slaPolicies';
+  | 'slaPolicies'
+  | 'subscription'
+  | 'invoices';
 
 type SettingRow = {
   action: string;
   description: string;
+  href?: string;
   title: string;
 };
 
@@ -63,6 +77,89 @@ function getAvatarErrorMessage(error: unknown) {
     : 'Impossible de mettre a jour la photo.';
 }
 
+function formatProfileDate(value?: string) {
+  if (!value) {
+    return 'Non renseigne';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Non renseigne';
+  }
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatInviteRole(user: User) {
+  if (user.adminRole === 'admin' || user.adminRole === 'owner') {
+    return 'Admin';
+  }
+
+  if (user.adminRole === 'manager') {
+    return 'Manager';
+  }
+
+  return 'Collaborateur';
+}
+
+function isPendingInvitation(user: User) {
+  return (user.invitationStatus ?? '').toUpperCase() === 'PENDING';
+}
+
+function formatBillingDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatSubscriptionStatus(status: string) {
+  if (status === 'active') {
+    return 'Actif';
+  }
+
+  if (status === 'trial') {
+    return 'Essai';
+  }
+
+  return 'En retard';
+}
+
+function formatInvoiceStatus(status: InvoiceStatus) {
+  if (status === 'paid') {
+    return 'Payee';
+  }
+
+  if (status === 'pending') {
+    return 'En attente';
+  }
+
+  return 'Echouee';
+}
+
+const BILLING_SETTINGS_VIEW_PERMISSIONS = [
+  PERMISSIONS.VIEW_BILLING_SETTINGS,
+  PERMISSIONS.UPDATE_BILLING_SETTINGS,
+  ...GLOBAL_SETTINGS_VIEW_PERMISSIONS,
+] as const satisfies readonly PermissionCode[];
+
+const BILLING_SETTINGS_UPDATE_PERMISSIONS = [
+  PERMISSIONS.UPDATE_BILLING_SETTINGS,
+  ...GLOBAL_SETTINGS_UPDATE_PERMISSIONS,
+] as const satisfies readonly PermissionCode[];
+
 const TEAM_SETTINGS_VIEW_PERMISSIONS = [
   PERMISSIONS.VIEW_TEAM_SETTINGS,
   PERMISSIONS.UPDATE_TEAM_SETTINGS,
@@ -91,10 +188,10 @@ const groups: SettingGroup[] = [
     items: [
       {
         key: 'profile',
-        label: 'Profil',
+        label: 'Compte',
         icon: 'user',
-        title: 'Profil',
-        subtitle: 'Gere ton profil et tes informations de connexion.',
+        title: 'Compte',
+        subtitle: 'Gere ton compte et tes informations de connexion.',
         sectionTitle: 'Compte et securite',
         permissions: [
           PERMISSIONS.VIEW_PROFILE_SETTINGS,
@@ -109,15 +206,16 @@ const groups: SettingGroup[] = [
           ...GLOBAL_SETTINGS_UPDATE_PERMISSIONS,
         ],
         rows: [
-          {
-            title: 'Emails et signature',
-            description: 'Gere les emails de ton compte et ta signature de communication.',
-            action: 'Configurer',
-          },
+          // {
+          //   title: 'Emails et signature',
+          //   description: 'Gere les emails de ton compte et ta signature de communication.',
+          //   action: 'Configurer',
+          // },
           {
             title: 'Mot de passe',
             description: 'Change ton mot de passe pour proteger ton espace.',
             action: 'Changer',
+            href: '/settings/password',
           },
         ],
       },
@@ -184,44 +282,44 @@ const groups: SettingGroup[] = [
           },
         ],
       },
-      {
-        key: 'roles',
-        label: 'Roles',
-        icon: 'shield',
-        title: 'Roles',
-        subtitle: 'Gere les roles et les permissions disponibles.',
-        sectionTitle: 'Roles et permissions',
-        permissions: [
-          PERMISSIONS.VIEW_ROLES_SETTINGS,
-          PERMISSIONS.UPDATE_ROLES_SETTINGS,
-          PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
-          ...TEAM_SETTINGS_VIEW_PERMISSIONS,
-        ],
-        updatePermissions: [
-          PERMISSIONS.UPDATE_ROLES_SETTINGS,
-          PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
-          ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
-        ],
-        rows: [
-          {
-            title: 'Roles',
-            description: 'Consulte les roles et leur couverture de permissions.',
-            action: 'Configurer',
-          },
-          {
-            title: 'Permissions',
-            description: 'Ajuste les permissions rattachees aux roles de l espace.',
-            action: 'Modifier',
-          },
-        ],
-      },
+      // {
+      //   key: 'roles',
+      //   label: 'Roles',
+      //   icon: 'shield',
+      //   title: 'Roles',
+      //   subtitle: 'Gere les roles et les permissions disponibles.',
+      //   sectionTitle: 'Roles et permissions',
+      //   permissions: [
+      //     PERMISSIONS.VIEW_ROLES_SETTINGS,
+      //     PERMISSIONS.UPDATE_ROLES_SETTINGS,
+      //     PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
+      //     ...TEAM_SETTINGS_VIEW_PERMISSIONS,
+      //   ],
+      //   updatePermissions: [
+      //     PERMISSIONS.UPDATE_ROLES_SETTINGS,
+      //     PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
+      //     ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
+      //   ],
+      //   rows: [
+      //     {
+      //       title: 'Roles',
+      //       description: 'Consulte les roles et leur couverture de permissions.',
+      //       action: 'Configurer',
+      //     },
+      //     {
+      //       title: 'Permissions',
+      //       description: 'Ajuste les permissions rattachees aux roles de l espace.',
+      //       action: 'Modifier',
+      //     },
+      //   ],
+      // },
       {
         key: 'invitations',
         label: 'Invitations',
         icon: 'mail',
         title: 'Invitations',
-        subtitle: 'Pilote les invitations envoyees aux futurs collaborateurs.',
-        sectionTitle: 'Invitations equipe',
+        subtitle: 'Consulte les invitations encore en attente.',
+        sectionTitle: 'Invitations en attente',
         permissions: [
           PERMISSIONS.VIEW_INVITATIONS_SETTINGS,
           PERMISSIONS.UPDATE_INVITATIONS_SETTINGS,
@@ -233,18 +331,28 @@ const groups: SettingGroup[] = [
           PERMISSIONS.INVITE_COLLABORATORS,
           ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
         ],
-        rows: [
-          {
-            title: 'Invitations en attente',
-            description: 'Suis les invitations ouvertes et leur statut.',
-            action: 'Voir',
-          },
-          {
-            title: 'Nouvelle invitation',
-            description: 'Invite un collaborateur dans l espace de travail.',
-            action: 'Inviter',
-          },
+        rows: [],
+      },
+      {
+        key: 'profiles',
+        label: 'Profil',
+        icon: 'user',
+        title: 'Profils',
+        subtitle: 'Gere les profils disponibles dans l espace.',
+        sectionTitle: 'Profils disponibles',
+        permissions: [
+          PERMISSIONS.VIEW_INVITATIONS_SETTINGS,
+          PERMISSIONS.INVITE_COLLABORATORS,
+          PERMISSIONS.CREATE_USERS,
+          PERMISSIONS.MANAGE_ACCOUNTS,
+          ...TEAM_SETTINGS_VIEW_PERMISSIONS,
         ],
+        updatePermissions: [
+          PERMISSIONS.CREATE_USERS,
+          PERMISSIONS.MANAGE_ACCOUNTS,
+          ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
+        ],
+        rows: [],
       },
     ]
   },
@@ -280,35 +388,35 @@ const groups: SettingGroup[] = [
           },
         ],
       },
-      {
-        key: 'dashboard',
-        label: 'Dashboard',
-        icon: 'grid',
-        title: 'Dashboard',
-        subtitle: 'Controle les options du tableau de bord.',
-        sectionTitle: 'Tableau de bord',
-        permissions: [
-          PERMISSIONS.VIEW_DASHBOARD_SETTINGS,
-          PERMISSIONS.UPDATE_DASHBOARD_SETTINGS,
-          ...COMPANY_SETTINGS_VIEW_PERMISSIONS,
-        ],
-        updatePermissions: [
-          PERMISSIONS.UPDATE_DASHBOARD_SETTINGS,
-          ...COMPANY_SETTINGS_UPDATE_PERMISSIONS,
-        ],
-        rows: [
-          {
-            title: 'Widgets',
-            description: 'Choisis les donnees visibles dans le tableau de bord.',
-            action: 'Configurer',
-          },
-          {
-            title: 'Vue par defaut',
-            description: 'Definis l affichage initial des utilisateurs.',
-            action: 'Modifier',
-          },
-        ],
-      },
+      // {
+      //   key: 'dashboard',
+      //   label: 'Dashboard',
+      //   icon: 'grid',
+      //   title: 'Dashboard',
+      //   subtitle: 'Controle les options du tableau de bord.',
+      //   sectionTitle: 'Tableau de bord',
+      //   permissions: [
+      //     PERMISSIONS.VIEW_DASHBOARD_SETTINGS,
+      //     PERMISSIONS.UPDATE_DASHBOARD_SETTINGS,
+      //     ...COMPANY_SETTINGS_VIEW_PERMISSIONS,
+      //   ],
+      //   updatePermissions: [
+      //     PERMISSIONS.UPDATE_DASHBOARD_SETTINGS,
+      //     ...COMPANY_SETTINGS_UPDATE_PERMISSIONS,
+      //   ],
+      //   rows: [
+      //     {
+      //       title: 'Widgets',
+      //       description: 'Choisis les donnees visibles dans le tableau de bord.',
+      //       action: 'Configurer',
+      //     },
+      //     {
+      //       title: 'Vue par defaut',
+      //       description: 'Definis l affichage initial des utilisateurs.',
+      //       action: 'Modifier',
+      //     },
+      //   ],
+      // },
       {
         key: 'defaults',
         label: 'Defaults',
@@ -338,35 +446,35 @@ const groups: SettingGroup[] = [
           },
         ],
       },
-      {
-        key: 'brand',
-        label: 'Brand',
-        icon: 'star',
-        title: 'Brand',
-        subtitle: 'Personnalise l identite visuelle de l espace.',
-        sectionTitle: 'Identite',
-        permissions: [
-          PERMISSIONS.VIEW_BRAND_SETTINGS,
-          PERMISSIONS.UPDATE_BRAND_SETTINGS,
-          ...COMPANY_SETTINGS_VIEW_PERMISSIONS,
-        ],
-        updatePermissions: [
-          PERMISSIONS.UPDATE_BRAND_SETTINGS,
-          ...COMPANY_SETTINGS_UPDATE_PERMISSIONS,
-        ],
-        rows: [
-          {
-            title: 'Logo et couleurs',
-            description: 'Ajuste les elements visuels partages par l equipe.',
-            action: 'Configurer',
-          },
-          {
-            title: 'Nom public',
-            description: 'Controle la denomination affichee dans les interfaces.',
-            action: 'Modifier',
-          },
-        ],
-      },
+      // {
+      //   key: 'brand',
+      //   label: 'Brand',
+      //   icon: 'star',
+      //   title: 'Brand',
+      //   subtitle: 'Personnalise l identite visuelle de l espace.',
+      //   sectionTitle: 'Identite',
+      //   permissions: [
+      //     PERMISSIONS.VIEW_BRAND_SETTINGS,
+      //     PERMISSIONS.UPDATE_BRAND_SETTINGS,
+      //     ...COMPANY_SETTINGS_VIEW_PERMISSIONS,
+      //   ],
+      //   updatePermissions: [
+      //     PERMISSIONS.UPDATE_BRAND_SETTINGS,
+      //     ...COMPANY_SETTINGS_UPDATE_PERMISSIONS,
+      //   ],
+      //   rows: [
+      //     {
+      //       title: 'Logo et couleurs',
+      //       description: 'Ajuste les elements visuels partages par l equipe.',
+      //       action: 'Configurer',
+      //     },
+      //     {
+      //       title: 'Nom public',
+      //       description: 'Controle la denomination affichee dans les interfaces.',
+      //       action: 'Modifier',
+      //     },
+      //   ],
+      // },
     ]
   },
   {
@@ -487,7 +595,34 @@ const groups: SettingGroup[] = [
         ],
       },
     ]
-  }
+  },
+  {
+    title: 'Facturation',
+    items: [
+      {
+        key: 'subscription',
+        label: 'Abonnement',
+        icon: 'star',
+        title: 'Abonnement',
+        subtitle: 'Consulte ton abonnement Acredi Space actuel.',
+        sectionTitle: 'Abonnement actuel',
+        permissions: BILLING_SETTINGS_VIEW_PERMISSIONS,
+        updatePermissions: BILLING_SETTINGS_UPDATE_PERMISSIONS,
+        rows: [],
+      },
+      {
+        key: 'invoices',
+        label: 'Factures',
+        icon: 'file',
+        title: 'Factures',
+        subtitle: 'Consulte l historique de facturation de ton espace.',
+        sectionTitle: 'Historique des factures',
+        permissions: BILLING_SETTINGS_VIEW_PERMISSIONS,
+        updatePermissions: BILLING_SETTINGS_UPDATE_PERMISSIONS,
+        rows: [],
+      },
+    ],
+  },
 ];
 
 interface ModalSettingProps {
@@ -498,13 +633,18 @@ interface ModalSettingProps {
 }
 
 export default function ModalSetting({ userEmail, userName, workspaceName, onClose }: ModalSettingProps) {
+  const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const { hasAnyPermission } = usePermissions();
   const uploadAvatarMutation = useUploadAvatarMutation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [activeKey, setActiveKey] = useState<SettingKey>('profile');
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const [avatarMessage, setAvatarMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [profileName, setProfileName] = useState('');
+  const [profileDescription, setProfileDescription] = useState('');
+  const [profileMessage, setProfileMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const visibleGroups = useMemo(
     () =>
@@ -524,8 +664,21 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
 
   const activeItem = visibleItems.find((item) => item.key === activeKey) ?? visibleItems[0];
   const canUpdateActiveItem = activeItem ? hasAnyPermission(activeItem.updatePermissions) : false;
+  const isProfilesSection = activeItem?.key === 'profiles';
+  const isInvitationsSection = activeItem?.key === 'invitations';
+  const isSubscriptionSection = activeItem?.key === 'subscription';
+  const isInvoicesSection = activeItem?.key === 'invoices';
+  const canCreateProfiles = user?.adminRole === 'admin';
+  const profilesQuery = useProfilesQuery({ enabled: isProfilesSection });
+  const pendingInvitesQuery = useUsersQuery({ enabled: isInvitationsSection });
+  const createProfileMutation = useCreateProfileMutation();
   const isUploadingAvatar = uploadAvatarMutation.isPending;
   const avatarSrc = avatarPreviewUrl ?? user?.avatarUrl ?? null;
+  const profiles: ProfileResponse[] = profilesQuery.data ?? [];
+  const pendingInvitations = useMemo(
+    () => (pendingInvitesQuery.data ?? []).filter(isPendingInvitation),
+    [pendingInvitesQuery.data]
+  );
 
   useEffect(() => {
     if (activeItem && activeItem.key !== activeKey) {
@@ -562,6 +715,7 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
     }
 
     setAvatarMessage(null);
+    setSelectedPresetId(null);
 
     if (!file.type.startsWith('image/')) {
       setAvatarMessage({ type: 'error', text: 'Merci de choisir une image valide.' });
@@ -575,11 +729,12 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
       return;
     }
 
-    setAvatarPreviewUrl(URL.createObjectURL(file));
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreviewUrl(previewUrl);
 
     try {
-      const updatedUser = await uploadAvatarMutation.mutateAsync(file);
-      updateUser(updatedUser);
+      const uploadedAvatar = await uploadAvatarMutation.mutateAsync(file);
+      updateUser(uploadedAvatar);
       setAvatarPreviewUrl(null);
       setAvatarMessage({ type: 'success', text: 'Photo de profil mise a jour.' });
     } catch (error) {
@@ -587,6 +742,69 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
       setAvatarMessage({ type: 'error', text: getAvatarErrorMessage(error) });
     } finally {
       event.target.value = '';
+    }
+  }
+
+  async function handlePresetAvatarSelect(preset: AvatarPreset) {
+    setAvatarMessage(null);
+    setSelectedPresetId(preset.id);
+    setAvatarPreviewUrl(preset.url);
+
+    try {
+      const file = await extractPresetAvatarFile(preset);
+
+      if (file.size > MAX_AVATAR_SIZE) {
+        setSelectedPresetId(null);
+        setAvatarPreviewUrl(null);
+        setAvatarMessage({ type: 'error', text: 'La photo doit faire moins de 5 Mo.' });
+        return;
+      }
+
+      const uploadedAvatar = await uploadAvatarMutation.mutateAsync(file);
+      updateUser(uploadedAvatar);
+      setAvatarPreviewUrl(null);
+      setAvatarMessage({ type: 'success', text: 'Photo de profil mise a jour.' });
+    } catch (error) {
+      setSelectedPresetId(null);
+      setAvatarPreviewUrl(null);
+      setAvatarMessage({ type: 'error', text: getAvatarErrorMessage(error) });
+    }
+  }
+
+  async function handleCreateProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setProfileMessage(null);
+
+    if (!canCreateProfiles) {
+      setProfileMessage({
+        type: 'error',
+        text: 'Seuls les administrateurs peuvent creer des profils.',
+      });
+      return;
+    }
+
+    const name = profileName.trim();
+    const description = profileDescription.trim();
+
+    if (!name) {
+      setProfileMessage({ type: 'error', text: 'Le nom du profil est obligatoire.' });
+      return;
+    }
+
+    try {
+      await createProfileMutation.mutateAsync({
+        name,
+        description: description || null,
+      });
+      setProfileName('');
+      setProfileDescription('');
+      setProfileMessage({ type: 'success', text: 'Profil ajoute.' });
+      profilesQuery.refetch().catch(() => undefined);
+    } catch (error) {
+      setProfileMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Impossible de creer le profil.',
+      });
     }
   }
 
@@ -646,69 +864,392 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
 
               {activeItem.key === 'profile' ? (
                 <div className="modal-setting-profile">
-                  <div className="modal-setting-avatar-control">
-                    <Avatar name={userName} size={58} src={avatarSrc} />
-                    {canUpdateActiveItem ? (
-                      <button
-                        className="modal-setting-avatar-button"
-                        type="button"
-                        aria-label="Changer la photo"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploadingAvatar}
-                      >
-                        <Icon name={isUploadingAvatar ? 'refresh' : 'camera'} size={14} />
-                      </button>
-                    ) : null}
-                    <input
-                      ref={fileInputRef}
-                      className="modal-setting-avatar-input"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                      disabled={!canUpdateActiveItem || isUploadingAvatar}
-                    />
-                  </div>
-                  <div>
-                    <div className="modal-setting-profile-title">
-                      <h3>{userName}</h3>
+                  <div className="modal-setting-profile-main">
+                    <div className="modal-setting-avatar-control">
+                      <Avatar name={userName} size={48} src={avatarSrc} />
                       {canUpdateActiveItem ? (
                         <button
-                          className="modal-setting-photo-action"
+                          className="modal-setting-avatar-button"
                           type="button"
+                          aria-label="Changer la photo"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isUploadingAvatar}
                         >
                           <Icon name={isUploadingAvatar ? 'refresh' : 'camera'} size={14} />
-                          {isUploadingAvatar ? 'Import...' : 'Changer photo'}
                         </button>
                       ) : null}
+                      <input
+                        ref={fileInputRef}
+                        className="modal-setting-avatar-input"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        disabled={!canUpdateActiveItem || isUploadingAvatar}
+                      />
                     </div>
-                    <p>{userEmail}</p>
-                    <small>{workspaceName}</small>
-                    {avatarMessage ? (
-                      <small className={`modal-setting-avatar-message ${avatarMessage.type}`}>
-                        {avatarMessage.text}
-                      </small>
-                    ) : null}
+                    <div className="modal-setting-profile-details">
+                      <div className="modal-setting-profile-title">
+                        <h3>{userName}</h3>
+                        {canUpdateActiveItem ? (
+                          <button
+                            className="modal-setting-photo-action"
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploadingAvatar}
+                          >
+                            <Icon name={isUploadingAvatar ? 'refresh' : 'camera'} size={14} />
+                            {isUploadingAvatar ? 'Import...' : 'Changer photo'}
+                          </button>
+                        ) : null}
+                      </div>
+                      <p>{userEmail}</p>
+                      <small>{workspaceName}</small>
+                      {avatarMessage ? (
+                        <small className={`modal-setting-avatar-message ${avatarMessage.type}`}>
+                          {avatarMessage.text}
+                        </small>
+                      ) : null}
+                    </div>
                   </div>
+
+                  {canUpdateActiveItem ? (
+                    <PresetAvatarPicker
+                      disabled={isUploadingAvatar}
+                      selectedPresetId={selectedPresetId}
+                      onSelect={(preset) => {
+                        void handlePresetAvatarSelect(preset);
+                      }}
+                    />
+                  ) : null}
                 </div>
               ) : null}
 
-              <section className="modal-setting-section">
-                <h4>{activeItem.sectionTitle}</h4>
-
-                {activeItem.rows.map((row) => (
-                  <article className="modal-setting-row" key={row.title}>
+              {isProfilesSection ? (
+                <section className="modal-setting-section modal-setting-profiles">
+                  <div className="modal-setting-section-heading">
                     <div>
-                      <strong>{row.title}</strong>
-                      <p>{row.description}</p>
+                      <h4>Profils</h4>
+                      <p>Profils disponibles pour les utilisateurs de l espace.</p>
                     </div>
-                    <button className="button ghost mini" type="button" disabled={!canUpdateActiveItem}>
-                      {canUpdateActiveItem ? row.action : 'Lecture seule'}
+                    <button
+                      className="button ghost mini"
+                      type="button"
+                      onClick={() => profilesQuery.refetch().catch(() => undefined)}
+                      disabled={profilesQuery.loading}
+                    >
+                      {profilesQuery.loading ? 'Chargement...' : 'Actualiser'}
                     </button>
+                  </div>
+
+                  {profilesQuery.error ? (
+                    <div className="modal-setting-inline-state error">
+                      <Icon name="alert" size={16} />
+                      <span>{profilesQuery.error.message}</span>
+                    </div>
+                  ) : null}
+
+                  <div className="modal-setting-profile-table" role="table" aria-label="Profils">
+                    <div className="modal-setting-profile-table-head" role="row">
+                      <span role="columnheader">Profil</span>
+                      <span role="columnheader">Description</span>
+                      <span role="columnheader">Creation</span>
+                    </div>
+
+                    {profilesQuery.loading ? (
+                      ['profile-skeleton-1', 'profile-skeleton-2', 'profile-skeleton-3'].map((item) => (
+                        <div className="modal-setting-profile-row skeleton" key={item} role="row">
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line" />
+                        </div>
+                      ))
+                    ) : null}
+
+                    {!profilesQuery.loading && profiles.length === 0 && !profilesQuery.error ? (
+                      <div className="modal-setting-profile-empty">
+                        <Icon name="users" size={16} />
+                        <strong>Aucun profil</strong>
+                        <span>Les profils ajoutes apparaitront ici.</span>
+                      </div>
+                    ) : null}
+
+                    {!profilesQuery.loading
+                      ? profiles.map((profile) => (
+                          <div className="modal-setting-profile-row" key={profile.id} role="row">
+                            <strong role="cell">{profile.name}</strong>
+                            <span role="cell">{profile.description || 'Aucune description'}</span>
+                            <small role="cell">{formatProfileDate(profile.createdAt)}</small>
+                          </div>
+                        ))
+                      : null}
+                  </div>
+
+                  {canCreateProfiles ? (
+                    <form className="modal-setting-profile-form" onSubmit={handleCreateProfile}>
+                      <label>
+                        Nom du profil
+                        <input
+                          value={profileName}
+                          onChange={(event) => setProfileName(event.target.value)}
+                          placeholder="Developpeur frontend"
+                          maxLength={160}
+                        />
+                      </label>
+                      <label>
+                        Description
+                        <textarea
+                          value={profileDescription}
+                          onChange={(event) => setProfileDescription(event.target.value)}
+                          placeholder="Responsabilites, perimetre ou contexte du profil"
+                          maxLength={1000}
+                          rows={3}
+                        />
+                      </label>
+                      {profileMessage ? (
+                        <p className={`modal-setting-profile-message ${profileMessage.type}`}>
+                          {profileMessage.text}
+                        </p>
+                      ) : null}
+                      <button
+                        className="button primary"
+                        type="submit"
+                        disabled={createProfileMutation.isPending}
+                      >
+                        {createProfileMutation.isPending ? 'Ajout...' : 'Ajouter le profil'}
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="modal-setting-inline-state">
+                      <Icon name="shield" size={16} />
+                      <span>Seuls les administrateurs peuvent creer des profils.</span>
+                    </div>
+                  )}
+                </section>
+              ) : null}
+
+              {isInvitationsSection ? (
+                <section className="modal-setting-section modal-setting-invitations">
+                  <div className="modal-setting-section-heading">
+                    <div>
+                      <h4>Invitations en attente</h4>
+                      <p>Utilisateurs invites qui n ont pas encore finalise leur compte.</p>
+                    </div>
+                    <button
+                      className="button ghost mini"
+                      type="button"
+                      onClick={() => pendingInvitesQuery.refetch().catch(() => undefined)}
+                      disabled={pendingInvitesQuery.loading}
+                    >
+                      {pendingInvitesQuery.loading ? 'Chargement...' : 'Actualiser'}
+                    </button>
+                  </div>
+
+                  {pendingInvitesQuery.error ? (
+                    <div className="modal-setting-inline-state error">
+                      <Icon name="alert" size={16} />
+                      <span>{pendingInvitesQuery.error.message}</span>
+                    </div>
+                  ) : null}
+
+                  <div
+                    className="modal-setting-profile-table modal-setting-invite-table"
+                    role="table"
+                    aria-label="Invitations en attente"
+                  >
+                    <div className="modal-setting-profile-table-head modal-setting-invite-row" role="row">
+                      <span role="columnheader">Utilisateur</span>
+                      <span role="columnheader">Email</span>
+                      <span role="columnheader">Role</span>
+                      <span role="columnheader">Statut</span>
+                    </div>
+
+                    {pendingInvitesQuery.loading ? (
+                      ['invite-skeleton-1', 'invite-skeleton-2', 'invite-skeleton-3'].map((item) => (
+                        <div
+                          className="modal-setting-profile-row modal-setting-invite-row skeleton"
+                          key={item}
+                          role="row"
+                        >
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line" />
+                          <span className="skeleton-line" />
+                        </div>
+                      ))
+                    ) : null}
+
+                    {!pendingInvitesQuery.loading &&
+                    pendingInvitations.length === 0 &&
+                    !pendingInvitesQuery.error ? (
+                      <div className="modal-setting-profile-empty">
+                        <Icon name="mail" size={16} />
+                        <strong>Aucune invitation en attente</strong>
+                        <span>Les invitations ouvertes apparaitront ici.</span>
+                      </div>
+                    ) : null}
+
+                    {!pendingInvitesQuery.loading
+                      ? pendingInvitations.map((invite) => (
+                          <div
+                            className="modal-setting-profile-row modal-setting-invite-row"
+                            key={invite.id}
+                            role="row"
+                          >
+                            <div className="modal-setting-invite-user" role="cell">
+                              <Avatar
+                                name={invite.name || invite.email}
+                                size={32}
+                                presence={invite.presence}
+                                src={invite.avatarUrl}
+                              />
+                              <strong>{invite.name || invite.email}</strong>
+                            </div>
+                            <span role="cell">{invite.email}</span>
+                            <span role="cell">{formatInviteRole(invite)}</span>
+                            <span role="cell">
+                              <span className="modal-setting-invite-badge">En attente</span>
+                            </span>
+                          </div>
+                        ))
+                      : null}
+                  </div>
+                </section>
+              ) : null}
+
+              {isSubscriptionSection ? (
+                <section className="modal-setting-section modal-setting-billing">
+                  <div className="modal-setting-section-heading">
+                    <div>
+                      <h4>Abonnement actuel</h4>
+                      <p>Resume de ton plan Acredi Space en cours.</p>
+                    </div>
+                  </div>
+
+                  <article className="modal-setting-subscription-card">
+                    <div className="modal-setting-subscription-top">
+                      <div>
+                        <span className="modal-setting-subscription-eyebrow">Plan en cours</span>
+                        <h3>{CURRENT_SUBSCRIPTION.planName}</h3>
+                        <p>{CURRENT_SUBSCRIPTION.priceLabel}</p>
+                      </div>
+                      <span className="modal-setting-invite-badge modal-setting-subscription-status">
+                        {formatSubscriptionStatus(CURRENT_SUBSCRIPTION.status)}
+                      </span>
+                    </div>
+
+                    <dl className="modal-setting-subscription-meta">
+                      <div>
+                        <dt>Cycle</dt>
+                        <dd>{CURRENT_SUBSCRIPTION.billingCycle}</dd>
+                      </div>
+                      <div>
+                        <dt>Sieges</dt>
+                        <dd>
+                          {CURRENT_SUBSCRIPTION.seatsUsed} / {CURRENT_SUBSCRIPTION.seats}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Debut</dt>
+                        <dd>{formatBillingDate(CURRENT_SUBSCRIPTION.startedAt)}</dd>
+                      </div>
+                      <div>
+                        <dt>Renouvellement</dt>
+                        <dd>{formatBillingDate(CURRENT_SUBSCRIPTION.renewsAt)}</dd>
+                      </div>
+                    </dl>
+
+                    <div className="modal-setting-subscription-actions">
+                      <button
+                        className="button primary"
+                        type="button"
+                        onClick={() => {
+                          navigate('/settings/plans');
+                          onClose();
+                        }}
+                      >
+                        Changer de plan
+                      </button>
+                    </div>
                   </article>
-                ))}
-              </section>
+                </section>
+              ) : null}
+
+              {isInvoicesSection ? (
+                <section className="modal-setting-section modal-setting-billing">
+                  <div className="modal-setting-section-heading">
+                    <div>
+                      <h4>Historique des factures</h4>
+                      <p>Factures recentes de ton espace de travail.</p>
+                    </div>
+                  </div>
+
+                  <div
+                    className="modal-setting-profile-table modal-setting-invoice-table"
+                    role="table"
+                    aria-label="Factures"
+                  >
+                    <div className="modal-setting-profile-table-head modal-setting-invoice-row" role="row">
+                      <span role="columnheader">Numero</span>
+                      <span role="columnheader">Date</span>
+                      <span role="columnheader">Plan</span>
+                      <span role="columnheader">Montant</span>
+                      <span role="columnheader">Statut</span>
+                    </div>
+
+                    {BILLING_INVOICES.map((invoice) => (
+                      <div
+                        className="modal-setting-profile-row modal-setting-invoice-row"
+                        key={invoice.id}
+                        role="row"
+                      >
+                        <strong role="cell">{invoice.number}</strong>
+                        <span role="cell">{formatBillingDate(invoice.issuedAt)}</span>
+                        <span role="cell">{invoice.planName}</span>
+                        <span role="cell">{invoice.amountLabel}</span>
+                        <span role="cell">
+                          <span
+                            className={`modal-setting-invoice-badge status-${invoice.status}`}
+                          >
+                            {formatInvoiceStatus(invoice.status)}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              {!isProfilesSection &&
+              !isInvitationsSection &&
+              !isSubscriptionSection &&
+              !isInvoicesSection ? (
+                <section className="modal-setting-section">
+                  <h4>{activeItem.sectionTitle}</h4>
+
+                  {activeItem.rows.map((row) => (
+                    <article className="modal-setting-row" key={row.title}>
+                      <div>
+                        <strong>{row.title}</strong>
+                        <p>{row.description}</p>
+                      </div>
+                      <button
+                        className="button ghost mini"
+                        type="button"
+                        disabled={!canUpdateActiveItem}
+                        onClick={() => {
+                          if (!canUpdateActiveItem || !row.href) {
+                            return;
+                          }
+                          navigate(row.href);
+                          onClose();
+                        }}
+                      >
+                        {canUpdateActiveItem ? row.action : 'Lecture seule'}
+                      </button>
+                    </article>
+                  ))}
+                </section>
+              ) : null}
             </>
           ) : (
             <header>

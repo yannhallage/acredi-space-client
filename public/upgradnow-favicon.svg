@@ -1,0 +1,27 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">UpGradNow favicon</title>
+  <desc id="desc">Rounded app icon with a U monogram and upward growth arrow.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="0.55" stop-color="#4F46E5"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="144" y1="128" x2="370" y2="372" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DFF7FF"/>
+    </linearGradient>
+    <filter id="softShadow" x="72" y="88" width="368" height="344" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000000" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#bg)"/>
+  <path d="M105 407C157 344 230 320 407 336" stroke="#93C5FD" stroke-width="18" stroke-linecap="round" opacity="0.28"/>
+
+  <g filter="url(#softShadow)">
+    <path d="M143 147C143 136.507 151.507 128 162 128H189C199.493 128 208 136.507 208 147V275C208 302.614 230.386 325 258 325C285.614 325 308 302.614 308 275V147C308 136.507 316.507 128 327 128H354C364.493 128 373 136.507 373 147V276C373 339.513 321.513 391 258 391C194.487 391 143 339.513 143 276V147Z" fill="url(#mark)"/>
+    <path d="M277 220L361 136M361 136H302M361 136V195" stroke="#A7F3D0" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

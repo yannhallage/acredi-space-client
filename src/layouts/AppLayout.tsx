@@ -22,7 +22,9 @@ import {
 import { useTheme } from "../shared/theme";
 import { AccessDeniedState, AcrediLockup, Avatar, Icon, type IconName } from "../shared/ui";
 import ModalSetting from "../shared/others/ModalSetting";
-import { playNotificationSound } from "../shared/notifications/sound";
+import { DesktopNotificationBanner } from "../shared/notifications/DesktopNotificationBanner";
+import { DESKTOP_NOTIFICATION_CLICK_EVENT } from "../shared/notifications/desktop";
+import { getNotificationTarget } from "../shared/notifications/routing";
 
 const pageMeta: Record<string, { title: string; crumb: string }> = {
   "/app/dashboard": { title: "Tableau de bord", crumb: "ACCUEIL" },
@@ -88,28 +90,6 @@ function getNotificationInitials(notification: DashboardNotification) {
   return (letters || "NO").toUpperCase();
 }
 
-function getNotificationTarget(notification: DashboardNotification) {
-  if (notification.linkUrl) {
-    return notification.linkUrl;
-  }
-
-  const type = notification.type.toUpperCase();
-
-  if (type.includes("FILE")) {
-    return "/app/files";
-  }
-
-  if (type.includes("MEETING")) {
-    return "/app/meeting/meet-daily";
-  }
-
-  if (type.includes("MESSAGE") || type.includes("CHAT")) {
-    return "/app/chat/general";
-  }
-
-  return null;
-}
-
 export function AppLayout() {
   const { user: authenticatedUser, logout } = useAuth();
   const queryClient = useQueryClient();
@@ -126,7 +106,6 @@ export function AppLayout() {
     Record<string, string>
   >({});
   const topbarActionsRef = useRef<HTMLDivElement | null>(null);
-  const knownNotificationIdsRef = useRef<Set<string> | null>(null);
   const user = authenticatedUser!;
   const notificationReadStorageKey = `acredi-read-notifications:${user.id}`;
   const navItems: NavItem[] = [
@@ -253,10 +232,6 @@ export function AppLayout() {
   }, [location.pathname]);
 
   useEffect(() => {
-    knownNotificationIdsRef.current = null;
-  }, [user.id]);
-
-  useEffect(() => {
     try {
       const storedReadIds = localStorage.getItem(notificationReadStorageKey);
       setReadNotificationIds(
@@ -268,34 +243,29 @@ export function AppLayout() {
   }, [notificationReadStorageKey]);
 
   useEffect(() => {
-    if (
-      !canReadNotifications ||
-      notificationsQuery.isError ||
-      !notificationsQuery.data
-    ) {
-      return;
+    function handleDesktopNotificationClick(event: Event) {
+      const detail = (event as CustomEvent<{ path?: string }>).detail;
+      const path = detail?.path;
+
+      if (!path) {
+        return;
+      }
+
+      navigate(path);
     }
 
-    const currentIds = new Set(
-      notificationsQuery.data.map((notification) => notification.id)
-    );
-    const knownIds = knownNotificationIdsRef.current;
-
-    if (!knownIds) {
-      knownNotificationIdsRef.current = currentIds;
-      return;
-    }
-
-    const hasNewNotification = notificationsQuery.data.some(
-      (notification) => !knownIds.has(notification.id)
+    window.addEventListener(
+      DESKTOP_NOTIFICATION_CLICK_EVENT,
+      handleDesktopNotificationClick
     );
 
-    knownNotificationIdsRef.current = currentIds;
-
-    if (hasNewNotification) {
-      playNotificationSound();
-    }
-  }, [canReadNotifications, notificationsQuery.data, notificationsQuery.isError]);
+    return () => {
+      window.removeEventListener(
+        DESKTOP_NOTIFICATION_CLICK_EVENT,
+        handleDesktopNotificationClick
+      );
+    };
+  }, [navigate]);
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -438,7 +408,7 @@ export function AppLayout() {
             <div className="workspace-list">
               <div className="eyebrow-row">
                 <span>Equipes</span>
-                <Icon name="plus" size={12} />
+                {/* <Icon name="plus" size={12} /> */}
               </div>
               {myDiscussionsQuery.isLoading ? (
                 notificationSkeletons.map((item) => (
@@ -505,6 +475,19 @@ export function AppLayout() {
               >
                 <Icon name={dark ? "sun" : "moon"} size={18} />
               </button>
+              <a
+                className="icon-button nuum-link"
+                href="https://app.nuum-ci.com/authentification"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Ouvrir Nuum"
+              >
+                <img
+                  src={dark ? "/nuum-sm-logo-white.svg" : "/nuum-sm-logo.svg"}
+                  alt=""
+                  aria-hidden="true"
+                />
+              </a>
               <PermissionGate
                 permissions={FEATURE_PERMISSION_REQUIREMENTS.notifications}
               >
@@ -659,12 +642,11 @@ export function AppLayout() {
                                 handleMarkNotificationRead(notification);
                                 const target = getNotificationTarget(notification);
 
-                                if (!target) {
-                                  return;
-                                }
-
                                 setOpenDropdown(null);
-                                navigate(target);
+
+                                if (target) {
+                                  navigate(target);
+                                }
                               }}
                             >
                               <span className="notification-unread-dot" />
@@ -770,6 +752,8 @@ export function AppLayout() {
               </AnimatePresence>
             </div>
           </header>
+
+          <DesktopNotificationBanner />
 
           <main
             className={fullBleedContent ? "content content-full" : "content"}

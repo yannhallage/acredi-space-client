@@ -23,7 +23,7 @@ function defaultSocketUrl() {
 }
 
 function socketUrl() {
-  return import.meta.env.VITE_WS_URL || defaultSocketUrl();
+  return defaultSocketUrl();
 }
 
 function readPresenceMessage(message: IMessage) {
@@ -46,9 +46,13 @@ export function usePresenceSocket() {
   const { updateUser, user } = useAuth();
   const userId = user?.id ?? null;
   const userIdRef = useRef<string | null>(user?.id ?? null);
-  const lastActivityAtRef = useRef(Date.now());
+  const lastActivityAtRef = useRef<number>(0);
   const lastStatusRef = useRef<PresenceStatusResponse | null>(null);
   const clientRef = useRef<Client | null>(null);
+
+  useEffect(() => {
+    lastActivityAtRef.current = Date.now();
+  }, []);
 
   useEffect(() => {
     userIdRef.current = userId;

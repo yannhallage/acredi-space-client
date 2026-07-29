@@ -10,7 +10,7 @@ export function UserFormModal({ onClose, onInvite }: UserFormModalProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [roleName, setRoleName] = useState<RoleName>("USER");
+  const [roleName, setRoleName] = useState<RoleName>("COLLABORATOR");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -86,7 +86,7 @@ export function UserFormModal({ onClose, onInvite }: UserFormModalProps) {
             value={roleName}
             onChange={(e) => setRoleName(e.target.value as RoleName)}
           >
-            <option value="USER">User</option>
+            <option value="COLLABORATOR">Collaborator</option>
             <option value="MANAGER">Manager</option>
             <option value="ADMIN">Admin</option>
           </select>

@@ -1,15 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { useChannelsQuery, useMessagesQuery } from "../../shared/api/dm/hooks";
-import type { ChannelResponse } from "../../shared/api/dm/types";
+import {
+  useChannelsQuery,
+  useChannelMessagesSocket,
+  useMessagesQueries,
+  useMessagesQuery,
+} from "../../shared/api/dm";
+import type { ChannelResponse, MessageResponse } from "../../shared/api/dm/types";
 import { useUsersQuery } from "../../shared/api/users";
 import type { User } from "../../shared/types";
 
-import { DirectConversationList } from "./components/ConversationList";
-import { DirectConversationThread } from "./components/ConversationThread";
-import { DirectConversationEmpty } from "./components/DirectConversationEmpty";
-import { DmPageSkeleton } from "./components/DmSkeletons";
+import {
+  DirectConversationEmpty,
+  DirectConversationDrawer,
+  DirectConversationList,
+  DirectConversationThread,
+  DmPageSkeleton,
+} from "./components";
+import { useDmMobileLayout } from "./hooks/useDmMobileLayout";
 
 import "./direct-messages.css";
 
@@ -22,9 +31,21 @@ function getChannelDisplayName(channel?: ChannelResponse | null) {
   return "Conversation";
 }
 
+function getLatestMessage(messages: MessageResponse[]) {
+  return messages.reduce<MessageResponse | null>((latestMessage, message) => {
+    if (!latestMessage) return message;
+
+    return new Date(message.createdAt).getTime() >
+      new Date(latestMessage.createdAt).getTime()
+      ? message
+      : latestMessage;
+  }, null);
+}
+
 export function DirectMessagesPage() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
+  const isMobileLayout = useDmMobileLayout();
 
   const [selectedConversationId, setSelectedConversationId] = useState(
     conversationId ?? ""
@@ -44,6 +65,29 @@ export function DirectMessagesPage() {
     () => channels.filter((channel) => channel.privateChannel),
     [channels]
   );
+
+  const directChannelIds = useMemo(
+    () => directChannels.map((channel) => channel.id),
+    [directChannels]
+  );
+
+  const channelMessagesQueries = useMessagesQueries(directChannelIds);
+
+  const latestMessagesByChannelId = useMemo(() => {
+    return channelMessagesQueries.reduce<Record<string, MessageResponse>>(
+      (messagesByChannelId, query, index) => {
+        const channelId = directChannelIds[index];
+        const latestMessage = getLatestMessage(query.data ?? []);
+
+        if (channelId && latestMessage) {
+          messagesByChannelId[channelId] = latestMessage;
+        }
+
+        return messagesByChannelId;
+      },
+      {}
+    );
+  }, [channelMessagesQueries, directChannelIds]);
 
   const usersByName = useMemo(() => {
     const map = new Map<string, User>();
@@ -65,6 +109,11 @@ export function DirectMessagesPage() {
   }, [directChannels, selectedConversationId]);
 
   const activeConversationId = activeConversation?.id ?? "";
+
+  const { typingUsers, publishTyping } = useChannelMessagesSocket(
+    directChannelIds,
+    activeConversationId || selectedConversationId || null,
+  );
 
   const {
     data: messages = [],
@@ -126,6 +175,23 @@ export function DirectMessagesPage() {
 
   const threadSubtitle = activeParticipant?.role ?? "Message direct";
 
+  const threadProps = activeConversation
+    ? {
+        channelId: activeConversation.id,
+        title: getChannelDisplayName(activeConversation),
+        subtitle: threadSubtitle,
+        presence: activeParticipant?.presence ?? ("offline" as const),
+        avatarUrl: activeParticipant?.avatarUrl,
+        contact: activeParticipant,
+        messages,
+        loading: messagesLoading,
+        refreshing: isRefreshingDiscussion,
+        typingUsers,
+        publishTyping,
+        onRefresh: handleRefreshDiscussion,
+      }
+    : null;
+
   return (
     <div className="dm-page">
       <DirectConversationList
@@ -133,25 +199,32 @@ export function DirectMessagesPage() {
         users={usersQuery.data ?? []}
         activeConversationId={activeConversationId}
         activeMessages={messages}
+        latestMessagesByChannelId={latestMessagesByChannelId}
         onSelectConversation={handleSelectConversation}
         onConversationCreated={handleConversationCreated}
       />
 
-      {!activeConversation ? (
+      {isMobileLayout ? (
+        <>
+          <DirectConversationDrawer
+            isOpen={Boolean(activeConversation && threadProps)}
+            title={threadProps?.title ?? "Conversation"}
+            onClose={handleCloseConversation}
+          >
+            {threadProps ? (
+              <DirectConversationThread
+                {...threadProps}
+                showBackButton
+                onClose={handleCloseConversation}
+              />
+            ) : null}
+          </DirectConversationDrawer>
+        </>
+      ) : !activeConversation ? (
         <DirectConversationEmpty />
-      ) : (
-        <DirectConversationThread
-          channelId={activeConversation.id}
-          title={getChannelDisplayName(activeConversation)}
-          subtitle={threadSubtitle}
-          presence={activeParticipant?.presence ?? "offline"}
-          messages={messages}
-          loading={messagesLoading}
-          refreshing={isRefreshingDiscussion}
-          onRefresh={handleRefreshDiscussion}
-          onClose={handleCloseConversation}
-        />
-      )}
+      ) : threadProps ? (
+        <DirectConversationThread {...threadProps} />
+      ) : null}
     </div>
   );
 }
