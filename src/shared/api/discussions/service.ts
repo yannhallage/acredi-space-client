@@ -152,12 +152,11 @@ export const discussionService = {
   async shareMessage(
     discussionId: string,
     messageId: string,
-    userId: string
+    request: { userId?: string; discussionId?: string }
   ) {
-    const response = await http.post<ApiResponse<MessageResponse>>(
-      discussionEndpoints.shareMessage(discussionId, messageId),
-      { userId }
-    );
+    const response = await http.post<
+      ApiResponse<MessageResponse | GroupMessageResponse>
+    >(discussionEndpoints.shareMessage(discussionId, messageId), request);
 
     return unwrapApiResponse(response);
   },

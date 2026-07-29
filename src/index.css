@@ -4264,6 +4264,69 @@ a {
   font-weight: 650;
 }
 
+.message-share-list {
+  display: grid;
+  gap: 10px;
+}
+
+.message-share-section {
+  display: grid;
+  gap: 2px;
+}
+
+.message-share-section-label {
+  margin: 0;
+  padding: 10px 8px 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.message-share-section-label em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-soft);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.message-share-section-label-team {
+  margin-top: 4px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+}
+
+.message-share-section-empty {
+  padding: 8px 10px 12px;
+  color: var(--muted-soft);
+  font-size: 12px;
+}
+
+.message-share-team-row {
+  grid-template-columns: 18px 36px minmax(0, 1fr) auto;
+}
+
+.message-share-team-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
 .dm-new-conversation-user {
   width: 100%;
   min-width: 0;

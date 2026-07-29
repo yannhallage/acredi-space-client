@@ -7,11 +7,14 @@ import {
   MessageShareModal,
   type MessageAction,
   type MessageMenuAnchor,
+  type MessageShareTarget,
 } from "../../../../shared/components/messaging";
 import { loadAssetUrl, type LoadedAssetUrl } from "../../../../shared/api/http";
 import { useShareMessageMutation } from "../../../../shared/api/dm/hooks";
+import { discussionService } from "../../../../shared/api/discussions/service";
+import { useTeamsQuery } from "../../../../shared/api/teams";
 import { useUsersQuery } from "../../../../shared/api/users";
-import type { Presence, User } from "../../../../shared/types";
+import type { Presence } from "../../../../shared/types";
 import {
   downloadFileById,
   downloadFileFromUrl,
@@ -661,10 +664,15 @@ export function ConversationMessageList({
   const [messageToShare, setMessageToShare] = useState<LocalMessage | null>(
     null,
   );
-  const [sharingUserId, setSharingUserId] = useState<string | null>(null);
+  const [sharingTargetId, setSharingTargetId] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   const usersQuery = useUsersQuery({ enabled: Boolean(messageToShare) });
+  const teamsQuery = useTeamsQuery({ enabled: Boolean(messageToShare) });
   const shareMessageMutation = useShareMessageMutation();
+
+  const shareLoading = usersQuery.loading || teamsQuery.loading;
+  const shareQueryError = usersQuery.error ?? teamsQuery.error;
 
   function handleAction(message: LocalMessage, action: MessageAction) {
     if (action === "copy") {
@@ -685,6 +693,7 @@ export function ConversationMessageList({
       return;
     }
 
+    setShareError(null);
     setMessageToShare(message);
   }
 
@@ -694,21 +703,44 @@ export function ConversationMessageList({
     setMessageToDelete(null);
   }
 
-  async function handleShareSelect(user: User) {
-    if (!messageToShare || sharingUserId) return;
+  async function handleShareSelect(target: MessageShareTarget) {
+    if (!messageToShare || sharingTargetId) return;
 
-    setSharingUserId(user.id);
+    const targetId = target.type === "user" ? target.user.id : target.team.id;
+    setSharingTargetId(targetId);
+    setShareError(null);
 
     try {
-      await shareMessageMutation.mutateAsync({
-        messageId: messageToShare.id,
-        request: { userId: user.id },
-      });
+      if (target.type === "user") {
+        await shareMessageMutation.mutateAsync({
+          messageId: messageToShare.id,
+          request: { userId: target.user.id },
+        });
+      } else {
+        const discussions = await discussionService.findByTeam(target.team.id);
+        const discussion = discussions[0];
+
+        if (!discussion) {
+          throw new Error(
+            "Cette equipe n'a pas encore de discussion de groupe.",
+          );
+        }
+
+        await shareMessageMutation.mutateAsync({
+          messageId: messageToShare.id,
+          request: { discussionId: discussion.id },
+        });
+      }
+
       setMessageToShare(null);
-    } catch {
-      // Keep the modal open so the user can retry.
+    } catch (error) {
+      setShareError(
+        error instanceof Error
+          ? error.message
+          : "Impossible de partager ce message.",
+      );
     } finally {
-      setSharingUserId(null);
+      setSharingTargetId(null);
     }
   }
 
@@ -798,16 +830,22 @@ export function ConversationMessageList({
 
       <MessageShareModal
         open={Boolean(messageToShare)}
-        loading={usersQuery.loading}
-        error={usersQuery.error}
+        loading={shareLoading}
+        error={
+          shareQueryError ??
+          (shareError ? new Error(shareError) : null)
+        }
         users={usersQuery.data ?? []}
-        sharingUserId={sharingUserId}
+        teams={teamsQuery.data ?? []}
+        sharingTargetId={sharingTargetId}
         onClose={() => {
-          if (sharingUserId) return;
+          if (sharingTargetId) return;
+          setShareError(null);
           setMessageToShare(null);
         }}
         onRetry={() => {
           void usersQuery.refetch();
+          void teamsQuery.refetch();
         }}
         onSelect={handleShareSelect}
       />

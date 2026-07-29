@@ -59,7 +59,8 @@ export interface SendMessageRequest {
 }
 
 export interface ShareMessageRequest {
-  userId: string;
+  userId?: string;
+  discussionId?: string;
 }
 
 export interface UpdateMessageRequest {

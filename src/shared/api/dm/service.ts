@@ -111,11 +111,10 @@ export const chatService = {
   async shareMessage(
     messageId: string,
     request: ShareMessageRequest
-  ): Promise<MessageResponse> {
-    const response = await http.post<ApiResponse<MessageResponse>>(
-      chatEndpoints.share(messageId),
-      request
-    );
+  ): Promise<MessageResponse | { discussionId: string; id: string }> {
+    const response = await http.post<
+      ApiResponse<MessageResponse | { discussionId: string; id: string }>
+    >(chatEndpoints.share(messageId), request);
     return unwrapApiResponse(response);
   },
 };

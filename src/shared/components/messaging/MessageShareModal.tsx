@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClipLoader } from "react-spinners";
 
+import type { TeamResponse } from "../../api/teams";
 import { useAuth } from "../../context";
 import type { User } from "../../types";
 import { Avatar, Icon } from "../../ui";
@@ -13,15 +14,20 @@ function normalizeSearch(value: string) {
     .toLowerCase();
 }
 
+export type MessageShareTarget =
+  | { type: "user"; user: User }
+  | { type: "team"; team: TeamResponse };
+
 interface MessageShareModalProps {
   open: boolean;
   loading: boolean;
   error: Error | null;
   users: User[];
-  sharingUserId?: string | null;
+  teams?: TeamResponse[];
+  sharingTargetId?: string | null;
   onClose: () => void;
   onRetry: () => void;
-  onSelect: (user: User) => void;
+  onSelect: (target: MessageShareTarget) => void;
 }
 
 export function MessageShareModal({
@@ -29,14 +35,15 @@ export function MessageShareModal({
   loading,
   error,
   users,
-  sharingUserId = null,
+  teams = [],
+  sharingTargetId = null,
   onClose,
   onRetry,
   onSelect,
 }: MessageShareModalProps) {
   const { user: currentUser } = useAuth();
   const [query, setQuery] = useState("");
-  const isSharing = Boolean(sharingUserId);
+  const isSharing = Boolean(sharingTargetId);
 
   const visibleUsers = useMemo(() => {
     const normalizedQuery = normalizeSearch(query.trim());
@@ -55,6 +62,22 @@ export function MessageShareModal({
         return searchable.includes(normalizedQuery);
       });
   }, [currentUser?.id, query, users]);
+
+  const visibleTeams = useMemo(() => {
+    const normalizedQuery = normalizeSearch(query.trim());
+
+    return teams.filter((team) => {
+      if (!normalizedQuery) return true;
+
+      const searchable = normalizeSearch(
+        [team.name, team.description, team.slug, team.ownerName]
+          .filter(Boolean)
+          .join(" "),
+      );
+
+      return searchable.includes(normalizedQuery);
+    });
+  }, [query, teams]);
 
   useEffect(() => {
     if (!open) {
@@ -100,7 +123,7 @@ export function MessageShareModal({
             <header className="dm-new-conversation-header">
               <div>
                 <h2 id="message-share-title">Partager le message</h2>
-                <small>Selectionnez un utilisateur</small>
+                <small>Selectionnez un utilisateur ou une equipe</small>
               </div>
               <button
                 className="icon-button"
@@ -119,67 +142,12 @@ export function MessageShareModal({
                 autoFocus
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Rechercher un utilisateur..."
+                placeholder="Rechercher un utilisateur ou une equipe..."
                 disabled={isSharing}
               />
             </label>
 
-            <div className="dm-new-conversation-list">
-              <p>Utilisateurs</p>
-              {loading
-                ? ["message-share-loading-1", "message-share-loading-2"].map(
-                    (item) => (
-                      <div
-                        className="dm-new-conversation-user team-picker-row-skeleton"
-                        key={item}
-                      >
-                        <span className="skeleton-dot" />
-                        <span className="skeleton-avatar" />
-                        <span>
-                          <span className="skeleton-line" />
-                          <span className="skeleton-line skeleton-short" />
-                        </span>
-                        <span className="skeleton-pill" />
-                      </div>
-                    ),
-                  )
-                : visibleUsers.map((person) => {
-                    const isSelected = sharingUserId === person.id;
-
-                    return (
-                      <button
-                        key={person.id}
-                        className="dm-new-conversation-user"
-                        type="button"
-                        disabled={isSharing}
-                        onClick={() => onSelect(person)}
-                      >
-                        {isSelected ? (
-                          <ClipLoader size={14} color="currentColor" />
-                        ) : (
-                          <Icon name="share" size={16} />
-                        )}
-                        <Avatar
-                          name={person.name}
-                          presence={person.presence}
-                          size={34}
-                          src={person.avatarUrl}
-                        />
-                        <span>
-                          <strong>{person.name}</strong>
-                          <small>
-                            {person.role} - {person.team}
-                          </small>
-                        </span>
-                        <em
-                          className={`dm-new-conversation-status presence-${person.presence}`}
-                        >
-                          {person.status}
-                        </em>
-                      </button>
-                    );
-                  })}
-
+            <div className="dm-new-conversation-list message-share-list">
               {!loading && error ? (
                 <div className="dm-new-conversation-empty">
                   <Icon name="alert" size={18} />
@@ -196,13 +164,124 @@ export function MessageShareModal({
                 </div>
               ) : null}
 
-              {!loading && !error && visibleUsers.length === 0 ? (
-                <div className="dm-new-conversation-empty">
-                  <Icon name="users" size={18} />
-                  <strong>Aucun utilisateur trouve</strong>
-                  <span>Essayez un autre nom, email ou role.</span>
-                </div>
-              ) : null}
+              {loading ? (
+                ["message-share-loading-1", "message-share-loading-2"].map(
+                  (item) => (
+                    <div
+                      className="dm-new-conversation-user team-picker-row-skeleton"
+                      key={item}
+                    >
+                      <span className="skeleton-dot" />
+                      <span className="skeleton-avatar" />
+                      <span>
+                        <span className="skeleton-line" />
+                        <span className="skeleton-line skeleton-short" />
+                      </span>
+                      <span className="skeleton-pill" />
+                    </div>
+                  ),
+                )
+              ) : (
+                <>
+                  <div className="message-share-section">
+                    <p className="message-share-section-label">
+                      <Icon name="user" size={13} />
+                      Utilisateurs
+                      <em>{visibleUsers.length}</em>
+                    </p>
+
+                    {visibleUsers.map((person) => {
+                      const isSelected = sharingTargetId === person.id;
+
+                      return (
+                        <button
+                          key={person.id}
+                          className="dm-new-conversation-user message-share-user-row"
+                          type="button"
+                          disabled={isSharing}
+                          onClick={() => onSelect({ type: "user", user: person })}
+                        >
+                          {isSelected ? (
+                            <ClipLoader size={14} color="currentColor" />
+                          ) : (
+                            <Icon name="share" size={16} />
+                          )}
+                          <Avatar
+                            name={person.name}
+                            presence={person.presence}
+                            size={34}
+                            src={person.avatarUrl}
+                          />
+                          <span>
+                            <strong>{person.name}</strong>
+                            <small>
+                              {person.role} - {person.team}
+                            </small>
+                          </span>
+                          <em
+                            className={`dm-new-conversation-status presence-${person.presence}`}
+                          >
+                            {person.status}
+                          </em>
+                        </button>
+                      );
+                    })}
+
+                    {!error && visibleUsers.length === 0 ? (
+                      <div className="message-share-section-empty">
+                        Aucun utilisateur trouve
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="message-share-section">
+                    <p className="message-share-section-label message-share-section-label-team">
+                      <Icon name="users" size={13} />
+                      Equipes
+                      <em>{visibleTeams.length}</em>
+                    </p>
+
+                    {visibleTeams.map((team) => {
+                      const isSelected = sharingTargetId === team.id;
+
+                      return (
+                        <button
+                          key={team.id}
+                          className="dm-new-conversation-user message-share-team-row"
+                          type="button"
+                          disabled={isSharing}
+                          onClick={() => onSelect({ type: "team", team })}
+                        >
+                          {isSelected ? (
+                            <ClipLoader size={14} color="currentColor" />
+                          ) : (
+                            <Icon name="share" size={16} />
+                          )}
+                          <Avatar
+                            name={team.name}
+                            size={34}
+                            src={team.avatarUrl}
+                          />
+                          <span>
+                            <strong>{team.name}</strong>
+                            <small>
+                              {team.description?.trim() ||
+                                `Proprietaire: ${team.ownerName}`}
+                            </small>
+                          </span>
+                          <em className="message-share-team-badge">Equipe</em>
+                        </button>
+                      );
+                    })}
+
+                    {!error && visibleTeams.length === 0 ? (
+                      <div className="message-share-section-empty">
+                        Aucune equipe trouvee
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              )}
             </div>
 
             <footer className="dm-new-conversation-footer">
@@ -210,7 +289,10 @@ export function MessageShareModal({
                 <Icon name="share" size={14} />
                 Partage de message
               </span>
-              <small>{visibleUsers.length} utilisateur(s)</small>
+              <small>
+                {visibleUsers.length} utilisateur(s) · {visibleTeams.length}{" "}
+                equipe(s)
+              </small>
             </footer>
           </motion.section>
         </motion.div>

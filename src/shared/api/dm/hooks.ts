@@ -153,31 +153,40 @@ export function useShareMessageMutation() {
   const queryClient = useQueryClient();
 
   return useMutation<
-    MessageResponse,
+    MessageResponse | { discussionId: string; id: string },
     Error,
     { messageId: string; request: ShareMessageRequest }
   >({
     mutationFn: ({ messageId, request }) =>
       chatService.shareMessage(messageId, request),
     onSuccess: (message) => {
-      queryClient.setQueryData<MessageResponse[]>(
-        chatKeys.messages(message.channelId),
-        (oldMessages = []) => {
-          const alreadyExists = oldMessages.some(
-            (item) => item.id === message.id,
-          );
+      if ("channelId" in message && message.channelId) {
+        queryClient.setQueryData<MessageResponse[]>(
+          chatKeys.messages(message.channelId),
+          (oldMessages = []) => {
+            const alreadyExists = oldMessages.some(
+              (item) => item.id === message.id,
+            );
 
-          if (alreadyExists) {
-            return oldMessages;
-          }
+            if (alreadyExists) {
+              return oldMessages;
+            }
 
-          return [...oldMessages, message];
-        },
-      );
+            return [...oldMessages, message];
+          },
+        );
 
-      queryClient.invalidateQueries({
-        queryKey: chatKeys.channels(),
-      });
+        queryClient.invalidateQueries({
+          queryKey: chatKeys.channels(),
+        });
+        return;
+      }
+
+      if ("discussionId" in message && message.discussionId) {
+        queryClient.invalidateQueries({
+          queryKey: ["discussions"],
+        });
+      }
     },
   });
 }
