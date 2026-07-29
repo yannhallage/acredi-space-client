@@ -15,6 +15,7 @@ import {
   type CalendarEventContextMenuState,
 } from "./components/widgets/CalendarEventContextMenu";
 import { useCalendarPage } from "./hooks/useCalendarPage";
+import { isManagedCalendarEvent } from "./utils";
 
 dayjs.locale("fr");
 
@@ -45,6 +46,7 @@ export function CalendarPage() {
     goToday,
     handleCreateEvent,
     handleDeleteEvent,
+    handleJoinMeeting,
     handleUpdateParticipants,
     openCreateModal,
     openEventDetail,
@@ -65,7 +67,7 @@ export function CalendarPage() {
 
   const openEventContextMenu = useCallback(
     (event: CalendarEvent, clientX: number, clientY: number) => {
-      if (event.type !== "EVENT") return;
+      if (!isManagedCalendarEvent(event)) return;
       setSelectedEvent(null);
       setContextMenu({ event, x: clientX, y: clientY });
     },
@@ -133,6 +135,7 @@ export function CalendarPage() {
         isDeleting={deleteEventMutation.isPending}
         onClose={() => setSelectedEvent(null)}
         onDelete={handleDeleteEvent}
+        onJoinMeeting={handleJoinMeeting}
         onManageParticipants={openParticipantsModal}
       />
 

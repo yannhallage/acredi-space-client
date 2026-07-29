@@ -16,7 +16,11 @@ import {
   toDateKey,
 } from "../../../shared/utils/calendarGrid";
 import type { CreateSlot, ToastState, ViewMode } from "../types";
-import { getErrorMessage, sortEvents } from "../utils";
+import { getErrorMessage, isManagedCalendarEvent, sortEvents } from "../utils";
+import {
+  buildMeetingRoomUrl,
+  extractMeetingRoomName,
+} from "../../../shared/api/meeting/room";
 
 export function useCalendarPage() {
   const today = new Date();
@@ -107,6 +111,7 @@ export function useCalendarPage() {
   async function handleCreateEvent(event: {
     allDay: boolean;
     color: string;
+    createMeeting: boolean;
     description: string;
     endsAt: string;
     location: string;
@@ -118,6 +123,7 @@ export function useCalendarPage() {
       await createEventMutation.mutateAsync({
         allDay: event.allDay,
         color: event.color,
+        createMeeting: event.createMeeting,
         description: event.description || null,
         endsAt: event.endsAt,
         location: event.location || null,
@@ -129,7 +135,12 @@ export function useCalendarPage() {
       });
 
       setCreateSlot(null);
-      showToast("success", "Evenement cree avec succes");
+      showToast(
+        "success",
+        event.createMeeting
+          ? "Evenement et reunion crees avec succes"
+          : "Evenement cree avec succes",
+      );
     } catch (error) {
       console.error("Erreur creation evenement :", error);
       showToast("error", getErrorMessage(error));
@@ -156,7 +167,7 @@ export function useCalendarPage() {
   }
 
   async function handleDeleteEvent(event: CalendarEvent) {
-    if (event.type !== "EVENT") {
+    if (!isManagedCalendarEvent(event)) {
       showToast("info", "Les reunions se suppriment depuis le module Reunion");
       return;
     }
@@ -174,6 +185,27 @@ export function useCalendarPage() {
         `Echec de la suppression : ${getErrorMessage(error)}`,
       );
     }
+  }
+
+  function handleJoinMeeting(event: CalendarEvent) {
+    const roomName =
+      event.roomName ||
+      extractMeetingRoomName(event.joinUrl) ||
+      (event.type === "MEETING" && event.location
+        ? extractMeetingRoomName(event.location) || event.location
+        : null);
+
+    if (roomName) {
+      window.location.assign(buildMeetingRoomUrl(roomName));
+      return;
+    }
+
+    if (event.joinUrl) {
+      window.location.assign(event.joinUrl);
+      return;
+    }
+
+    showToast("warning", "Lien de reunion indisponible pour cet evenement");
   }
 
   function goToday() {
@@ -232,6 +264,7 @@ export function useCalendarPage() {
     goToday,
     handleCreateEvent,
     handleDeleteEvent,
+    handleJoinMeeting,
     handleUpdateParticipants,
     openCreateModal,
     openEventDetail,

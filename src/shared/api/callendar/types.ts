@@ -38,6 +38,8 @@ export type CalendarEventResponse = {
   createdAt: string | null;
   updatedAt: string | null;
   type: CalendarEventType;
+  roomName?: string | null;
+  joinUrl?: string | null;
 };
 
 export type CalendarParticipant = {
@@ -72,6 +74,8 @@ export type CalendarEvent = {
   createdAt: Date | null;
   updatedAt: Date | null;
   type: CalendarEventType;
+  roomName: string | null;
+  joinUrl: string | null;
   start: Date;
   end: Date;
 };
@@ -93,6 +97,7 @@ export type CreateCalendarEventRequest = {
   guestCanSeeGuests?: boolean;
   teamId?: string | null;
   meetingId?: string | null;
+  createMeeting?: boolean;
   participantIds?: string[];
   reminders?: Array<{
     method: ReminderMethod;
@@ -117,6 +122,7 @@ export type UpdateCalendarEventRequest = {
   guestCanSeeGuests?: boolean;
   teamId?: string | null;
   meetingId?: string | null;
+  createMeeting?: boolean;
   participantIds?: string[];
   reminders?: Array<{
     method: ReminderMethod;
