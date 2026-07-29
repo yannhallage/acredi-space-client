@@ -29,28 +29,15 @@ export interface ChatAttachmentResponse {
   downloadUrl: string;
 }
 
-export type ChatMessageKind = "NORMAL" | "SHARED";
-
-export interface ForwardedMessagePreview {
-  id: string;
-  senderName: string;
-  content: string;
-  deletedAt?: string | null;
-}
-
-export interface MessageResponse {
-  id: string;
-  channelId: string;
-  senderId: string;
-  senderName?: string;
-  content: string;
-  createdAt: string;
-  editedAt?: string | null;
-  deletedAt?: string | null;
-  attachments?: ChatAttachmentResponse[];
-  kind?: ChatMessageKind;
-  forwardedFrom?: ForwardedMessagePreview | null;
-}
+// export interface MessageResponse {
+//   id: string;
+//   channelId: string;
+//   senderId: string;
+//   senderName?: string;
+//   content: string;
+//   createdAt: string;
+//   attachments?: ChatAttachmentResponse[];
+// }
 
 export interface SendMessageRequest {
   channelId: string;
@@ -58,11 +45,35 @@ export interface SendMessageRequest {
   files?: globalThis.File[];
 }
 
-export interface ShareMessageRequest {
-  userId?: string;
-  discussionId?: string;
-}
 
-export interface UpdateMessageRequest {
+export type ForwardMessageRequest = {
+  sourceType: "CHAT" | "GROUP";
+  sourceMessageIds: string[];
+  targetUserIds?: string[];
+  targetChannelIds?: string[];
+  targetTeamIds?: string[];
+};
+
+export type ForwardMessageResponse = {
+  forwardedCount: number;
+  createdChatMessageIds: string[];
+  createdGroupMessageIds: string[];
+};
+
+export type MessageResponse = {
+  id: string;
+  channelId: string;
+  senderId: string;
+  senderName: string;
+  content: string | null;
+  createdAt: string;
+  editedAt?: string | null;
+  deletedAt?: string | null;
+  deletedById?: string | null;
+  deleted?: boolean;
+  attachments?: ChatAttachmentResponse[];
+};
+
+export type UpdateMessageRequest = {
   content: string;
-}
+};

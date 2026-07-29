@@ -4,6 +4,9 @@ import type {
   ChannelResponse,
   CreateChannelRequest,
   CreateDirectChannelRequest,
+  UpdateMessageRequest,
+  ForwardMessageRequest,
+  ForwardMessageResponse,
   MessageResponse,
   SendMessageRequest,
   ShareMessageRequest,
@@ -90,31 +93,35 @@ export const chatService = {
     return unwrapApiResponse(response);
   },
 
-  async deleteMessage(messageId: string): Promise<MessageResponse> {
-    const response = await http.delete<ApiResponse<MessageResponse>>(
-      chatEndpoints.message(messageId)
+
+    async forwardMessages(
+    request: ForwardMessageRequest
+  ): Promise<ForwardMessageResponse> {
+    const response = await http.post<ApiResponse<ForwardMessageResponse>>(
+      chatEndpoints.forward,
+      request
     );
+
     return unwrapApiResponse(response);
   },
 
   async updateMessage(
-    messageId: string,
-    content: string
-  ): Promise<MessageResponse> {
-    const response = await http.patch<ApiResponse<MessageResponse>>(
-      chatEndpoints.message(messageId),
-      { content }
-    );
-    return unwrapApiResponse(response);
-  },
+  messageId: string,
+  request: UpdateMessageRequest
+): Promise<MessageResponse> {
+  const response = await http.patch<ApiResponse<MessageResponse>>(
+    chatEndpoints.updateMessage(messageId),
+    request
+  );
 
-  async shareMessage(
-    messageId: string,
-    request: ShareMessageRequest
-  ): Promise<MessageResponse | { discussionId: string; id: string }> {
-    const response = await http.post<
-      ApiResponse<MessageResponse | { discussionId: string; id: string }>
-    >(chatEndpoints.share(messageId), request);
-    return unwrapApiResponse(response);
-  },
+  return unwrapApiResponse(response);
+},
+
+async deleteMessage(messageId: string): Promise<MessageResponse> {
+  const response = await http.delete<ApiResponse<MessageResponse>>(
+    chatEndpoints.deleteMessage(messageId)
+  );
+
+  return unwrapApiResponse(response);
+},
 };

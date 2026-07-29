@@ -1,4 +1,10 @@
-import { useState, type ReactNode, type RefObject } from "react";
+import {
+  useEffect,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 
 import {
   DeleteMessageConfirmModal,
@@ -15,10 +21,10 @@ import { Avatar, EmptyState, Icon } from "../../../../shared/ui";
 
 import {
   groupMessagesByDay,
-  parseMessageContent,
   type LocalGroupMessage,
 } from "../../utils/messageFormat";
 import { messageSkeletons } from "../skeletons/ChatThreadSkeleton";
+import { MessageActionMenu } from "./MessageActionMenu";
 import { MessageBubble } from "./MessageBubble";
 
 interface ChatThreadProps {
@@ -34,10 +40,11 @@ interface ChatThreadProps {
   getUserAvatarUrl: (userId: string) => string | null | undefined;
   typingLabel?: string | null;
   composer: ReactNode;
-  showBackButton?: boolean;
-  onClose?: () => void;
+
+  currentUserId: string;
+  onForwardMessage: (message: LocalGroupMessage) => void;
   onEditMessage: (message: LocalGroupMessage) => void;
-  onDeleteMessage: (messageId: string) => void;
+  onDeleteMessage: (message: LocalGroupMessage) => void;
 }
 
 export function ChatThread({
@@ -53,109 +60,68 @@ export function ChatThread({
   getUserAvatarUrl,
   typingLabel = null,
   composer,
-  showBackButton = false,
-  onClose,
+
+  currentUserId,
+  onForwardMessage,
   onEditMessage,
   onDeleteMessage,
 }: ChatThreadProps) {
-  const [openMenuMessageId, setOpenMenuMessageId] = useState<string | null>(
-    null,
-  );
-  const [menuAnchor, setMenuAnchor] = useState<MessageMenuAnchor | null>(null);
-  const [messageToDelete, setMessageToDelete] =
-    useState<LocalGroupMessage | null>(null);
-  const [messageToShare, setMessageToShare] =
-    useState<LocalGroupMessage | null>(null);
-  const [sharingTargetId, setSharingTargetId] = useState<string | null>(null);
-  const [shareError, setShareError] = useState<string | null>(null);
+  const [activeMenu, setActiveMenu] = useState<{
+    message: LocalGroupMessage;
+    x: number;
+    y: number;
+  } | null>(null);
 
-  const usersQuery = useUsersQuery({ enabled: Boolean(messageToShare) });
-  const teamsQuery = useTeamsQuery({ enabled: Boolean(messageToShare) });
-  const shareDiscussionMessage = useShareDiscussionMessage();
+  useEffect(() => {
+    function closeMenu() {
+      setActiveMenu(null);
+    }
 
-  const shareLoading = usersQuery.loading || teamsQuery.loading;
-  const shareQueryError = usersQuery.error ?? teamsQuery.error;
+    if (activeMenu) {
+      document.addEventListener("click", closeMenu);
+      window.addEventListener("scroll", closeMenu, true);
+    }
 
-  function handleAction(message: LocalGroupMessage, action: MessageAction) {
-    if (action === "copy") {
-      const { text } = parseMessageContent(message.content);
-      const value = text.trim();
-      if (value) {
-        void navigator.clipboard.writeText(value).catch(() => undefined);
-      }
+    return () => {
+      document.removeEventListener("click", closeMenu);
+      window.removeEventListener("scroll", closeMenu, true);
+    };
+  }, [activeMenu]);
+
+  function openMessageMenu(
+    event: MouseEvent<HTMLDivElement>,
+    message: LocalGroupMessage
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (message.deleted) {
       return;
     }
 
-    if (action === "edit") {
-      onEditMessage(message);
-      return;
-    }
+    const menuWidth = 180;
+    const menuHeight = 150;
 
-    if (action === "delete") {
-      setMessageToDelete(message);
-      return;
-    }
+    const x = Math.min(
+      event.clientX + 8,
+      window.innerWidth - menuWidth - 8
+    );
 
-    setShareError(null);
-    setMessageToShare(message);
+    const y = Math.min(
+      event.clientY + 8,
+      window.innerHeight - menuHeight - 8
+    );
+
+    setActiveMenu({
+      message,
+      x: Math.max(8, x),
+      y: Math.max(8, y),
+    });
   }
 
-  function handleConfirmDelete() {
-    if (!messageToDelete) return;
-    onDeleteMessage(messageToDelete.id);
-    setMessageToDelete(null);
-  }
-
-  async function handleShareSelect(target: MessageShareTarget) {
-    if (!messageToShare || sharingTargetId) return;
-
-    const targetId = target.type === "user" ? target.user.id : target.team.id;
-    setSharingTargetId(targetId);
-    setShareError(null);
-
-    try {
-      if (target.type === "user") {
-        await shareDiscussionMessage.mutateAsync({
-          discussionId,
-          messageId: messageToShare.id,
-          userId: target.user.id,
-        });
-      } else {
-        const discussions = await discussionService.findByTeam(target.team.id);
-        const destination =
-          discussions.find((item) => item.id !== discussionId) ??
-          discussions[0];
-
-        if (!destination) {
-          throw new Error(
-            "Cette equipe n'a pas encore de discussion de groupe.",
-          );
-        }
-
-        if (destination.id === discussionId) {
-          throw new Error(
-            "Le message est deja dans la seule discussion de cette equipe.",
-          );
-        }
-
-        await shareDiscussionMessage.mutateAsync({
-          discussionId,
-          messageId: messageToShare.id,
-          targetDiscussionId: destination.id,
-        });
-      }
-
-      setMessageToShare(null);
-    } catch (error) {
-      setShareError(
-        error instanceof Error
-          ? error.message
-          : "Impossible de partager ce message.",
-      );
-    } finally {
-      setSharingTargetId(null);
-    }
-  }
+  const activeMessage = activeMenu?.message;
+  const activeMessageIsMine =
+    activeMessage?.senderId === currentUserId;
 
   return (
     <section className="thread-panel">
@@ -173,6 +139,7 @@ export function ChatThread({
         ) : null}
 
         <Avatar name={discussionName} size={36} />
+
         <span>
           <strong>{discussionName}</strong>
           <small>
@@ -202,6 +169,7 @@ export function ChatThread({
               aria-hidden="true"
             >
               {index % 2 === 0 ? <span className="skeleton-avatar" /> : null}
+
               <div className="skeleton-copy">
                 <span className="skeleton-line chat-skeleton-message-meta" />
                 <span className="skeleton-line" />
@@ -227,26 +195,36 @@ export function ChatThread({
                 <span />
               </div>
 
-              {group.items.map((message: LocalGroupMessage) => (
-                <MessageBubble
-                  key={message.id}
-                  message={message}
-                  avatarSrc={getUserAvatarUrl(message.senderId)}
-                  menuOpen={openMenuMessageId === message.id}
-                  menuAnchor={
-                    openMenuMessageId === message.id ? menuAnchor : null
-                  }
-                  onOpenMenu={(anchor) => {
-                    setMenuAnchor(anchor);
-                    setOpenMenuMessageId(message.id);
-                  }}
-                  onCloseMenu={() => {
-                    setOpenMenuMessageId(null);
-                    setMenuAnchor(null);
-                  }}
-                  onAction={(action) => handleAction(message, action)}
-                />
-              ))}
+              {group.items.map((message: LocalGroupMessage) => {
+                const isDeleted = Boolean(message.deleted);
+
+                return (
+                  <div
+                    key={message.id}
+                    className="chat-message-selection-wrapper"
+                    onClick={(event) => {
+                      if (isDeleted) {
+                        return;
+                      }
+
+                      openMessageMenu(event, message);
+                    }}
+                    onContextMenu={(event) => {
+                      if (isDeleted) {
+                        return;
+                      }
+
+                      openMessageMenu(event, message);
+                    }}
+                  >
+                    <MessageBubble
+                      message={message}
+                      avatarSrc={getUserAvatarUrl(message.senderId)}
+                      currentUserId={currentUserId}
+                    />
+                  </div>
+                );
+              })}
             </div>
           ))
         ) : (
@@ -261,14 +239,18 @@ export function ChatThread({
         ) : null}
       </div>
 
-      {typingLabel ? (
-        <div className="typing-row" aria-live="polite" aria-label="En train d'ecrire">
-          <span className="typing-row-dots">
-            <i />
-            <i />
-            <i />
-          </span>
-        </div>
+      {activeMenu && activeMessage ? (
+        <MessageActionMenu
+  open={true}
+  x={activeMenu.x}
+  y={activeMenu.y}
+  canEdit={Boolean(activeMessageIsMine && !activeMessage.deleted)}
+  canDelete={Boolean(activeMessageIsMine && !activeMessage.deleted)}
+  onForward={() => onForwardMessage(activeMessage)}
+  onEdit={() => onEditMessage(activeMessage)}
+  onDelete={() => onDeleteMessage(activeMessage)}
+  onClose={() => setActiveMenu(null)}
+/>
       ) : null}
 
       {composer}
