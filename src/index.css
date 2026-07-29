@@ -7493,8 +7493,7 @@ a {
   font-size: 12px;
 }
 
-.team-member-table td:first-child,
-.team-details-table td:first-child {
+.team-member-table td:first-child {
   min-width: 0;
   display: flex;
   align-items: center;
@@ -7632,9 +7631,9 @@ a {
 }
 
 .team-details-modal {
-  width: min(760px, 100%);
-  min-height: min(560px, calc(100vh - 56px));
-  min-height: min(560px, calc(100dvh - 56px));
+  width: min(520px, 100%);
+  min-height: min(420px, calc(100vh - 56px));
+  min-height: min(420px, calc(100dvh - 56px));
 }
 
 .team-details-title {
@@ -7647,6 +7646,11 @@ a {
   height: 36px;
   flex: none;
   border-radius: 8px;
+}
+
+.team-details-title h2 {
+  margin: 0;
+  font-size: 16px;
 }
 
 .team-details-title small {
@@ -7715,11 +7719,66 @@ a {
 }
 
 .team-details-table {
-  min-width: 620px;
+  width: 100%;
+  table-layout: fixed;
   font-size: 12px;
 }
 
+.team-details-table th:first-child,
+.team-details-table td:first-child {
+  width: auto;
+}
+
+.team-details-table th:nth-child(2),
+.team-details-table td:nth-child(2) {
+  width: 28%;
+  white-space: nowrap;
+}
+
+.team-details-table th:last-child,
+.team-details-table td:last-child {
+  width: auto;
+  white-space: nowrap;
+}
+
+.team-details-table.team-details-table--manage th:first-child,
+.team-details-table.team-details-table--manage td:first-child {
+  width: 56%;
+}
+
+.team-details-table.team-details-table--manage th:nth-child(2),
+.team-details-table.team-details-table--manage td:nth-child(2) {
+  width: 28%;
+}
+
+.team-details-table.team-details-table--manage th:last-child,
+.team-details-table.team-details-table--manage td:last-child {
+  width: 16%;
+}
+
+.team-details-user-cell {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.team-details-user-cell .avatar {
+  flex: none;
+}
+
+.team-details-actions-cell {
+  text-align: right;
+}
+
+.team-details-owner-badge {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .team-details-table strong {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7837,7 +7896,7 @@ a {
   }
 
   .team-details-modal {
-    min-height: min(620px, calc(100vh - 24px));
+    min-height: min(420px, calc(100vh - 24px));
   }
 
   .note-modal.team-delete-modal footer {
@@ -11126,10 +11185,6 @@ a {
   background: #f8fafc;
 }
 
-.team-edit-modal {
-  max-width: 620px;
-}
-
 /* Menu 3 points verticaux en haut à droite des cartes équipes */
 .teams-grid,
 .team-card {
@@ -11203,10 +11258,6 @@ a {
 
 .team-actions-item:hover {
   background: #f8fafc;
-}
-
-.team-edit-modal {
-  max-width: 620px;
 }
 
 /* Message actions menu (WhatsApp-style) */
