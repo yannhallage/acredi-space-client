@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { chatKeys } from "../dm/hooks";
+import type { MessageResponse } from "../dm/types";
 import { discussionService } from "./service";
 import type { GroupMessageResponse, SendGroupMessageRequest } from "./types";
 
@@ -141,6 +143,42 @@ export function useUpdateDiscussionMessage() {
           oldMessages.map((item) => (item.id === message.id ? message : item)),
       );
       queryClient.invalidateQueries({ queryKey: discussionKeys.mine() });
+    },
+  });
+}
+
+export function useShareDiscussionMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      discussionId,
+      messageId,
+      userId,
+    }: {
+      discussionId: string;
+      messageId: string;
+      userId: string;
+    }) => discussionService.shareMessage(discussionId, messageId, userId),
+    onSuccess: (message: MessageResponse) => {
+      queryClient.setQueryData<MessageResponse[]>(
+        chatKeys.messages(message.channelId),
+        (oldMessages = []) => {
+          const alreadyExists = oldMessages.some(
+            (item) => item.id === message.id,
+          );
+
+          if (alreadyExists) {
+            return oldMessages;
+          }
+
+          return [...oldMessages, message];
+        },
+      );
+
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.channels(),
+      });
     },
   });
 }

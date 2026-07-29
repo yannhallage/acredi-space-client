@@ -6,6 +6,7 @@ import type {
   CreateDirectChannelRequest,
   MessageResponse,
   SendMessageRequest,
+  ShareMessageRequest,
 } from "./types";
 
 interface ApiResponse<TData> {
@@ -103,6 +104,17 @@ export const chatService = {
     const response = await http.patch<ApiResponse<MessageResponse>>(
       chatEndpoints.message(messageId),
       { content }
+    );
+    return unwrapApiResponse(response);
+  },
+
+  async shareMessage(
+    messageId: string,
+    request: ShareMessageRequest
+  ): Promise<MessageResponse> {
+    const response = await http.post<ApiResponse<MessageResponse>>(
+      chatEndpoints.share(messageId),
+      request
     );
     return unwrapApiResponse(response);
   },

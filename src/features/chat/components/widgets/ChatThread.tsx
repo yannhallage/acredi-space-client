@@ -6,6 +6,7 @@ import {
   type MessageAction,
   type MessageMenuAnchor,
 } from "../../../../shared/components/messaging";
+import { useShareDiscussionMessage } from "../../../../shared/api/discussions/hooks";
 import { useUsersQuery } from "../../../../shared/api/users";
 import type { User } from "../../../../shared/types";
 import { Avatar, EmptyState, Icon } from "../../../../shared/ui";
@@ -19,6 +20,7 @@ import { messageSkeletons } from "../skeletons/ChatThreadSkeleton";
 import { MessageBubble } from "./MessageBubble";
 
 interface ChatThreadProps {
+  discussionId: string;
   discussionName: string;
   teamName?: string | null;
   messagesLoading: boolean;
@@ -37,6 +39,7 @@ interface ChatThreadProps {
 }
 
 export function ChatThread({
+  discussionId,
   discussionName,
   teamName,
   messagesLoading,
@@ -64,6 +67,7 @@ export function ChatThread({
   const [sharingUserId, setSharingUserId] = useState<string | null>(null);
 
   const usersQuery = useUsersQuery({ enabled: Boolean(messageToShare) });
+  const shareDiscussionMessage = useShareDiscussionMessage();
 
   function handleAction(message: LocalGroupMessage, action: MessageAction) {
     if (action === "copy") {
@@ -94,13 +98,23 @@ export function ChatThread({
     setMessageToDelete(null);
   }
 
-  function handleShareSelect(user: User) {
+  async function handleShareSelect(user: User) {
+    if (!messageToShare || sharingUserId) return;
+
     setSharingUserId(user.id);
 
-    window.setTimeout(() => {
-      setSharingUserId(null);
+    try {
+      await shareDiscussionMessage.mutateAsync({
+        discussionId,
+        messageId: messageToShare.id,
+        userId: user.id,
+      });
       setMessageToShare(null);
-    }, 400);
+    } catch {
+      // Keep the modal open so the user can retry.
+    } finally {
+      setSharingUserId(null);
+    }
   }
 
   return (
@@ -208,13 +222,12 @@ export function ChatThread({
       </div>
 
       {typingLabel ? (
-        <div className="typing-row" aria-live="polite">
-          <span className="typing-row-dots" aria-hidden="true">
+        <div className="typing-row" aria-live="polite" aria-label="En train d'ecrire">
+          <span className="typing-row-dots">
             <i />
             <i />
             <i />
           </span>
-          <span>{typingLabel}</span>
         </div>
       ) : null}
 

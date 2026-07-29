@@ -9,6 +9,7 @@ import {
   type MessageMenuAnchor,
 } from "../../../../shared/components/messaging";
 import { loadAssetUrl, type LoadedAssetUrl } from "../../../../shared/api/http";
+import { useShareMessageMutation } from "../../../../shared/api/dm/hooks";
 import { useUsersQuery } from "../../../../shared/api/users";
 import type { Presence, User } from "../../../../shared/types";
 import {
@@ -501,6 +502,8 @@ function DirectMessageRow({
   const attachments = message.attachments ?? [];
   const hasContent = Boolean(message.content?.trim());
   const canAct = !isDeleted && !message.pending && !message.failed;
+  const isShared = message.kind === "SHARED";
+  const forwardedFrom = message.forwardedFrom;
 
   function handleBubbleContextMenu(event: MouseEvent<HTMLDivElement>) {
     if (!canAct) return;
@@ -545,6 +548,26 @@ function DirectMessageRow({
               <p className="dm-message-deleted">Ce message a été supprimé</p>
             ) : (
               <>
+                {isShared ? (
+                  <div className="dm-message-shared">
+                    <span className="dm-message-shared-label">
+                      <Icon name="share" size={12} />
+                      Message partagé
+                    </span>
+                    {/* {forwardedFrom ? (
+                      <div className="dm-message-shared-quote">
+                        <strong>
+                          {forwardedFrom.deletedAt
+                            ? "Message original indisponible"
+                            : forwardedFrom.senderName}
+                        </strong>
+                        {!forwardedFrom.deletedAt && forwardedFrom.content ? (
+                          <p>{forwardedFrom.content}</p>
+                        ) : null}
+                      </div>
+                    ) : null} */}
+                  </div>
+                ) : null}
                 {hasContent ? (
                   <p>
                     <LinkifiedText
@@ -608,6 +631,7 @@ interface ConversationMessageListProps {
   currentUserId?: string;
   currentUserName?: string;
   currentUserAvatarUrl?: string | null;
+  isTyping?: boolean;
   onEditMessage: (message: LocalMessage) => void;
   onDeleteMessage: (messageId: string) => void;
 }
@@ -621,6 +645,7 @@ export function ConversationMessageList({
   currentUserId,
   currentUserName,
   currentUserAvatarUrl,
+  isTyping = false,
   onEditMessage,
   onDeleteMessage,
 }: ConversationMessageListProps) {
@@ -639,6 +664,7 @@ export function ConversationMessageList({
   const [sharingUserId, setSharingUserId] = useState<string | null>(null);
 
   const usersQuery = useUsersQuery({ enabled: Boolean(messageToShare) });
+  const shareMessageMutation = useShareMessageMutation();
 
   function handleAction(message: LocalMessage, action: MessageAction) {
     if (action === "copy") {
@@ -668,13 +694,22 @@ export function ConversationMessageList({
     setMessageToDelete(null);
   }
 
-  function handleShareSelect(user: User) {
+  async function handleShareSelect(user: User) {
+    if (!messageToShare || sharingUserId) return;
+
     setSharingUserId(user.id);
 
-    window.setTimeout(() => {
-      setSharingUserId(null);
+    try {
+      await shareMessageMutation.mutateAsync({
+        messageId: messageToShare.id,
+        request: { userId: user.id },
+      });
       setMessageToShare(null);
-    }, 400);
+    } catch {
+      // Keep the modal open so the user can retry.
+    } finally {
+      setSharingUserId(null);
+    }
   }
 
   return (
@@ -729,6 +764,25 @@ export function ConversationMessageList({
             </div>
           ))
         )}
+
+        {isTyping ? (
+          <article
+            className="dm-message-row dm-typing-indicator"
+            aria-live="polite"
+            aria-label="En train d'ecrire"
+          >
+            <Avatar name={title} presence={presence} size={34} src={avatarUrl} />
+            <div className="dm-message-content">
+              <div className="dm-message-bubble dm-typing-bubble">
+                <span className="typing-row-dots">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+              </div>
+            </div>
+          </article>
+        ) : null}
       </main>
 
       <MessageImagePreviewOverlay

@@ -11,6 +11,7 @@ import type {
   CreateDirectChannelRequest,
   MessageResponse,
   SendMessageRequest,
+  ShareMessageRequest,
 } from "./types";
 
 export const chatKeys = {
@@ -139,6 +140,39 @@ export function useUpdateMessageMutation() {
         chatKeys.messages(message.channelId),
         (oldMessages = []) =>
           oldMessages.map((item) => (item.id === message.id ? message : item)),
+      );
+
+      queryClient.invalidateQueries({
+        queryKey: chatKeys.channels(),
+      });
+    },
+  });
+}
+
+export function useShareMessageMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    MessageResponse,
+    Error,
+    { messageId: string; request: ShareMessageRequest }
+  >({
+    mutationFn: ({ messageId, request }) =>
+      chatService.shareMessage(messageId, request),
+    onSuccess: (message) => {
+      queryClient.setQueryData<MessageResponse[]>(
+        chatKeys.messages(message.channelId),
+        (oldMessages = []) => {
+          const alreadyExists = oldMessages.some(
+            (item) => item.id === message.id,
+          );
+
+          if (alreadyExists) {
+            return oldMessages;
+          }
+
+          return [...oldMessages, message];
+        },
       );
 
       queryClient.invalidateQueries({

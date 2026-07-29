@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Client, type IMessage, type StompSubscription } from "@stomp/stompjs";
 import { useQueryClient } from "@tanstack/react-query";
 import SockJS from "sockjs-client";
@@ -13,8 +13,26 @@ import {
 import { chatKeys } from "./hooks";
 import type { ChannelResponse, MessageResponse } from "./types";
 
+export type ChannelTypingUser = {
+  userId: string;
+  userName: string;
+};
+
+type ChannelTypingEvent = {
+  channelId: string;
+  userId: string;
+  userName: string;
+  typing: boolean;
+};
+
+const TYPING_TTL_MS = 3500;
+
 function readChannelMessage(message: IMessage) {
   return parseSocketJson<MessageResponse>(message.body);
+}
+
+function readTypingEvent(message: IMessage) {
+  return parseSocketJson<ChannelTypingEvent>(message.body);
 }
 
 function upsertMessage(
@@ -57,18 +75,71 @@ function patchChannelPreview(
 }
 
 /**
- * Subscribe to realtime DM messages for one or many channels.
- * Backend publishes to `/topic/channels/{channelId}` after each send.
+ * Subscribe to realtime DM messages (+ typing for the active channel).
+ * Backend publishes to `/topic/channels/{channelId}` after each send
+ * and `/topic/channels/{channelId}/typing` for typing indicators.
  */
-export function useChannelMessagesSocket(channelIds: string[]) {
+export function useChannelMessagesSocket(
+  channelIds: string[],
+  activeChannelId?: string | null,
+) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const channelIdsKey = channelIds.filter(Boolean).sort().join(",");
   const channelIdsRef = useRef(channelIds);
+  const activeChannelIdRef = useRef(activeChannelId);
+  const clientRef = useRef<Client | null>(null);
+  const typingTimeoutsRef = useRef(new Map<string, number>());
+  const [typingUsers, setTypingUsers] = useState<ChannelTypingUser[]>([]);
 
   useEffect(() => {
     channelIdsRef.current = channelIds.filter(Boolean);
   }, [channelIdsKey, channelIds]);
+
+  useEffect(() => {
+    activeChannelIdRef.current = activeChannelId;
+  }, [activeChannelId]);
+
+  const clearTypingUser = useCallback((userId: string) => {
+    const timeoutId = typingTimeoutsRef.current.get(userId);
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+      typingTimeoutsRef.current.delete(userId);
+    }
+
+    setTypingUsers((current) =>
+      current.filter((item) => item.userId !== userId),
+    );
+  }, []);
+
+  const upsertTypingUser = useCallback(
+    (entry: ChannelTypingUser) => {
+      setTypingUsers((current) => {
+        const without = current.filter((item) => item.userId !== entry.userId);
+        return [...without, entry];
+      });
+
+      const existingTimeout = typingTimeoutsRef.current.get(entry.userId);
+      if (existingTimeout) {
+        window.clearTimeout(existingTimeout);
+      }
+
+      const timeoutId = window.setTimeout(() => {
+        clearTypingUser(entry.userId);
+      }, TYPING_TTL_MS);
+
+      typingTimeoutsRef.current.set(entry.userId, timeoutId);
+    },
+    [clearTypingUser],
+  );
+
+  useEffect(() => {
+    setTypingUsers([]);
+    typingTimeoutsRef.current.forEach((timeoutId) => {
+      window.clearTimeout(timeoutId);
+    });
+    typingTimeoutsRef.current.clear();
+  }, [activeChannelId]);
 
   useEffect(() => {
     if (!user || !channelIdsKey) {
@@ -81,6 +152,7 @@ export function useChannelMessagesSocket(channelIds: string[]) {
     }
 
     const subscriptions: StompSubscription[] = [];
+    const currentUserId = user.id;
 
     const client = new Client({
       connectHeaders: {
@@ -92,9 +164,8 @@ export function useChannelMessagesSocket(channelIds: string[]) {
       webSocketFactory: () => new SockJS(websocketUrl()),
       onConnect: () => {
         channelIdsRef.current.forEach((channelId) => {
-          const subscription = client.subscribe(
-            `/topic/channels/${channelId}`,
-            (message) => {
+          subscriptions.push(
+            client.subscribe(`/topic/channels/${channelId}`, (message) => {
               const payload = readChannelMessage(message);
               if (!payload?.id || !payload.channelId) {
                 return;
@@ -109,14 +180,50 @@ export function useChannelMessagesSocket(channelIds: string[]) {
                 chatKeys.channels(),
                 (current) => patchChannelPreview(current, payload),
               );
-            },
+
+              if (
+                payload.senderId &&
+                payload.channelId === activeChannelIdRef.current
+              ) {
+                clearTypingUser(payload.senderId);
+              }
+            }),
           );
 
-          subscriptions.push(subscription);
+          subscriptions.push(
+            client.subscribe(
+              `/topic/channels/${channelId}/typing`,
+              (message) => {
+                const payload = readTypingEvent(message);
+                if (!payload?.userId || !payload.channelId) {
+                  return;
+                }
+
+                if (payload.channelId !== activeChannelIdRef.current) {
+                  return;
+                }
+
+                if (payload.userId === currentUserId) {
+                  return;
+                }
+
+                if (!payload.typing) {
+                  clearTypingUser(payload.userId);
+                  return;
+                }
+
+                upsertTypingUser({
+                  userId: payload.userId,
+                  userName: payload.userName || "Quelqu'un",
+                });
+              },
+            ),
+          );
         });
       },
     });
 
+    clientRef.current = client;
     client.activate();
 
     return () => {
@@ -128,6 +235,36 @@ export function useChannelMessagesSocket(channelIds: string[]) {
         }
       });
       void client.deactivate();
+      if (clientRef.current === client) {
+        clientRef.current = null;
+      }
+      typingTimeoutsRef.current.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
+      typingTimeoutsRef.current.clear();
     };
-  }, [channelIdsKey, queryClient, user]);
+  }, [channelIdsKey, clearTypingUser, queryClient, upsertTypingUser, user]);
+
+  const publishTyping = useCallback((typing: boolean) => {
+    const channelId = activeChannelIdRef.current;
+    const client = clientRef.current;
+
+    if (!channelId || !client?.connected) {
+      return;
+    }
+
+    client.publish({
+      destination: "/app/chat.typing",
+      body: JSON.stringify({
+        channelId,
+        typing,
+      }),
+      headers: { "content-type": "application/json" },
+    });
+  }, []);
+
+  return {
+    typingUsers,
+    publishTyping,
+  };
 }
