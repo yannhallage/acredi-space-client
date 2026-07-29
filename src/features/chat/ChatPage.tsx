@@ -10,6 +10,7 @@ import {
 import {
   ChatComposer,
   ChatDetailsPanel,
+  ChatDiscussionDrawer,
   ChatPageSkeleton,
   ChatSidebar,
   ChatThread,
@@ -206,7 +207,7 @@ export function ChatPage() {
     );
   }
 
-  if (!page.activeDiscussion) {
+  if (!page.isMobileLayout && !page.activeDiscussion) {
     return <ChatPageSkeleton />;
   }
 

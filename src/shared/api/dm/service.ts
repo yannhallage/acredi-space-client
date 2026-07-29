@@ -9,6 +9,7 @@ import type {
   ForwardMessageResponse,
   MessageResponse,
   SendMessageRequest,
+  ShareMessageRequest,
 } from "./types";
 
 interface ApiResponse<TData> {

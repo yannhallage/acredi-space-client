@@ -7,6 +7,7 @@ export { ConversationMessageList } from "./widgets/ConversationMessageList";
 export { DirectConversationThread } from "./widgets/ConversationThread";
 export { DirectConversationEmpty } from "./widgets/DirectConversationEmpty";
 export { NewDirectConversationModal } from "./modals/NewConversationModal";
+export { ContactDetailsModal } from "./modals/ContactDetailsModal";
 export {
   DmConversationThreadLoadingSkeleton,
   DmPageSkeleton,

@@ -226,7 +226,6 @@ export function AppLayout() {
     Record<string, string>
   >({});
   const topbarActionsRef = useRef<HTMLDivElement | null>(null);
-  const knownNotificationIdsRef = useRef<Set<string> | null>(null);
   const user = authenticatedUser!;
   const notificationReadStorageKey = `acredi-read-notifications:${user.id}`;
   const navItems: NavItem[] = [
@@ -353,10 +352,6 @@ export function AppLayout() {
   }, [location.pathname]);
 
   useEffect(() => {
-    knownNotificationIdsRef.current = null;
-  }, [user.id]);
-
-  useEffect(() => {
     try {
       const storedReadIds = localStorage.getItem(notificationReadStorageKey);
       setReadNotificationIds(
@@ -368,34 +363,29 @@ export function AppLayout() {
   }, [notificationReadStorageKey]);
 
   useEffect(() => {
-    if (
-      !canReadNotifications ||
-      notificationsQuery.isError ||
-      !notificationsQuery.data
-    ) {
-      return;
+    function handleDesktopNotificationClick(event: Event) {
+      const detail = (event as CustomEvent<{ path?: string }>).detail;
+      const path = detail?.path;
+
+      if (!path) {
+        return;
+      }
+
+      navigate(path);
     }
 
-    const currentIds = new Set(
-      notificationsQuery.data.map((notification) => notification.id)
-    );
-    const knownIds = knownNotificationIdsRef.current;
-
-    if (!knownIds) {
-      knownNotificationIdsRef.current = currentIds;
-      return;
-    }
-
-    const hasNewNotification = notificationsQuery.data.some(
-      (notification) => !knownIds.has(notification.id)
+    window.addEventListener(
+      DESKTOP_NOTIFICATION_CLICK_EVENT,
+      handleDesktopNotificationClick
     );
 
-    knownNotificationIdsRef.current = currentIds;
-
-    if (hasNewNotification) {
-      playNotificationSound();
-    }
-  }, [canReadNotifications, notificationsQuery.data, notificationsQuery.isError]);
+    return () => {
+      window.removeEventListener(
+        DESKTOP_NOTIFICATION_CLICK_EVENT,
+        handleDesktopNotificationClick
+      );
+    };
+  }, [navigate]);
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {

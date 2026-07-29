@@ -10,6 +10,7 @@ import {
 
 import {
   useChannelsQuery,
+  useChannelMessagesSocket,
   useMessagesQueries,
   useMessagesQuery,
   useForwardMessagesMutation,
@@ -138,6 +139,11 @@ export function DirectMessagesPage() {
   }, [directChannels, selectedConversationId]);
 
   const activeConversationId = activeConversation?.id ?? "";
+
+  const { typingUsers, publishTyping } = useChannelMessagesSocket(
+    directChannelIds,
+    activeConversationId || selectedConversationId || null,
+  );
 
   const {
     data: messages = [],
@@ -310,9 +316,12 @@ export function DirectMessagesPage() {
         subtitle: threadSubtitle,
         presence: activeParticipant?.presence ?? ("offline" as const),
         avatarUrl: activeParticipant?.avatarUrl,
+        contact: activeParticipant,
         messages,
         loading: messagesLoading,
         refreshing: isRefreshingDiscussion,
+        typingUsers,
+        publishTyping,
         onRefresh: handleRefreshDiscussion,
 
         currentUserId,

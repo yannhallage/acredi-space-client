@@ -67,6 +67,14 @@ export const teamService = {
     return normalizeTeam(unwrapApiResponse(response));
   },
 
+  async removeMember(teamId: string, userId: string) {
+    const response = await http.delete<ApiResponse<TeamResponse>>(
+      teamEndpoints.removeMember(teamId, userId)
+    );
+
+    return normalizeTeam(unwrapApiResponse(response));
+  },
+
   async delete(id: string) {
     await http.delete<ApiResponse<void>>(teamEndpoints.delete(id));
   },

@@ -1,5 +1,10 @@
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 
+import {
+  MessageActionsMenu,
+  type MessageAction,
+  type MessageMenuAnchor,
+} from "../../../../shared/components/messaging";
 import { downloadFileById } from "../../../../shared/utils/downloadFile";
 import { useAuth } from "../../../../shared/context";
 import { Avatar, Icon } from "../../../../shared/ui";
@@ -50,8 +55,24 @@ export function MessageBubble({
     }
   }
 
+  function handleBubbleContextMenu(event: MouseEvent<HTMLElement>) {
+    if (!canAct) return;
+
+    const target = event.target as HTMLElement;
+    if (target.closest("button, input, textarea, .message-file-attachment")) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    onOpenMenu({ x: event.clientX, y: event.clientY });
+  }
+
   return (
-    <article className={mine ? "message-bubble mine" : "message-bubble"}>
+    <article
+      className={mine ? "message-bubble mine" : "message-bubble"}
+      onContextMenu={handleBubbleContextMenu}
+    >
       {!mine ? (
         <Avatar name={message.senderName} size={28} src={avatarSrc} />
       ) : null}

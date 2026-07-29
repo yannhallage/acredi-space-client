@@ -14,6 +14,7 @@ import type {
   MessageResponse,
    UpdateMessageRequest,
   SendMessageRequest,
+  ShareMessageRequest,
 } from "./types";
 
 export const chatKeys = {

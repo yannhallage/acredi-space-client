@@ -20,6 +20,7 @@ interface ConversationComposerProps {
   selectedFiles: File[];
   canSend: boolean;
   isSending: boolean;
+  isEditing?: boolean;
   emojiPickerOpen: boolean;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   fileInputRef: RefObject<HTMLInputElement | null>;
@@ -30,6 +31,7 @@ interface ConversationComposerProps {
   onRemoveSelectedFile: (index: number) => void;
   onToggleEmojiPicker: () => void;
   onEmojiSelect: (emojiData: EmojiClickData) => void;
+  onCancelEdit?: () => void;
 }
 
 export function ConversationComposer({
@@ -38,6 +40,7 @@ export function ConversationComposer({
   selectedFiles,
   canSend,
   isSending,
+  isEditing = false,
   emojiPickerOpen,
   textareaRef,
   fileInputRef,
@@ -48,6 +51,7 @@ export function ConversationComposer({
   onRemoveSelectedFile,
   onToggleEmojiPicker,
   onEmojiSelect,
+  onCancelEdit,
 }: ConversationComposerProps) {
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -58,13 +62,26 @@ export function ConversationComposer({
 
   return (
     <form onSubmit={onSubmit} className="dm-composer">
+      {isEditing ? (
+        <div className="dm-composer-edit-banner">
+          <span>
+            <strong>Modification</strong> — editez votre message
+          </span>
+          <button type="button" onClick={onCancelEdit}>
+            Annuler
+          </button>
+        </div>
+      ) : null}
+
       <div className="dm-composer-shell">
         <textarea
           ref={textareaRef}
           value={content}
           onChange={(event) => onContentChange(event.target.value)}
           onKeyDown={handleComposerKeyDown}
-          placeholder={`Ecrire a ${title}...`}
+          placeholder={
+            isEditing ? "Modifier le message..." : `Ecrire a ${title}...`
+          }
           rows={2}
         />
 
@@ -76,7 +93,7 @@ export function ConversationComposer({
           onChange={onFileInputChange}
         />
 
-        {selectedFiles.length ? (
+        {selectedFiles.length && !isEditing ? (
           <div className="dm-selected-files" aria-live="polite">
             {selectedFiles.map((file, index) => (
               <span
@@ -104,14 +121,16 @@ export function ConversationComposer({
 
         <div className="dm-composer-footer">
           <div className="dm-composer-tools">
-            <button
-              type="button"
-              aria-label="Joindre un fichier"
-              disabled={isSending}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Icon name="paperclip" size={16} />
-            </button>
+            {!isEditing ? (
+              <button
+                type="button"
+                aria-label="Joindre un fichier"
+                disabled={isSending}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Icon name="paperclip" size={16} />
+              </button>
+            ) : null}
             <div className="dm-emoji-picker-host" ref={emojiPickerRef}>
               <button
                 type="button"
@@ -148,9 +167,13 @@ export function ConversationComposer({
           </div>
 
           <div className="dm-send-area">
-            <span>Entree pour envoyer</span>
-            <button type="submit" disabled={!canSend} aria-label="Envoyer">
-              <Icon name="send" size={16} />
+            <span>{isEditing ? "Entree pour enregistrer" : "Entree pour envoyer"}</span>
+            <button
+              type="submit"
+              disabled={!canSend}
+              aria-label={isEditing ? "Enregistrer" : "Envoyer"}
+            >
+              <Icon name={isEditing ? "check" : "send"} size={16} />
             </button>
           </div>
         </div>

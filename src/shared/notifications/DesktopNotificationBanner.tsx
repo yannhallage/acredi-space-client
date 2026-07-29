@@ -9,23 +9,34 @@ import {
   requestDesktopNotificationPermission,
 } from "./desktop";
 
-function shouldShowBanner(
+type BannerMode = "prompt" | "denied" | "hidden";
+
+function resolveBannerMode(
   permission: NotificationPermission | "unsupported",
   dismissed: boolean
-) {
-  return (
-    isDesktopNotificationSupported() &&
-    permission === "default" &&
-    !dismissed
-  );
+): BannerMode {
+  if (!isDesktopNotificationSupported() || permission === "unsupported") {
+    return "hidden";
+  }
+
+  if (permission === "granted") {
+    return "hidden";
+  }
+
+  if (permission === "denied") {
+    return dismissed ? "hidden" : "denied";
+  }
+
+  return dismissed ? "hidden" : "prompt";
 }
 
 export function DesktopNotificationBanner() {
   const [permission, setPermission] = useState(getDesktopNotificationPermission);
   const [dismissed, setDismissed] = useState(isDesktopNotificationBannerDismissed);
   const [isRequesting, setIsRequesting] = useState(false);
+  const mode = resolveBannerMode(permission, dismissed);
 
-  if (!shouldShowBanner(permission, dismissed)) {
+  if (mode === "hidden") {
     return null;
   }
 
@@ -49,20 +60,26 @@ export function DesktopNotificationBanner() {
     <div className="desktop-notification-banner" role="status">
       <div className="desktop-notification-banner-content">
         <Icon name="alert" size={16} />
-        <p>Restez informé. Activez les notifications de bureau.</p>
+        <p>
+          {mode === "denied"
+            ? "Notifications bureau bloquées. Autorisez-les dans les paramètres du navigateur (icône cadenas)."
+            : "Restez informé. Activez les notifications de bureau."}
+        </p>
       </div>
 
       <div className="desktop-notification-banner-actions">
-        <button
-          className="desktop-notification-banner-button"
-          type="button"
-          disabled={isRequesting}
-          onClick={() => {
-            void handleActivate();
-          }}
-        >
-          Activer
-        </button>
+        {mode === "prompt" ? (
+          <button
+            className="desktop-notification-banner-button"
+            type="button"
+            disabled={isRequesting}
+            onClick={() => {
+              void handleActivate();
+            }}
+          >
+            Activer
+          </button>
+        ) : null}
         <button
           className="desktop-notification-banner-close"
           type="button"

@@ -6,6 +6,17 @@ import {
   type RefObject,
 } from "react";
 
+import {
+  DeleteMessageConfirmModal,
+  MessageShareModal,
+  type MessageAction,
+  type MessageMenuAnchor,
+  type MessageShareTarget,
+} from "../../../../shared/components/messaging";
+import { useShareDiscussionMessage } from "../../../../shared/api/discussions/hooks";
+import { discussionService } from "../../../../shared/api/discussions/service";
+import { useTeamsQuery } from "../../../../shared/api/teams";
+import { useUsersQuery } from "../../../../shared/api/users";
 import { Avatar, EmptyState, Icon } from "../../../../shared/ui";
 
 import {
@@ -17,6 +28,7 @@ import { MessageActionMenu } from "./MessageActionMenu";
 import { MessageBubble } from "./MessageBubble";
 
 interface ChatThreadProps {
+  discussionId: string;
   discussionName: string;
   teamName?: string | null;
   messagesLoading: boolean;
@@ -26,6 +38,7 @@ interface ChatThreadProps {
   messageGroups: ReturnType<typeof groupMessagesByDay>;
   messageListRef: RefObject<HTMLDivElement | null>;
   getUserAvatarUrl: (userId: string) => string | null | undefined;
+  typingLabel?: string | null;
   composer: ReactNode;
 
   currentUserId: string;
@@ -35,6 +48,7 @@ interface ChatThreadProps {
 }
 
 export function ChatThread({
+  discussionId,
   discussionName,
   teamName,
   messagesLoading,
@@ -44,6 +58,7 @@ export function ChatThread({
   messageGroups,
   messageListRef,
   getUserAvatarUrl,
+  typingLabel = null,
   composer,
 
   currentUserId,
@@ -111,6 +126,18 @@ export function ChatThread({
   return (
     <section className="thread-panel">
       <header className="thread-header dm-thread-header">
+        {showBackButton && onClose ? (
+          <button
+            type="button"
+            className="chat-thread-back-button"
+            aria-label="Retour aux discussions"
+            title="Retour"
+            onClick={onClose}
+          >
+            <Icon name="arrowLeft" size={18} />
+          </button>
+        ) : null}
+
         <Avatar name={discussionName} size={36} />
 
         <span>
@@ -227,6 +254,34 @@ export function ChatThread({
       ) : null}
 
       {composer}
+
+      <DeleteMessageConfirmModal
+        open={Boolean(messageToDelete)}
+        onClose={() => setMessageToDelete(null)}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <MessageShareModal
+        open={Boolean(messageToShare)}
+        loading={shareLoading}
+        error={
+          shareQueryError ??
+          (shareError ? new Error(shareError) : null)
+        }
+        users={usersQuery.data ?? []}
+        teams={teamsQuery.data ?? []}
+        sharingTargetId={sharingTargetId}
+        onClose={() => {
+          if (sharingTargetId) return;
+          setShareError(null);
+          setMessageToShare(null);
+        }}
+        onRetry={() => {
+          void usersQuery.refetch();
+          void teamsQuery.refetch();
+        }}
+        onSelect={handleShareSelect}
+      />
     </section>
   );
 }

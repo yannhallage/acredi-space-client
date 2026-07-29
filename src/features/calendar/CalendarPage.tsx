@@ -1,6 +1,8 @@
+import { useCallback, useState } from "react";
 import dayjs from "dayjs";
 import "dayjs/locale/fr";
 import Toast from "../../components/app/Toast/Toast";
+import type { CalendarEvent } from "../../shared/api/callendar/types";
 import {
   CalendarEventDetailModal,
   CalendarGrid,
@@ -8,6 +10,10 @@ import {
   CalendarToolbar,
   CreateCalendarEventModal,
 } from "./components";
+import {
+  CalendarEventContextMenu,
+  type CalendarEventContextMenuState,
+} from "./components/widgets/CalendarEventContextMenu";
 import { useCalendarPage } from "./hooks/useCalendarPage";
 
 dayjs.locale("fr");
@@ -20,6 +26,7 @@ export function CalendarPage() {
     calendarGridClass,
     calendarTimelineMinWidth,
     createSlot,
+    deleteEventMutation,
     eventsQuery,
     isCalendarLoading,
     monthDays,
@@ -37,6 +44,7 @@ export function CalendarPage() {
     goPrevious,
     goToday,
     handleCreateEvent,
+    handleDeleteEvent,
     handleUpdateParticipants,
     openCreateModal,
     openEventDetail,
@@ -48,10 +56,28 @@ export function CalendarPage() {
     setView,
   } = useCalendarPage();
 
+  const [contextMenu, setContextMenu] =
+    useState<CalendarEventContextMenuState | null>(null);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const openEventContextMenu = useCallback(
+    (event: CalendarEvent, clientX: number, clientY: number) => {
+      if (event.type !== "EVENT") return;
+      setSelectedEvent(null);
+      setContextMenu({ event, x: clientX, y: clientY });
+    },
+    [setSelectedEvent],
+  );
+
   return (
-    <div className="flex h-full min-h-[calc(100dvh-132px)] w-full bg-[var(--bg)] p-2 text-[13px] text-[var(--text)] sm:min-h-0 sm:p-4">
+    <div className="relative flex h-full min-h-[calc(100dvh-132px)] w-full bg-[var(--bg)] p-2 text-[13px] text-[var(--text)] sm:min-h-0 sm:p-4">
       {toast.show ? (
-        <Toast intent={toast.intent} message={toast.message} />
+        <div className="calendar-toast-host" aria-live="polite">
+          <Toast intent={toast.intent} message={toast.message} />
+        </div>
       ) : null}
 
       <div className="mx-auto flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-3 shadow-[var(--shadow)] sm:rounded-[18px] sm:px-6 sm:py-5">
@@ -89,6 +115,7 @@ export function CalendarPage() {
           onOpenCreateModal={openCreateModal}
           onOpenDayView={openDayView}
           onOpenEventDetail={openEventDetail}
+          onEventContextMenu={openEventContextMenu}
           onSelectDay={selectDay}
         />
       </div>
@@ -103,8 +130,17 @@ export function CalendarPage() {
 
       <CalendarEventDetailModal
         event={selectedEvent}
+        isDeleting={deleteEventMutation.isPending}
         onClose={() => setSelectedEvent(null)}
+        onDelete={handleDeleteEvent}
         onManageParticipants={openParticipantsModal}
+      />
+
+      <CalendarEventContextMenu
+        menu={contextMenu}
+        isDeleting={deleteEventMutation.isPending}
+        onClose={closeContextMenu}
+        onDelete={handleDeleteEvent}
       />
 
       {participantEvent ? (

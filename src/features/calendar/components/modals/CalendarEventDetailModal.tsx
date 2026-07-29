@@ -1,151 +1,268 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { resolveEventColor } from "../../../../shared/api/callendar/normalizers";
 import type { CalendarEvent } from "../../../../shared/api/callendar/types";
 import { Avatar, Icon } from "../../../../shared/ui";
 
 type CalendarEventDetailModalProps = {
   event: CalendarEvent | null;
+  isDeleting?: boolean;
   onClose: () => void;
+  onDelete?: (event: CalendarEvent) => void;
   onManageParticipants: (event: CalendarEvent) => void;
 };
 
-function formatDate(value: Date) {
-  return value.toLocaleDateString("fr-FR", {
+function formatDateTimeLine(event: CalendarEvent) {
+  const datePart = event.start.toLocaleDateString("fr-FR", {
     weekday: "long",
-    day: "2-digit",
+    day: "numeric",
     month: "long",
-    year: "numeric",
   });
-}
 
-function formatTimeRange(event: CalendarEvent) {
-  const formatter = new Intl.DateTimeFormat("fr-FR", {
+  if (event.allDay) {
+    return `${capitalize(datePart)} · Journee entiere`;
+  }
+
+  const time = new Intl.DateTimeFormat("fr-FR", {
     hour: "2-digit",
     minute: "2-digit",
   });
 
-  return `${formatter.format(event.start)} - ${formatter.format(event.end)}`;
+  return `${capitalize(datePart)} · ${time.format(event.start)} – ${time.format(event.end)}`;
 }
 
-function getParticipantName(participant: CalendarEvent["participants"][number]) {
-  return `${participant.firstName} ${participant.lastName}`.trim() || participant.email;
+function capitalize(value: string) {
+  if (!value) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatReminder(reminder: CalendarEvent["reminders"][number]) {
+  const delay =
+    reminder.minutesBefore === 0
+      ? "au moment"
+      : reminder.minutesBefore < 60
+        ? `${reminder.minutesBefore} minutes avant`
+        : reminder.minutesBefore === 60
+          ? "1 heure avant"
+          : reminder.minutesBefore === 1440
+            ? "1 jour avant"
+            : `${reminder.minutesBefore} minutes avant`;
+
+  if (reminder.method === "EMAIL") {
+    return `Email · ${delay}`;
+  }
+
+  return delay.charAt(0).toUpperCase() + delay.slice(1);
+}
+
+function getGuestStatusLabel(
+  status: CalendarEvent["participants"][number]["status"],
+) {
+  switch (status) {
+    case "ACCEPTED":
+      return "Accepte";
+    case "DECLINED":
+      return "Refuse";
+    case "TENTATIVE":
+      return "Provisoire";
+    default:
+      return "Invite";
+  }
+}
+
+function getParticipantName(
+  participant: CalendarEvent["participants"][number],
+) {
+  return (
+    `${participant.firstName} ${participant.lastName}`.trim() ||
+    participant.email
+  );
 }
 
 export function CalendarEventDetailModal({
   event,
+  isDeleting = false,
   onClose,
+  onDelete,
   onManageParticipants,
 }: CalendarEventDetailModalProps) {
+  const eventColor = event
+    ? resolveEventColor(event.color, event.type)
+    : "#039BE5";
+
   return (
     <AnimatePresence>
       {event ? (
         <motion.div
-          className="note-modal-overlay"
+          className="calendar-event-popover-overlay"
           role="presentation"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.16 }}
+          transition={{ duration: 0.14 }}
           onMouseDown={onClose}
         >
           <motion.section
-            className="note-modal calendar-note-modal calendar-detail-modal"
+            className="calendar-event-popover"
             role="dialog"
             aria-modal="true"
             aria-labelledby="calendar-detail-title"
-            initial={{ opacity: 0, y: 18, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
+            initial={{ opacity: 0, scale: 0.86, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 6 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             onMouseDown={(mouseEvent) => mouseEvent.stopPropagation()}
           >
-            <header>
-              <div>
-                <h2 id="calendar-detail-title">{event.title}</h2>
-                <span>{event.type === "MEETING" ? "Reunion" : "Evenement"}</span>
+            <header className="calendar-event-popover-toolbar">
+              <div className="calendar-event-popover-actions">
+                {event.type === "EVENT" ? (
+                  <>
+                    <button
+                      type="button"
+                      className="calendar-event-popover-icon"
+                      aria-label="Participants"
+                      title="Participants"
+                      onClick={() => onManageParticipants(event)}
+                    >
+                      <Icon name="edit" size={17} />
+                    </button>
+                    {onDelete ? (
+                      <button
+                        type="button"
+                        className="calendar-event-popover-icon"
+                        aria-label="Supprimer"
+                        title="Supprimer"
+                        disabled={isDeleting}
+                        onClick={() => onDelete(event)}
+                      >
+                        <Icon name="trash" size={17} />
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="calendar-event-popover-icon"
+                      aria-label="Participants"
+                      title="Inviter"
+                      onClick={() => onManageParticipants(event)}
+                    >
+                      <Icon name="mail" size={17} />
+                    </button>
+                  </>
+                ) : null}
+                <button
+                  type="button"
+                  className="calendar-event-popover-icon"
+                  aria-label="Plus d'options"
+                  title="Options"
+                >
+                  <Icon name="moreH" size={17} />
+                </button>
               </div>
 
               <button
-                className="icon-button"
                 type="button"
+                className="calendar-event-popover-icon"
                 aria-label="Fermer"
                 onClick={onClose}
               >
-                <Icon name="x" size={16} />
+                <Icon name="x" size={17} />
               </button>
             </header>
 
-            <div className="calendar-detail-content">
-              <div className="calendar-detail-row">
+            <div className="calendar-event-popover-hero">
+              <span
+                className="calendar-event-popover-color"
+                style={{ backgroundColor: eventColor }}
+                aria-hidden="true"
+              />
+              <div>
+                <h2 id="calendar-detail-title">{event.title}</h2>
+                <p>{formatDateTimeLine(event)}</p>
+              </div>
+            </div>
+
+            {event.type === "EVENT" ? (
+              <button
+                type="button"
+                className="calendar-event-popover-invite"
+                onClick={() => onManageParticipants(event)}
+              >
+                <Icon name="users" size={15} />
+                Gerer les participants
+              </button>
+            ) : null}
+
+            <div className="calendar-event-popover-body">
+              {event.description ? (
+                <div className="calendar-event-popover-row">
+                  <Icon name="notes" size={18} />
+                  <p className="calendar-event-popover-description">
+                    {event.description}
+                  </p>
+                </div>
+              ) : null}
+
+              {event.location ? (
+                <div className="calendar-event-popover-row">
+                  <Icon
+                    name={event.type === "MEETING" ? "video" : "pin"}
+                    size={18}
+                  />
+                  <p>{event.location}</p>
+                </div>
+              ) : null}
+
+              {event.reminders.length > 0 ? (
+                <div className="calendar-event-popover-row">
+                  <Icon name="bell" size={18} />
+                  <div className="calendar-event-popover-stack">
+                    {event.reminders.map((reminder, index) => (
+                      <p key={`${reminder.method}-${reminder.minutesBefore}-${index}`}>
+                        {formatReminder(reminder)}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="calendar-event-popover-row">
                 <Icon name="calendar" size={18} />
-                <div>
-                  <strong>Date</strong>
-                  <p>{formatDate(event.start)}</p>
-                </div>
+                <p>
+                  {event.type === "MEETING" ? "Reunion" : "Calendrier"}
+                  {event.showAs === "FREE" ? " · Libre" : " · Occupe"}
+                </p>
               </div>
 
-              <div className="calendar-detail-row">
-                <Icon name="clock" size={18} />
-                <div>
-                  <strong>Horaire</strong>
-                  <p>{formatTimeRange(event)}</p>
-                </div>
-              </div>
-
-              <div className="calendar-detail-row">
-                <Icon name={event.type === "MEETING" ? "video" : "pin"} size={18} />
-                <div>
-                  <strong>Lieu</strong>
-                  <p>{event.location || "Non renseigne"}</p>
-                </div>
-              </div>
-
-              <div className="calendar-detail-row">
-                <Icon name="users" size={18} />
-                <div>
-                  <strong>
-                    {event.participants.length} participant
-                    {event.participants.length > 1 ? "s" : ""}
-                  </strong>
-
-                  {event.participants.length > 0 ? (
-                    <div className="calendar-detail-participants">
+              {event.participants.length > 0 ? (
+                <div className="calendar-event-popover-row">
+                  <Icon name="users" size={18} />
+                  <div className="calendar-event-popover-stack">
+                    <p>
+                      {event.participants.length} participant
+                      {event.participants.length > 1 ? "s" : ""}
+                    </p>
+                    <div className="calendar-event-popover-guests">
                       {event.participants.map((participant) => (
                         <div
-                          className="calendar-detail-participant"
+                          className="calendar-event-popover-guest"
                           key={participant.id}
                         >
                           <Avatar
                             name={getParticipantName(participant)}
-                            size={32}
+                            size={28}
                           />
                           <span>
                             <strong>{getParticipantName(participant)}</strong>
-                            <small>{participant.email}</small>
+                            <small>
+                              {getGuestStatusLabel(participant.status)}
+                            </small>
                           </span>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p>Aucun participant ajoute.</p>
-                  )}
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </div>
-
-            <footer className="calendar-event-modal-actions">
-              <button className="button ghost" type="button" onClick={onClose}>
-                Fermer
-              </button>
-
-              <button
-                className="button primary"
-                type="button"
-                onClick={() => onManageParticipants(event)}
-              >
-                <Icon name="users" size={14} />
-                Participants
-              </button>
-            </footer>
           </motion.section>
         </motion.div>
       ) : null}

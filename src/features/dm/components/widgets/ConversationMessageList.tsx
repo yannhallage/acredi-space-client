@@ -6,7 +6,19 @@ import {
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
+import {
+  DeleteMessageConfirmModal,
+  MessageActionsMenu,
+  MessageShareModal,
+  type MessageAction,
+  type MessageMenuAnchor,
+  type MessageShareTarget,
+} from "../../../../shared/components/messaging";
 import { loadAssetUrl, type LoadedAssetUrl } from "../../../../shared/api/http";
+import { useShareMessageMutation } from "../../../../shared/api/dm/hooks";
+import { discussionService } from "../../../../shared/api/discussions/service";
+import { useTeamsQuery } from "../../../../shared/api/teams";
+import { useUsersQuery } from "../../../../shared/api/users";
 import type { Presence } from "../../../../shared/types";
 import {
   downloadFileById,
@@ -647,6 +659,95 @@ export function ConversationMessageList({
 }: ConversationMessageListProps) {
   const [previewAttachment, setPreviewAttachment] =
     useState<LocalAttachment | null>(null);
+  const [openMenuMessageId, setOpenMenuMessageId] = useState<string | null>(
+    null,
+  );
+  const [menuAnchor, setMenuAnchor] = useState<MessageMenuAnchor | null>(null);
+  const [messageToDelete, setMessageToDelete] = useState<LocalMessage | null>(
+    null,
+  );
+  const [messageToShare, setMessageToShare] = useState<LocalMessage | null>(
+    null,
+  );
+  const [sharingTargetId, setSharingTargetId] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
+
+  const usersQuery = useUsersQuery({ enabled: Boolean(messageToShare) });
+  const teamsQuery = useTeamsQuery({ enabled: Boolean(messageToShare) });
+  const shareMessageMutation = useShareMessageMutation();
+
+  const shareLoading = usersQuery.loading || teamsQuery.loading;
+  const shareQueryError = usersQuery.error ?? teamsQuery.error;
+
+  function handleAction(message: LocalMessage, action: MessageAction) {
+    if (action === "copy") {
+      const text = message.content?.trim() ?? "";
+      if (text) {
+        void navigator.clipboard.writeText(text).catch(() => undefined);
+      }
+      return;
+    }
+
+    if (action === "edit") {
+      onEditMessage(message);
+      return;
+    }
+
+    if (action === "delete") {
+      setMessageToDelete(message);
+      return;
+    }
+
+    setShareError(null);
+    setMessageToShare(message);
+  }
+
+  function handleConfirmDelete() {
+    if (!messageToDelete) return;
+    onDeleteMessage(messageToDelete.id);
+    setMessageToDelete(null);
+  }
+
+  async function handleShareSelect(target: MessageShareTarget) {
+    if (!messageToShare || sharingTargetId) return;
+
+    const targetId = target.type === "user" ? target.user.id : target.team.id;
+    setSharingTargetId(targetId);
+    setShareError(null);
+
+    try {
+      if (target.type === "user") {
+        await shareMessageMutation.mutateAsync({
+          messageId: messageToShare.id,
+          request: { userId: target.user.id },
+        });
+      } else {
+        const discussions = await discussionService.findByTeam(target.team.id);
+        const discussion = discussions[0];
+
+        if (!discussion) {
+          throw new Error(
+            "Cette equipe n'a pas encore de discussion de groupe.",
+          );
+        }
+
+        await shareMessageMutation.mutateAsync({
+          messageId: messageToShare.id,
+          request: { discussionId: discussion.id },
+        });
+      }
+
+      setMessageToShare(null);
+    } catch (error) {
+      setShareError(
+        error instanceof Error
+          ? error.message
+          : "Impossible de partager ce message.",
+      );
+    } finally {
+      setSharingTargetId(null);
+    }
+  }
 
   return (
     <>
@@ -690,11 +791,58 @@ export function ConversationMessageList({
             </div>
           ))
         )}
+
+        {isTyping ? (
+          <article
+            className="dm-message-row dm-typing-indicator"
+            aria-live="polite"
+            aria-label="En train d'ecrire"
+          >
+            <Avatar name={title} presence={presence} size={34} src={avatarUrl} />
+            <div className="dm-message-content">
+              <div className="dm-message-bubble dm-typing-bubble">
+                <span className="typing-row-dots">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+              </div>
+            </div>
+          </article>
+        ) : null}
       </main>
 
       <MessageImagePreviewOverlay
         attachment={previewAttachment}
         onClose={() => setPreviewAttachment(null)}
+      />
+
+      <DeleteMessageConfirmModal
+        open={Boolean(messageToDelete)}
+        onClose={() => setMessageToDelete(null)}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <MessageShareModal
+        open={Boolean(messageToShare)}
+        loading={shareLoading}
+        error={
+          shareQueryError ??
+          (shareError ? new Error(shareError) : null)
+        }
+        users={usersQuery.data ?? []}
+        teams={teamsQuery.data ?? []}
+        sharingTargetId={sharingTargetId}
+        onClose={() => {
+          if (sharingTargetId) return;
+          setShareError(null);
+          setMessageToShare(null);
+        }}
+        onRetry={() => {
+          void usersQuery.refetch();
+          void teamsQuery.refetch();
+        }}
+        onSelect={handleShareSelect}
       />
     </>
   );

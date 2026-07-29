@@ -97,6 +97,27 @@ export function useAddTeamMember() {
   });
 }
 
+export function useRemoveTeamMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      teamId,
+      userId,
+    }: {
+      teamId: string;
+      userId: string;
+    }) => teamService.removeMember(teamId, userId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: teamKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: teamKeys.myList() });
+      queryClient.invalidateQueries({
+        queryKey: teamKeys.members(variables.teamId),
+      });
+    },
+  });
+}
+
 export function useDeleteTeam() {
   const queryClient = useQueryClient();
 

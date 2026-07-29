@@ -13,6 +13,7 @@ import { API_BASE_URL } from "../api/http";
 import { authStorageKeys } from "../api/auth";
 import { useAuth } from "../context";
 import { showDesktopNotification } from "./desktop";
+import { getNotificationTarget } from "./routing";
 import { playNotificationSound } from "./sound";
 
 interface UseNotificationSocketOptions {
@@ -97,6 +98,7 @@ export function useNotificationSocket(options: UseNotificationSocketOptions = {}
             id: notification.id,
             title: notification.title,
             message: notification.message,
+            path: getNotificationTarget(notification),
           });
         });
       },

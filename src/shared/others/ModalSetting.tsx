@@ -5,8 +5,14 @@ import { useUploadAvatarMutation } from '../api/users';
 import { PresetAvatarPicker, extractPresetAvatarFile } from '../avatars/PresetAvatarPicker';
 import type { AvatarPreset } from '../avatars/presets';
 import { useAuth } from '../context';
+import type { User } from '../types';
 import { Avatar, Icon, type IconName } from '../ui';
 import { PERMISSIONS, usePermissions, type PermissionCode } from '../permissions';
+import {
+  BILLING_INVOICES,
+  CURRENT_SUBSCRIPTION,
+  type InvoiceStatus,
+} from '../../features/settings/billing/data';
 
 type SettingKey =
   | 'profile'
@@ -22,11 +28,14 @@ type SettingKey =
   | 'emailAccounts'
   | 'emailTemplates'
   | 'assignmentRules'
-  | 'slaPolicies';
+  | 'slaPolicies'
+  | 'subscription'
+  | 'invoices';
 
 type SettingRow = {
   action: string;
   description: string;
+  href?: string;
   title: string;
 };
 
@@ -85,6 +94,17 @@ function formatProfileDate(value?: string) {
   }).format(date);
 }
 
+const BILLING_SETTINGS_VIEW_PERMISSIONS = [
+  PERMISSIONS.VIEW_BILLING_SETTINGS,
+  PERMISSIONS.UPDATE_BILLING_SETTINGS,
+  ...GLOBAL_SETTINGS_VIEW_PERMISSIONS,
+] as const satisfies readonly PermissionCode[];
+
+const BILLING_SETTINGS_UPDATE_PERMISSIONS = [
+  PERMISSIONS.UPDATE_BILLING_SETTINGS,
+  ...GLOBAL_SETTINGS_UPDATE_PERMISSIONS,
+] as const satisfies readonly PermissionCode[];
+
 const TEAM_SETTINGS_VIEW_PERMISSIONS = [
   PERMISSIONS.VIEW_TEAM_SETTINGS,
   PERMISSIONS.UPDATE_TEAM_SETTINGS,
@@ -131,15 +151,16 @@ const groups: SettingGroup[] = [
           ...GLOBAL_SETTINGS_UPDATE_PERMISSIONS,
         ],
         rows: [
-          {
-            title: 'Emails et signature',
-            description: 'Gere les emails de ton compte et ta signature de communication.',
-            action: 'Configurer',
-          },
+          // {
+          //   title: 'Emails et signature',
+          //   description: 'Gere les emails de ton compte et ta signature de communication.',
+          //   action: 'Configurer',
+          // },
           {
             title: 'Mot de passe',
             description: 'Change ton mot de passe pour proteger ton espace.',
             action: 'Changer',
+            href: '/settings/password',
           },
         ],
       },
@@ -206,44 +227,44 @@ const groups: SettingGroup[] = [
           },
         ],
       },
-      {
-        key: 'roles',
-        label: 'Roles',
-        icon: 'shield',
-        title: 'Roles',
-        subtitle: 'Gere les roles et les permissions disponibles.',
-        sectionTitle: 'Roles et permissions',
-        permissions: [
-          PERMISSIONS.VIEW_ROLES_SETTINGS,
-          PERMISSIONS.UPDATE_ROLES_SETTINGS,
-          PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
-          ...TEAM_SETTINGS_VIEW_PERMISSIONS,
-        ],
-        updatePermissions: [
-          PERMISSIONS.UPDATE_ROLES_SETTINGS,
-          PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
-          ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
-        ],
-        rows: [
-          {
-            title: 'Roles',
-            description: 'Consulte les roles et leur couverture de permissions.',
-            action: 'Configurer',
-          },
-          {
-            title: 'Permissions',
-            description: 'Ajuste les permissions rattachees aux roles de l espace.',
-            action: 'Modifier',
-          },
-        ],
-      },
+      // {
+      //   key: 'roles',
+      //   label: 'Roles',
+      //   icon: 'shield',
+      //   title: 'Roles',
+      //   subtitle: 'Gere les roles et les permissions disponibles.',
+      //   sectionTitle: 'Roles et permissions',
+      //   permissions: [
+      //     PERMISSIONS.VIEW_ROLES_SETTINGS,
+      //     PERMISSIONS.UPDATE_ROLES_SETTINGS,
+      //     PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
+      //     ...TEAM_SETTINGS_VIEW_PERMISSIONS,
+      //   ],
+      //   updatePermissions: [
+      //     PERMISSIONS.UPDATE_ROLES_SETTINGS,
+      //     PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
+      //     ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
+      //   ],
+      //   rows: [
+      //     {
+      //       title: 'Roles',
+      //       description: 'Consulte les roles et leur couverture de permissions.',
+      //       action: 'Configurer',
+      //     },
+      //     {
+      //       title: 'Permissions',
+      //       description: 'Ajuste les permissions rattachees aux roles de l espace.',
+      //       action: 'Modifier',
+      //     },
+      //   ],
+      // },
       {
         key: 'invitations',
         label: 'Invitations',
         icon: 'mail',
         title: 'Invitations',
-        subtitle: 'Pilote les invitations envoyees aux futurs collaborateurs.',
-        sectionTitle: 'Invitations equipe',
+        subtitle: 'Consulte les invitations encore en attente.',
+        sectionTitle: 'Invitations en attente',
         permissions: [
           PERMISSIONS.VIEW_INVITATIONS_SETTINGS,
           PERMISSIONS.UPDATE_INVITATIONS_SETTINGS,
@@ -255,18 +276,28 @@ const groups: SettingGroup[] = [
           PERMISSIONS.INVITE_COLLABORATORS,
           ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
         ],
-        rows: [
-          {
-            title: 'Invitations en attente',
-            description: 'Suis les invitations ouvertes et leur statut.',
-            action: 'Voir',
-          },
-          {
-            title: 'Nouvelle invitation',
-            description: 'Invite un collaborateur dans l espace de travail.',
-            action: 'Inviter',
-          },
+        rows: [],
+      },
+      {
+        key: 'profiles',
+        label: 'Profil',
+        icon: 'user',
+        title: 'Profils',
+        subtitle: 'Gere les profils disponibles dans l espace.',
+        sectionTitle: 'Profils disponibles',
+        permissions: [
+          PERMISSIONS.VIEW_INVITATIONS_SETTINGS,
+          PERMISSIONS.INVITE_COLLABORATORS,
+          PERMISSIONS.CREATE_USERS,
+          PERMISSIONS.MANAGE_ACCOUNTS,
+          ...TEAM_SETTINGS_VIEW_PERMISSIONS,
         ],
+        updatePermissions: [
+          PERMISSIONS.CREATE_USERS,
+          PERMISSIONS.MANAGE_ACCOUNTS,
+          ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
+        ],
+        rows: [],
       },
       {
         key: 'profiles',
@@ -323,35 +354,35 @@ const groups: SettingGroup[] = [
           },
         ],
       },
-      {
-        key: 'dashboard',
-        label: 'Dashboard',
-        icon: 'grid',
-        title: 'Dashboard',
-        subtitle: 'Controle les options du tableau de bord.',
-        sectionTitle: 'Tableau de bord',
-        permissions: [
-          PERMISSIONS.VIEW_DASHBOARD_SETTINGS,
-          PERMISSIONS.UPDATE_DASHBOARD_SETTINGS,
-          ...COMPANY_SETTINGS_VIEW_PERMISSIONS,
-        ],
-        updatePermissions: [
-          PERMISSIONS.UPDATE_DASHBOARD_SETTINGS,
-          ...COMPANY_SETTINGS_UPDATE_PERMISSIONS,
-        ],
-        rows: [
-          {
-            title: 'Widgets',
-            description: 'Choisis les donnees visibles dans le tableau de bord.',
-            action: 'Configurer',
-          },
-          {
-            title: 'Vue par defaut',
-            description: 'Definis l affichage initial des utilisateurs.',
-            action: 'Modifier',
-          },
-        ],
-      },
+      // {
+      //   key: 'dashboard',
+      //   label: 'Dashboard',
+      //   icon: 'grid',
+      //   title: 'Dashboard',
+      //   subtitle: 'Controle les options du tableau de bord.',
+      //   sectionTitle: 'Tableau de bord',
+      //   permissions: [
+      //     PERMISSIONS.VIEW_DASHBOARD_SETTINGS,
+      //     PERMISSIONS.UPDATE_DASHBOARD_SETTINGS,
+      //     ...COMPANY_SETTINGS_VIEW_PERMISSIONS,
+      //   ],
+      //   updatePermissions: [
+      //     PERMISSIONS.UPDATE_DASHBOARD_SETTINGS,
+      //     ...COMPANY_SETTINGS_UPDATE_PERMISSIONS,
+      //   ],
+      //   rows: [
+      //     {
+      //       title: 'Widgets',
+      //       description: 'Choisis les donnees visibles dans le tableau de bord.',
+      //       action: 'Configurer',
+      //     },
+      //     {
+      //       title: 'Vue par defaut',
+      //       description: 'Definis l affichage initial des utilisateurs.',
+      //       action: 'Modifier',
+      //     },
+      //   ],
+      // },
       {
         key: 'defaults',
         label: 'Defaults',
@@ -381,35 +412,35 @@ const groups: SettingGroup[] = [
           },
         ],
       },
-      {
-        key: 'brand',
-        label: 'Brand',
-        icon: 'star',
-        title: 'Brand',
-        subtitle: 'Personnalise l identite visuelle de l espace.',
-        sectionTitle: 'Identite',
-        permissions: [
-          PERMISSIONS.VIEW_BRAND_SETTINGS,
-          PERMISSIONS.UPDATE_BRAND_SETTINGS,
-          ...COMPANY_SETTINGS_VIEW_PERMISSIONS,
-        ],
-        updatePermissions: [
-          PERMISSIONS.UPDATE_BRAND_SETTINGS,
-          ...COMPANY_SETTINGS_UPDATE_PERMISSIONS,
-        ],
-        rows: [
-          {
-            title: 'Logo et couleurs',
-            description: 'Ajuste les elements visuels partages par l equipe.',
-            action: 'Configurer',
-          },
-          {
-            title: 'Nom public',
-            description: 'Controle la denomination affichee dans les interfaces.',
-            action: 'Modifier',
-          },
-        ],
-      },
+      // {
+      //   key: 'brand',
+      //   label: 'Brand',
+      //   icon: 'star',
+      //   title: 'Brand',
+      //   subtitle: 'Personnalise l identite visuelle de l espace.',
+      //   sectionTitle: 'Identite',
+      //   permissions: [
+      //     PERMISSIONS.VIEW_BRAND_SETTINGS,
+      //     PERMISSIONS.UPDATE_BRAND_SETTINGS,
+      //     ...COMPANY_SETTINGS_VIEW_PERMISSIONS,
+      //   ],
+      //   updatePermissions: [
+      //     PERMISSIONS.UPDATE_BRAND_SETTINGS,
+      //     ...COMPANY_SETTINGS_UPDATE_PERMISSIONS,
+      //   ],
+      //   rows: [
+      //     {
+      //       title: 'Logo et couleurs',
+      //       description: 'Ajuste les elements visuels partages par l equipe.',
+      //       action: 'Configurer',
+      //     },
+      //     {
+      //       title: 'Nom public',
+      //       description: 'Controle la denomination affichee dans les interfaces.',
+      //       action: 'Modifier',
+      //     },
+      //   ],
+      // },
     ]
   },
   {
@@ -530,7 +561,34 @@ const groups: SettingGroup[] = [
         ],
       },
     ]
-  }
+  },
+  {
+    title: 'Facturation',
+    items: [
+      {
+        key: 'subscription',
+        label: 'Abonnement',
+        icon: 'star',
+        title: 'Abonnement',
+        subtitle: 'Consulte ton abonnement Acredi Space actuel.',
+        sectionTitle: 'Abonnement actuel',
+        permissions: BILLING_SETTINGS_VIEW_PERMISSIONS,
+        updatePermissions: BILLING_SETTINGS_UPDATE_PERMISSIONS,
+        rows: [],
+      },
+      {
+        key: 'invoices',
+        label: 'Factures',
+        icon: 'file',
+        title: 'Factures',
+        subtitle: 'Consulte l historique de facturation de ton espace.',
+        sectionTitle: 'Historique des factures',
+        permissions: BILLING_SETTINGS_VIEW_PERMISSIONS,
+        updatePermissions: BILLING_SETTINGS_UPDATE_PERMISSIONS,
+        rows: [],
+      },
+    ],
+  },
 ];
 
 interface ModalSettingProps {
@@ -541,6 +599,7 @@ interface ModalSettingProps {
 }
 
 export default function ModalSetting({ userEmail, userName, workspaceName, onClose }: ModalSettingProps) {
+  const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const { hasAnyPermission } = usePermissions();
   const uploadAvatarMutation = useUploadAvatarMutation();

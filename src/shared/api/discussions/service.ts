@@ -1,5 +1,6 @@
 import { http } from "../http";
 import { discussionEndpoints } from "./endpoints";
+import type { MessageResponse } from "../dm/types";
 import type {
   ApiResponse,
   CreateGroupDiscussionRequest,
