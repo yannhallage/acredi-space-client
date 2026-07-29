@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   useCalendarEvents,
   useCreateCalendarEvent,
+  useDeleteCalendarEvent,
   useUpdateCalendarEvent,
 } from "../../../shared/api/callendar";
 import type { CalendarEvent } from "../../../shared/api/callendar/types";
@@ -22,6 +23,7 @@ export function useCalendarPage() {
   const eventsQuery = useCalendarEvents();
   const createEventMutation = useCreateCalendarEvent();
   const updateEventMutation = useUpdateCalendarEvent();
+  const deleteEventMutation = useDeleteCalendarEvent();
 
   const [calendarDate, setCalendarDate] = useState(today);
   const [view, setView] = useState<ViewMode>("week");
@@ -103,16 +105,26 @@ export function useCalendarPage() {
   }
 
   async function handleCreateEvent(event: {
+    allDay: boolean;
+    color: string;
+    description: string;
     endsAt: string;
+    location: string;
+    reminders: Array<{ method: "NOTIFICATION" | "EMAIL"; minutesBefore: number }>;
     startsAt: string;
     title: string;
   }) {
     try {
       await createEventMutation.mutateAsync({
+        allDay: event.allDay,
+        color: event.color,
+        description: event.description || null,
         endsAt: event.endsAt,
-        location: null,
+        location: event.location || null,
         participantIds: [],
+        reminders: event.reminders,
         startsAt: event.startsAt,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         title: event.title,
       });
 
@@ -140,6 +152,27 @@ export function useCalendarPage() {
       showToast("success", "Participants mis a jour");
     } catch (error) {
       showToast("error", getErrorMessage(error));
+    }
+  }
+
+  async function handleDeleteEvent(event: CalendarEvent) {
+    if (event.type !== "EVENT") {
+      showToast("info", "Les reunions se suppriment depuis le module Reunion");
+      return;
+    }
+
+    try {
+      await deleteEventMutation.mutateAsync(event.id);
+      setSelectedEvent(null);
+      showToast(
+        "success",
+        `Evenement "${event.title}" supprime avec succes`,
+      );
+    } catch (error) {
+      showToast(
+        "error",
+        `Echec de la suppression : ${getErrorMessage(error)}`,
+      );
     }
   }
 
@@ -180,6 +213,7 @@ export function useCalendarPage() {
     calendarGridClass,
     calendarTimelineMinWidth,
     createSlot,
+    deleteEventMutation,
     eventsQuery,
     isCalendarLoading,
     monthDays,
@@ -197,6 +231,7 @@ export function useCalendarPage() {
     goPrevious,
     goToday,
     handleCreateEvent,
+    handleDeleteEvent,
     handleUpdateParticipants,
     openCreateModal,
     openEventDetail,
