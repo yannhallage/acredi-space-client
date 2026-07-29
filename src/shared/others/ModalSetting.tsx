@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useCreateProfileMutation, useProfilesQuery, type ProfileResponse } from '../api/profiles';
 import { useUploadAvatarMutation } from '../api/users';
 import { PresetAvatarPicker, extractPresetAvatarFile } from '../avatars/PresetAvatarPicker';
@@ -27,6 +28,7 @@ type SettingKey =
 type SettingRow = {
   action: string;
   description: string;
+  href?: string;
   title: string;
 };
 
@@ -131,15 +133,16 @@ const groups: SettingGroup[] = [
           ...GLOBAL_SETTINGS_UPDATE_PERMISSIONS,
         ],
         rows: [
-          {
-            title: 'Emails et signature',
-            description: 'Gere les emails de ton compte et ta signature de communication.',
-            action: 'Configurer',
-          },
+          // {
+          //   title: 'Emails et signature',
+          //   description: 'Gere les emails de ton compte et ta signature de communication.',
+          //   action: 'Configurer',
+          // },
           {
             title: 'Mot de passe',
             description: 'Change ton mot de passe pour proteger ton espace.',
             action: 'Changer',
+            href: '/settings/password',
           },
         ],
       },
@@ -206,37 +209,37 @@ const groups: SettingGroup[] = [
           },
         ],
       },
-      {
-        key: 'roles',
-        label: 'Roles',
-        icon: 'shield',
-        title: 'Roles',
-        subtitle: 'Gere les roles et les permissions disponibles.',
-        sectionTitle: 'Roles et permissions',
-        permissions: [
-          PERMISSIONS.VIEW_ROLES_SETTINGS,
-          PERMISSIONS.UPDATE_ROLES_SETTINGS,
-          PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
-          ...TEAM_SETTINGS_VIEW_PERMISSIONS,
-        ],
-        updatePermissions: [
-          PERMISSIONS.UPDATE_ROLES_SETTINGS,
-          PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
-          ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
-        ],
-        rows: [
-          {
-            title: 'Roles',
-            description: 'Consulte les roles et leur couverture de permissions.',
-            action: 'Configurer',
-          },
-          {
-            title: 'Permissions',
-            description: 'Ajuste les permissions rattachees aux roles de l espace.',
-            action: 'Modifier',
-          },
-        ],
-      },
+      // {
+      //   key: 'roles',
+      //   label: 'Roles',
+      //   icon: 'shield',
+      //   title: 'Roles',
+      //   subtitle: 'Gere les roles et les permissions disponibles.',
+      //   sectionTitle: 'Roles et permissions',
+      //   permissions: [
+      //     PERMISSIONS.VIEW_ROLES_SETTINGS,
+      //     PERMISSIONS.UPDATE_ROLES_SETTINGS,
+      //     PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
+      //     ...TEAM_SETTINGS_VIEW_PERMISSIONS,
+      //   ],
+      //   updatePermissions: [
+      //     PERMISSIONS.UPDATE_ROLES_SETTINGS,
+      //     PERMISSIONS.MANAGE_ROLES_PERMISSIONS,
+      //     ...TEAM_SETTINGS_UPDATE_PERMISSIONS,
+      //   ],
+      //   rows: [
+      //     {
+      //       title: 'Roles',
+      //       description: 'Consulte les roles et leur couverture de permissions.',
+      //       action: 'Configurer',
+      //     },
+      //     {
+      //       title: 'Permissions',
+      //       description: 'Ajuste les permissions rattachees aux roles de l espace.',
+      //       action: 'Modifier',
+      //     },
+      //   ],
+      // },
       {
         key: 'invitations',
         label: 'Invitations',
@@ -323,35 +326,35 @@ const groups: SettingGroup[] = [
           },
         ],
       },
-      {
-        key: 'dashboard',
-        label: 'Dashboard',
-        icon: 'grid',
-        title: 'Dashboard',
-        subtitle: 'Controle les options du tableau de bord.',
-        sectionTitle: 'Tableau de bord',
-        permissions: [
-          PERMISSIONS.VIEW_DASHBOARD_SETTINGS,
-          PERMISSIONS.UPDATE_DASHBOARD_SETTINGS,
-          ...COMPANY_SETTINGS_VIEW_PERMISSIONS,
-        ],
-        updatePermissions: [
-          PERMISSIONS.UPDATE_DASHBOARD_SETTINGS,
-          ...COMPANY_SETTINGS_UPDATE_PERMISSIONS,
-        ],
-        rows: [
-          {
-            title: 'Widgets',
-            description: 'Choisis les donnees visibles dans le tableau de bord.',
-            action: 'Configurer',
-          },
-          {
-            title: 'Vue par defaut',
-            description: 'Definis l affichage initial des utilisateurs.',
-            action: 'Modifier',
-          },
-        ],
-      },
+      // {
+      //   key: 'dashboard',
+      //   label: 'Dashboard',
+      //   icon: 'grid',
+      //   title: 'Dashboard',
+      //   subtitle: 'Controle les options du tableau de bord.',
+      //   sectionTitle: 'Tableau de bord',
+      //   permissions: [
+      //     PERMISSIONS.VIEW_DASHBOARD_SETTINGS,
+      //     PERMISSIONS.UPDATE_DASHBOARD_SETTINGS,
+      //     ...COMPANY_SETTINGS_VIEW_PERMISSIONS,
+      //   ],
+      //   updatePermissions: [
+      //     PERMISSIONS.UPDATE_DASHBOARD_SETTINGS,
+      //     ...COMPANY_SETTINGS_UPDATE_PERMISSIONS,
+      //   ],
+      //   rows: [
+      //     {
+      //       title: 'Widgets',
+      //       description: 'Choisis les donnees visibles dans le tableau de bord.',
+      //       action: 'Configurer',
+      //     },
+      //     {
+      //       title: 'Vue par defaut',
+      //       description: 'Definis l affichage initial des utilisateurs.',
+      //       action: 'Modifier',
+      //     },
+      //   ],
+      // },
       {
         key: 'defaults',
         label: 'Defaults',
@@ -381,35 +384,35 @@ const groups: SettingGroup[] = [
           },
         ],
       },
-      {
-        key: 'brand',
-        label: 'Brand',
-        icon: 'star',
-        title: 'Brand',
-        subtitle: 'Personnalise l identite visuelle de l espace.',
-        sectionTitle: 'Identite',
-        permissions: [
-          PERMISSIONS.VIEW_BRAND_SETTINGS,
-          PERMISSIONS.UPDATE_BRAND_SETTINGS,
-          ...COMPANY_SETTINGS_VIEW_PERMISSIONS,
-        ],
-        updatePermissions: [
-          PERMISSIONS.UPDATE_BRAND_SETTINGS,
-          ...COMPANY_SETTINGS_UPDATE_PERMISSIONS,
-        ],
-        rows: [
-          {
-            title: 'Logo et couleurs',
-            description: 'Ajuste les elements visuels partages par l equipe.',
-            action: 'Configurer',
-          },
-          {
-            title: 'Nom public',
-            description: 'Controle la denomination affichee dans les interfaces.',
-            action: 'Modifier',
-          },
-        ],
-      },
+      // {
+      //   key: 'brand',
+      //   label: 'Brand',
+      //   icon: 'star',
+      //   title: 'Brand',
+      //   subtitle: 'Personnalise l identite visuelle de l espace.',
+      //   sectionTitle: 'Identite',
+      //   permissions: [
+      //     PERMISSIONS.VIEW_BRAND_SETTINGS,
+      //     PERMISSIONS.UPDATE_BRAND_SETTINGS,
+      //     ...COMPANY_SETTINGS_VIEW_PERMISSIONS,
+      //   ],
+      //   updatePermissions: [
+      //     PERMISSIONS.UPDATE_BRAND_SETTINGS,
+      //     ...COMPANY_SETTINGS_UPDATE_PERMISSIONS,
+      //   ],
+      //   rows: [
+      //     {
+      //       title: 'Logo et couleurs',
+      //       description: 'Ajuste les elements visuels partages par l equipe.',
+      //       action: 'Configurer',
+      //     },
+      //     {
+      //       title: 'Nom public',
+      //       description: 'Controle la denomination affichee dans les interfaces.',
+      //       action: 'Modifier',
+      //     },
+      //   ],
+      // },
     ]
   },
   {
@@ -541,6 +544,7 @@ interface ModalSettingProps {
 }
 
 export default function ModalSetting({ userEmail, userName, workspaceName, onClose }: ModalSettingProps) {
+  const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const { hasAnyPermission } = usePermissions();
   const uploadAvatarMutation = useUploadAvatarMutation();
@@ -936,7 +940,18 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
                         <strong>{row.title}</strong>
                         <p>{row.description}</p>
                       </div>
-                      <button className="button ghost mini" type="button" disabled={!canUpdateActiveItem}>
+                      <button
+                        className="button ghost mini"
+                        type="button"
+                        disabled={!canUpdateActiveItem}
+                        onClick={() => {
+                          if (!canUpdateActiveItem || !row.href) {
+                            return;
+                          }
+                          navigate(row.href);
+                          onClose();
+                        }}
+                      >
                         {canUpdateActiveItem ? row.action : 'Lecture seule'}
                       </button>
                     </article>
