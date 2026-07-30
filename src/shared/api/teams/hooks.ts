@@ -94,6 +94,65 @@ export function useUserTeamsQuery(options: UseUserTeamsQueryOptions = {}) {
   return { ...state, refetch };
 }
 
+export function useMyTeamsQuery(options: UseTeamsQueryOptions = {}) {
+  const { enabled = true } = options;
+  const [state, setState] = useState<QueryState<TeamResponse[]>>({
+    data: enabled ? null : [],
+    error: null,
+    loading: enabled,
+  });
+
+  const refetch = useCallback(async () => {
+    if (!enabled) {
+      setState({ data: [], error: null, loading: false });
+      return [];
+    }
+
+    setState((current) => ({ ...current, error: null, loading: true }));
+
+    try {
+      const data = await teamService.findMine();
+      setState({ data, error: null, loading: false });
+      return data;
+    } catch (error) {
+      const normalizedError = toError(error);
+      setState({ data: null, error: normalizedError, loading: false });
+      throw normalizedError;
+    }
+  }, [enabled]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!enabled) {
+      setState({ data: [], error: null, loading: false });
+      return () => {
+        active = false;
+      };
+    }
+
+    setState((current) => ({ ...current, error: null, loading: true }));
+    teamService
+      .findMine()
+      .then((data) => {
+        if (active) {
+          setState({ data, error: null, loading: false });
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setState({ data: null, error: toError(error), loading: false });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [enabled]);
+
+  return { ...state, refetch };
+}
+
 export function useTeamsQuery(options: UseTeamsQueryOptions = {}) {
   const { enabled = true } = options;
   const [state, setState] = useState<QueryState<TeamResponse[]>>({
