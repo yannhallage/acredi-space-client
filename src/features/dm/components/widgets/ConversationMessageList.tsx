@@ -12,7 +12,7 @@ import {
 import { loadAssetUrl, type LoadedAssetUrl } from "../../../../shared/api/http";
 import { useShareMessageMutation } from "../../../../shared/api/dm/hooks";
 import { discussionService } from "../../../../shared/api/discussions/service";
-import { useTeamsQuery } from "../../../../shared/api/teams";
+import { useMyTeamsQuery } from "../../../../shared/api/teams";
 import { useUsersQuery } from "../../../../shared/api/users";
 import type { Presence } from "../../../../shared/types";
 import {
@@ -668,7 +668,7 @@ export function ConversationMessageList({
   const [shareError, setShareError] = useState<string | null>(null);
 
   const usersQuery = useUsersQuery({ enabled: Boolean(messageToShare) });
-  const teamsQuery = useTeamsQuery({ enabled: Boolean(messageToShare) });
+  const teamsQuery = useMyTeamsQuery({ enabled: Boolean(messageToShare) });
   const shareMessageMutation = useShareMessageMutation();
 
   const shareLoading = usersQuery.loading || teamsQuery.loading;
