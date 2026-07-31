@@ -1,27 +1,68 @@
-# React + Vite
+# space-prod-client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Un client front-end pour l'équipe Acredi (space-prod-client).
 
-Currently, two official plugins are available:
+## Description
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Application front-end écrite en TypeScript pour l'interface utilisateur du projet "space". Ce dépôt contient le code source, les styles et les scripts de build pour produire l'app en environnement de production.
 
-## React Compiler
+## Prérequis
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Node.js >= 18
+- npm ou yarn
 
-## Expanding the ESLint configuration
+## Installation
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Clonez le dépôt et installez les dépendances:
 
-## Notifications temps reel
-
-Configure the API and optional SockJS endpoint in `.env`:
-
-```env
-VITE_API_BASE_URL=http://localhost:8080/api
-VITE_WS_URL=http://localhost:8080/ws
+```bash
+git clone git@github.com:Acredi-Dev-Team/space-prod-client.git
+cd space-prod-client
+npm install
+# ou
+# yarn install
 ```
 
-The app uses STOMP over SockJS, sends the JWT in the STOMP `Authorization` header, and subscribes to `/user/queue/notifications`. The backend stores notifications in the database first; the socket only pushes the small `NotificationResponse` payload in real time.
+2. Copiez le fichier d'exemple d'environnement et modifiez-le selon vos variables:
+
+```bash
+cp .env.example .env
+# éditez .env
+```
+
+## Scripts utiles
+
+- npm run dev — démarre le serveur de dev (hot-reload)
+- npm run build — construit les assets pour la production
+- npm run start — lance l'application en production
+- npm run lint — exécute les linter
+- npm run test — lance les tests (si présents)
+
+(Vérifiez le package.json pour la liste exacte des scripts.)
+
+## Structure du dépôt
+
+- src/ — code TypeScript de l'application
+- public/ — assets statiques
+- styles/ — fichiers CSS
+- build/ ou dist/ — sortie de build
+
+## Déploiement
+
+Le projet utilise la branche `deploy` comme branche de déploiement par défaut. Adaptez votre pipeline CI/CD (GitHub Actions, autre) pour déclencher les builds et déploiements depuis cette branche.
+
+## Contribuer
+
+1. Forkez le dépôt
+2. Créez une branche feature/bugfix: `feature/ma-fonctionnalite`
+3. Faites une Pull Request vers `deploy` ou la branche indiquée par le mainteneur
+
+Respectez les conventions de style et ajoutez des tests si possible.
+
+## Licence
+
+Ce projet est distribué sous la licence MIT. Voir le fichier LICENSE pour le texte complet.
+
+---
+
+Si vous voulez que j'ajuste ce README (ajout d'un badge CI, sections plus détaillées, ou traduction en anglais), dites-moi ce que vous souhaitez modifier.
