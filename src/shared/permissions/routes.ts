@@ -17,6 +17,8 @@ export const APP_ROUTE_PERMISSION_RULES = [
   { path: '/app/admin', permissions: ADMIN_FEATURE_PERMISSIONS },
   { path: '/app/dashboard', permissions: FEATURE_PERMISSION_REQUIREMENTS.dashboard },
   { path: '/app/files', permissions: FEATURE_PERMISSION_REQUIREMENTS.files },
+  { path: '/app/shared-files', permissions: FEATURE_PERMISSION_REQUIREMENTS.files },
+  { path: '/app/trash', permissions: FEATURE_PERMISSION_REQUIREMENTS.files },
   { path: '/app/chat', permissions: FEATURE_PERMISSION_REQUIREMENTS.chat },
   { path: '/app/dm', permissions: FEATURE_PERMISSION_REQUIREMENTS.chat },
   { path: '/app/calendar', permissions: FEATURE_PERMISSION_REQUIREMENTS.calendar },

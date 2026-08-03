@@ -1,21 +1,27 @@
 import { Navigate, useParams } from "react-router-dom";
 
 import Toast from "../../components/app/Toast/Toast";
+import { useAuth } from "../../shared/context";
 import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
 import { EmptyState, Icon } from "../../shared/ui";
 
 import {
   FileGrid,
+  FileList,
   FilePreviewDrawer,
   FilesBreadcrumb,
+  FilesViewToggle,
   FolderFilesPageSkeleton,
   ShareModal,
 } from "./components";
+import { useFilesViewMode } from "./hooks/useFilesViewMode";
 import { useFolderFilesPage } from "./hooks/useFolderFilesPage";
 
 export function FolderFilesPage() {
   const { folderId } = useParams<{ folderId: string }>();
+  const { user } = useAuth();
   const page = useFolderFilesPage(folderId);
+  const { setViewMode, viewMode } = useFilesViewMode();
 
   if (!folderId) {
     return <Navigate to="/app/files" replace />;
@@ -79,13 +85,7 @@ export function FolderFilesPage() {
   }
 
   return (
-    <div
-      className={
-        page.selectedFile
-          ? "files-page folders-only files-folder-detail preview-open"
-          : "files-page folders-only files-folder-detail"
-      }
-    >
+    <div className="files-page folders-only files-folder-detail">
       {page.toast.show ? (
         <Toast intent={page.toast.intent} message={page.toast.message} />
       ) : null}
@@ -109,30 +109,33 @@ export function FolderFilesPage() {
             />
           </div>
 
-          <PermissionGate permission={PERMISSIONS.UPLOAD_OWN_FILES}>
-            <label
-              className={
-                page.uploadFileMutation.isPending
-                  ? "files-upload-button busy"
-                  : "files-upload-button"
-              }
-            >
-              <Icon name="upload" size={13} />
-              {page.uploadFileMutation.isPending ? "Import..." : "Importer"}
-              <input
-                type="file"
-                disabled={page.uploadFileMutation.isPending}
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
+          <div className="files-manager-actions">
+            <FilesViewToggle viewMode={viewMode} onChange={setViewMode} />
+            <PermissionGate permission={PERMISSIONS.UPLOAD_OWN_FILES}>
+              <label
+                className={
+                  page.uploadFileMutation.isPending
+                    ? "files-upload-button busy"
+                    : "files-upload-button"
+                }
+              >
+                <Icon name="upload" size={13} />
+                {page.uploadFileMutation.isPending ? "Import..." : "Importer"}
+                <input
+                  type="file"
+                  disabled={page.uploadFileMutation.isPending}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
 
-                  if (file) {
-                    void page.handleUploadFile(file);
-                  }
-                }}
-              />
-            </label>
-          </PermissionGate>
+                    if (file) {
+                      void page.handleUploadFile(file);
+                    }
+                  }}
+                />
+              </label>
+            </PermissionGate>
+          </div>
         </header>
 
         <label className="files-search" htmlFor="folder-file-search">
@@ -145,26 +148,52 @@ export function FolderFilesPage() {
           />
         </label>
 
-        <FileGrid
-          deletePending={page.deleteFileMutation.isPending}
-          downloadPending={page.downloadFileUrlMutation.isPending}
-          emptyDescription="Importez un fichier dans ce dossier."
-          emptyTitle="Aucun fichier"
-          files={page.visibleFiles}
-          onDelete={page.handleDeleteFile}
-          onDownload={page.handleDownloadFile}
-          onOpenPreview={page.handleOpenPreview}
-          onShare={page.handleShareFile}
-          onToggleMenu={(fileId) =>
-            page.setOpenMenuFileId((current) =>
-              current === fileId ? null : fileId,
-            )
-          }
-          openMenuFileId={page.openMenuFileId}
-          selectedFileId={page.selectedFile?.id ?? null}
-          showDelete
-          showShare
-        />
+        {viewMode === "list" ? (
+          <FileList
+            deletePending={page.deleteFileMutation.isPending}
+            downloadPending={page.downloadFileUrlMutation.isPending}
+            emptyDescription="Importez un fichier dans ce dossier."
+            emptyTitle="Aucun fichier"
+            files={page.visibleFiles}
+            getOwnerLabel={(file) =>
+              file.ownerId && user?.id === file.ownerId ? "moi" : "—"
+            }
+            onDelete={page.handleDeleteFile}
+            onDownload={page.handleDownloadFile}
+            onOpenPreview={page.handleOpenPreview}
+            onShare={page.handleShareFile}
+            onToggleMenu={(fileId) =>
+              page.setOpenMenuFileId((current) =>
+                current === fileId ? null : fileId,
+              )
+            }
+            openMenuFileId={page.openMenuFileId}
+            selectedFileId={page.selectedFile?.id ?? null}
+            showDelete
+            showShare
+          />
+        ) : (
+          <FileGrid
+            deletePending={page.deleteFileMutation.isPending}
+            downloadPending={page.downloadFileUrlMutation.isPending}
+            emptyDescription="Importez un fichier dans ce dossier."
+            emptyTitle="Aucun fichier"
+            files={page.visibleFiles}
+            onDelete={page.handleDeleteFile}
+            onDownload={page.handleDownloadFile}
+            onOpenPreview={page.handleOpenPreview}
+            onShare={page.handleShareFile}
+            onToggleMenu={(fileId) =>
+              page.setOpenMenuFileId((current) =>
+                current === fileId ? null : fileId,
+              )
+            }
+            openMenuFileId={page.openMenuFileId}
+            selectedFileId={page.selectedFile?.id ?? null}
+            showDelete
+            showShare
+          />
+        )}
       </section>
 
       <FilePreviewDrawer
@@ -234,8 +263,8 @@ export function FolderFilesPage() {
         onClose={page.closeFileShareModal}
         onLevelChange={page.setShareLevel}
         onRetry={page.usersQuery.refetch}
-        onSelect={(user) => {
-          void page.shareFileWithUser(user);
+        onSelect={(userEntry) => {
+          void page.shareFileWithUser(userEntry);
         }}
         selectedUserId={page.sharingUserId}
         users={page.usersQuery.data ?? []}

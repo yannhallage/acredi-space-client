@@ -335,7 +335,7 @@ export function useFolderFilesPage(folderId: string | undefined) {
   async function handleDeleteFile(file: WorkspaceFile) {
     setOpenMenuFileId(null);
 
-    if (!window.confirm(`Supprimer le fichier "${file.name}" ?`)) {
+    if (!window.confirm(`Mettre "${file.name}" dans la corbeille ?`)) {
       return;
     }
 
@@ -344,13 +344,13 @@ export function useFolderFilesPage(folderId: string | undefined) {
       if (selectedFileId === file.id) {
         setSelectedFileId(null);
       }
-      showToast("success", "Fichier supprime avec succes.");
+      showToast("success", "Fichier deplace dans la corbeille.");
     } catch (caughtError) {
       showToast(
         "error",
         caughtError instanceof Error
           ? caughtError.message
-          : "Impossible de supprimer le fichier.",
+          : "Impossible de deplacer ce fichier dans la corbeille.",
         5000,
       );
     }

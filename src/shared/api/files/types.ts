@@ -52,6 +52,7 @@ export interface WorkspaceFile {
   visibility: FileVisibility | null;
   createdAt: Date | null;
   updatedAt: Date | null;
+  deletedAt: Date | null;
   raw: FileResponse;
 }
 

@@ -3,18 +3,20 @@ import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
 import { EmptyState, Icon } from "../../shared/ui";
 
 import {
-  FilePreviewDrawer,
   FilesBreadcrumb,
   FilesPageSkeleton,
+  FilesViewToggle,
   FolderFormModal,
   FolderGrid,
+  FolderList,
   ShareModal,
-  SharedFilesSection,
 } from "./components";
 import { useFilesPage } from "./hooks/useFilesPage";
+import { useFilesViewMode } from "./hooks/useFilesViewMode";
 
 export function FilesPage() {
   const page = useFilesPage();
+  const { setViewMode, viewMode } = useFilesViewMode();
 
   if (page.isFoldersInitialLoading) {
     return (
@@ -48,13 +50,7 @@ export function FilesPage() {
   }
 
   return (
-    <div
-      className={
-        page.selectedSharedFile
-          ? "files-page folders-only files-folder-detail preview-open"
-          : "files-page folders-only"
-      }
-    >
+    <div className="files-page folders-only">
       {page.toast.show ? (
         <Toast intent={page.toast.intent} message={page.toast.message} />
       ) : null}
@@ -69,21 +65,24 @@ export function FilesPage() {
               onNavigateRoot={() => page.setCurrentFolderId(null)}
             />
           </div>
-          <PermissionGate
-            permissions={[
-              PERMISSIONS.CREATE_FOLDER,
-              PERMISSIONS.MANAGE_FOLDERS,
-            ]}
-          >
-            <button
-              className="button primary notes-create-button"
-              type="button"
-              onClick={page.openCreateModal}
+          <div className="files-manager-actions">
+            <FilesViewToggle viewMode={viewMode} onChange={setViewMode} />
+            <PermissionGate
+              permissions={[
+                PERMISSIONS.CREATE_FOLDER,
+                PERMISSIONS.MANAGE_FOLDERS,
+              ]}
             >
-              <Icon name="plus" size={13} />
-              Nouveau dossier
-            </button>
-          </PermissionGate>
+              <button
+                className="button primary notes-create-button"
+                type="button"
+                onClick={page.openCreateModal}
+              >
+                <Icon name="plus" size={13} />
+                Nouveau dossier
+              </button>
+            </PermissionGate>
+          </div>
         </header>
 
         <label className="files-search" htmlFor="files-folder-search">
@@ -96,61 +95,38 @@ export function FilesPage() {
           />
         </label>
 
-        <FolderGrid
-          deletePending={page.deleteFolderMutation.isPending}
-          folders={page.visibleFolders}
-          onDelete={page.handleDeleteFolder}
-          onEdit={page.openEditModal}
-          onOpen={(folder) => page.navigate(`/app/files/${folder.id}`)}
-          onShare={page.handleShareFolder}
-          onToggleMenu={(folderId) =>
-            page.setOpenMenuFolderId((current) =>
-              current === folderId ? null : folderId,
-            )
-          }
-          openMenuFolderId={page.openMenuFolderId}
-        />
-
-        <SharedFilesSection
-          downloadPending={page.downloadSharedFileUrlMutation.isPending}
-          error={page.sharedFilesError}
-          isError={page.isSharedFilesError}
-          isLoading={page.isSharedFilesInitialLoading}
-          onDownload={page.handleDownloadSharedFile}
-          onOpenPreview={page.handleOpenSharedFilePreview}
-          onToggleMenu={(fileId) =>
-            page.setOpenSharedFileMenuId((current) =>
-              current === fileId ? null : fileId,
-            )
-          }
-          openMenuFileId={page.openSharedFileMenuId}
-          selectedFileId={page.selectedSharedFileId}
-          sharedFiles={page.sharedFiles}
-        />
+        {viewMode === "list" ? (
+          <FolderList
+            deletePending={page.deleteFolderMutation.isPending}
+            folders={page.visibleFolders}
+            onDelete={page.handleDeleteFolder}
+            onEdit={page.openEditModal}
+            onOpen={(folder) => page.navigate(`/app/files/${folder.id}`)}
+            onShare={page.handleShareFolder}
+            onToggleMenu={(folderId) =>
+              page.setOpenMenuFolderId((current) =>
+                current === folderId ? null : folderId,
+              )
+            }
+            openMenuFolderId={page.openMenuFolderId}
+          />
+        ) : (
+          <FolderGrid
+            deletePending={page.deleteFolderMutation.isPending}
+            folders={page.visibleFolders}
+            onDelete={page.handleDeleteFolder}
+            onEdit={page.openEditModal}
+            onOpen={(folder) => page.navigate(`/app/files/${folder.id}`)}
+            onShare={page.handleShareFolder}
+            onToggleMenu={(folderId) =>
+              page.setOpenMenuFolderId((current) =>
+                current === folderId ? null : folderId,
+              )
+            }
+            openMenuFolderId={page.openMenuFolderId}
+          />
+        )}
       </section>
-
-      <FilePreviewDrawer
-        actions={
-          <button
-            className="button primary"
-            type="button"
-            disabled={page.downloadSharedFileUrlMutation.isPending}
-            onClick={() => {
-              if (page.selectedSharedFile) {
-                void page.handleDownloadSharedFile(page.selectedSharedFile);
-              }
-            }}
-          >
-            <Icon name="download" size={13} />
-            Telecharger
-          </button>
-        }
-        details={[{ label: "Chemin", value: "/Acredi Space/Fichiers partages" }]}
-        file={page.selectedSharedFile}
-        onClose={() => page.setSelectedSharedFileId(null)}
-        preview={page.preview}
-        subtitle="Fichier partage"
-      />
 
       <FolderFormModal
         currentFolder={page.currentFolder}

@@ -86,6 +86,7 @@ export function normalizeFile(file: FileResponse): WorkspaceFile {
     visibility: file.visibility ?? null,
     createdAt: readDate(source, ["createdAt", "uploadedAt"]),
     updatedAt: readDate(source, ["updatedAt", "createdAt", "uploadedAt"]),
+    deletedAt: readDate(source, ["deletedAt"]),
     raw: file,
   };
 }

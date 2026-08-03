@@ -18,11 +18,15 @@ export function FileGrid({
   onDelete,
   onDownload,
   onOpenPreview,
+  onRestore,
   onShare,
   onToggleMenu,
   openMenuFileId,
+  restorePending,
   selectedFileId,
   showDelete = false,
+  showDownload = true,
+  showRestore = false,
   showShare = false,
 }: {
   deletePending?: boolean;
@@ -34,11 +38,15 @@ export function FileGrid({
   onDelete?: (file: WorkspaceFile) => void;
   onDownload: (file: WorkspaceFile) => void;
   onOpenPreview: (file: WorkspaceFile) => void;
+  onRestore?: (file: WorkspaceFile) => void;
   onShare?: (file: WorkspaceFile) => void;
   onToggleMenu: (fileId: string) => void;
   openMenuFileId: string | null;
+  restorePending?: boolean;
   selectedFileId: string | null;
   showDelete?: boolean;
+  showDownload?: boolean;
+  showRestore?: boolean;
   showShare?: boolean;
 }) {
   if (files.length === 0) {
@@ -82,7 +90,7 @@ export function FileGrid({
                 {formatFileSize(file.size)}
               </MetaSpan>
               <MetaSpan className={metaSpanClassName}>
-                {formatFileDate(file.updatedAt)}
+                {formatFileDate(file.deletedAt ?? file.updatedAt)}
               </MetaSpan>
             </small>
           </button>
@@ -107,17 +115,33 @@ export function FileGrid({
               role="menu"
               onClick={(event) => event.stopPropagation()}
             >
-              <button
-                type="button"
-                role="menuitem"
-                disabled={downloadPending}
-                onClick={() => {
-                  void onDownload(file);
-                }}
-              >
-                <Icon name="download" size={13} />
-                Telecharger
-              </button>
+              {showRestore && onRestore ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={restorePending}
+                  onClick={() => {
+                    void onRestore(file);
+                  }}
+                >
+                  <Icon name="refresh" size={13} />
+                  Restaurer
+                </button>
+              ) : null}
+
+              {showDownload ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={downloadPending}
+                  onClick={() => {
+                    void onDownload(file);
+                  }}
+                >
+                  <Icon name="download" size={13} />
+                  Telecharger
+                </button>
+              ) : null}
 
               {showShare && onShare ? (
                 <PermissionGate permission={PERMISSIONS.SHARE_FILES}>
@@ -144,7 +168,7 @@ export function FileGrid({
                     }}
                   >
                     <Icon name="trash" size={13} />
-                    Supprimer
+                    {showRestore ? "Supprimer definitivement" : "Mettre a la corbeille"}
                   </button>
                 </PermissionGate>
               ) : null}

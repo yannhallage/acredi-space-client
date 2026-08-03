@@ -11,6 +11,7 @@ export const fileKeys = {
   lists: () => [...fileKeys.all, "list"] as const,
   list: () => [...fileKeys.lists()] as const,
   sharedList: () => [...fileKeys.lists(), "shared"] as const,
+  trashList: () => [...fileKeys.lists(), "trash"] as const,
 };
 
 export function useFiles(options: UseFilesOptions = {}) {
@@ -29,6 +30,16 @@ export function useSharedFiles(options: UseFilesOptions = {}) {
   return useQuery({
     queryKey: fileKeys.sharedList(),
     queryFn: () => fileService.findSharedWithMe(),
+    enabled,
+  });
+}
+
+export function useTrashFiles(options: UseFilesOptions = {}) {
+  const { enabled = true } = options;
+
+  return useQuery({
+    queryKey: fileKeys.trashList(),
+    queryFn: () => fileService.findTrash(),
     enabled,
   });
 }
@@ -72,6 +83,28 @@ export function useDeleteFile() {
 
   return useMutation({
     mutationFn: (id: string) => fileService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fileKeys.lists() });
+    },
+  });
+}
+
+export function useRestoreFile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => fileService.restore(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fileKeys.lists() });
+    },
+  });
+}
+
+export function useDeleteFilePermanently() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => fileService.deletePermanently(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fileKeys.lists() });
     },

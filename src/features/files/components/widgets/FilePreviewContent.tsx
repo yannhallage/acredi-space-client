@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ClipLoader } from "react-spinners";
 
 import type { WorkspaceFile } from "../../../../shared/api/files";
 import { resolveAssetUrl } from "../../../../shared/api/http";
@@ -10,6 +11,15 @@ import {
   getPreviewKind,
   type PreviewState,
 } from "../../filePreview";
+
+function PreviewSpinner({ label = "Chargement de l'apercu" }: { label?: string }) {
+  return (
+    <div className="files-preview-loading" aria-live="polite" aria-busy="true">
+      <ClipLoader color="#ffffff" size={42} />
+      <span className="files-preview-loading-label">{label}</span>
+    </div>
+  );
+}
 
 function FileImageViewer({ alt, src }: { alt: string; src: string }) {
   const [failed, setFailed] = useState(false);
@@ -33,11 +43,7 @@ function FileImageViewer({ alt, src }: { alt: string; src: string }) {
 
   return (
     <div className="files-image-viewer">
-      {!loaded ? (
-        <div className="files-image-viewer-loading" aria-hidden="true">
-          <span className="skeleton-line files-preview-skeleton-large" />
-        </div>
-      ) : null}
+      {!loaded ? <PreviewSpinner /> : null}
       <img
         alt={alt}
         className="files-image-viewer-image"
@@ -61,12 +67,7 @@ export function FilePreviewContent({
   const kind = getPreviewKind(file);
 
   if (preview.loading) {
-    return (
-      <div className="files-preview-loading" aria-live="polite">
-        <span className="skeleton-line files-preview-skeleton-large" />
-        <span className="skeleton-line files-preview-skeleton-small" />
-      </div>
-    );
+    return <PreviewSpinner />;
   }
 
   if (preview.error) {
