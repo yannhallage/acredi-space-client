@@ -5,6 +5,7 @@ import {
   useState,
   type MouseEvent,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import { useMeetingsQuery } from "../../../shared/api/meeting/hooks";
 import { meetingService } from "../../../shared/api/meeting/service";
 import {
@@ -12,13 +13,13 @@ import {
   extractMeetingRoomName,
 } from "../../../shared/api/meeting/room";
 import { useUsersQuery } from "../../../shared/api/users";
+import { useAuth } from "../../../shared/context";
 import type { User } from "../../../shared/types";
 import {
-  addDays,
-  addMonths,
   buildLocalDateTime,
+  getLocalDate,
+  getLocalTime,
   getNextHourSlot,
-  getWeekDays,
   resolveEndDateTime,
   toDateKey,
 } from "../../../shared/utils/calendarGrid";
@@ -28,7 +29,6 @@ import type {
   MeetingFormState,
   MeetingResponse,
   ToastState,
-  ViewMode,
 } from "../types";
 import {
   DROPDOWN_WIDTH,
@@ -36,13 +36,18 @@ import {
   getMeetingActionKey,
   getUserLabel,
   isPastDateTime,
+  isPastMeeting,
   mapMeetingResponse,
   normalizeSearch,
 } from "../utils";
 
+function formatLocalDateTime(date: Date) {
+  return buildLocalDateTime(getLocalDate(date), getLocalTime(date));
+}
+
 export function useMeetingPage() {
-  const [view, setView] = useState<ViewMode>("week");
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [openModal, setOpenModal] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [formError, setFormError] = useState("");
@@ -66,7 +71,9 @@ export function useMeetingPage() {
     meetingsQuery.isLoading ||
     (!meetingsQuery.isSuccess && meetingsQuery.isFetching);
   const [isSaving, setIsSaving] = useState(false);
+  const [isStartingInstant, setIsStartingInstant] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [newMeetingMenuOpen, setNewMeetingMenuOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
@@ -129,13 +136,26 @@ export function useMeetingPage() {
     }
   }, [meetingsQuery.data, meetingsQuery.isSuccess]);
 
-  const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
-  const selectedDateKey = toDateKey(selectedDate);
   const currentMeetingForMenu =
     meetings.find((meeting) => meeting.id === openMenuId) ?? null;
 
-  const openCreateModal = (date = selectedDateKey, hour = "09:00") => {
+  const hasUpcomingMeetings = useMemo(
+    () =>
+      meetings.some((meeting) => {
+        if (meeting.status === "ENDED" || meeting.status === "CANCELLED") {
+          return false;
+        }
+        return meeting.status === "LIVE" || !isPastMeeting(meeting);
+      }),
+    [meetings],
+  );
+
+  const openCreateModal = () => {
+    const now = new Date();
+    const date = toDateKey(now);
+    const hour = `${String(now.getHours()).padStart(2, "0")}:00`;
     const nextSlot = getNextHourSlot(date, hour);
+    setNewMeetingMenuOpen(false);
     setOpenMenuId(null);
     setMenuPosition(null);
     setFormError("");
@@ -152,6 +172,7 @@ export function useMeetingPage() {
   };
 
   const openEditModal = (meeting: Meeting) => {
+    setNewMeetingMenuOpen(false);
     setOpenMenuId(null);
     setMenuPosition(null);
     setFormError("");
@@ -205,8 +226,10 @@ export function useMeetingPage() {
     try {
       if (editingMeeting) {
         await meetingService.update(editingMeeting.id, payload);
+        showToast("success", "Réunion mise à jour.");
       } else {
         await meetingService.create(payload);
+        showToast("success", "Réunion créée.");
       }
       await meetingsQuery.refetch?.();
       setOpenModal(false);
@@ -219,6 +242,52 @@ export function useMeetingPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const startInstantMeeting = async () => {
+    if (isStartingInstant) return;
+    setIsStartingInstant(true);
+    setNewMeetingMenuOpen(false);
+
+    const now = new Date();
+    const endsAt = new Date(now.getTime() + 60 * 60 * 1000);
+
+    try {
+      const created = await meetingService.create({
+        title: "Réunion instantanée",
+        description: null,
+        startsAt: formatLocalDateTime(now),
+        endsAt: formatLocalDateTime(endsAt),
+        teamId: null,
+      });
+
+      try {
+        await meetingService.start(created.id);
+      } catch {
+        // La salle reste accessible même si le statut LIVE échoue.
+      }
+
+      await meetingsQuery.refetch?.();
+
+      const roomName =
+        created.roomName ?? extractMeetingRoomName(created.joinUrl);
+      if (roomName) {
+        window.location.assign(buildMeetingRoomUrl(roomName));
+        return;
+      }
+
+      showToast("success", "Réunion instantanée créée.");
+    } catch (error) {
+      console.error("Failed to start instant meeting", error);
+      showToast("error", getErrorMessage(error));
+    } finally {
+      setIsStartingInstant(false);
+    }
+  };
+
+  const scheduleInCalendar = () => {
+    setNewMeetingMenuOpen(false);
+    navigate("/app/calendar");
   };
 
   const endMeeting = async (meetingId: string) => {
@@ -248,15 +317,18 @@ export function useMeetingPage() {
     setMenuPosition(null);
   };
 
-  const handleInviteParticipant = async (user: User) => {
+  const handleInviteParticipant = async (userToInvite: User) => {
     if (!selectedMeetingForParticipants || invitingUserId) return;
-    setInvitingUserId(user.id);
+    setInvitingUserId(userToInvite.id);
     try {
       await meetingService.inviteParticipant(
         selectedMeetingForParticipants.id,
-        { userId: user.id },
+        { userId: userToInvite.id },
       );
-      showToast("success", `${getUserLabel(user)} a été invité à la réunion.`);
+      showToast(
+        "success",
+        `${getUserLabel(userToInvite)} a été invité à la réunion.`,
+      );
     } catch (error) {
       console.error("Failed to invite participant", error);
       showToast("error", getErrorMessage(error));
@@ -279,8 +351,8 @@ export function useMeetingPage() {
   const visibleUsers = useMemo(() => {
     const normalizedQuery = normalizeSearch(participantSearch.trim());
     if (!normalizedQuery) return users;
-    return users.filter((user) => {
-      const currentUser = user as User & {
+    return users.filter((candidate) => {
+      const currentUser = candidate as User & {
         name?: string | null;
         firstName?: string | null;
         lastName?: string | null;
@@ -346,18 +418,6 @@ export function useMeetingPage() {
     };
   }, [openMenuId]);
 
-  const goToday = () => setSelectedDate(new Date());
-  const goPrevious = () => {
-    if (view === "month") setSelectedDate(addMonths(selectedDate, -1));
-    else if (view === "day") setSelectedDate(addDays(selectedDate, -1));
-    else setSelectedDate(addDays(selectedDate, -7));
-  };
-  const goNext = () => {
-    if (view === "month") setSelectedDate(addMonths(selectedDate, 1));
-    else if (view === "day") setSelectedDate(addDays(selectedDate, 1));
-    else setSelectedDate(addDays(selectedDate, 7));
-  };
-
   const closeParticipantsModal = () => {
     setAddParticipantsOpen(false);
     setSelectedMeetingForParticipants(null);
@@ -366,10 +426,6 @@ export function useMeetingPage() {
   };
 
   return {
-    view,
-    setView,
-    selectedDate,
-    setSelectedDate,
     openModal,
     setOpenModal,
     editingMeeting,
@@ -379,8 +435,11 @@ export function useMeetingPage() {
     toast,
     meetings,
     isMeetingsLoading,
+    hasUpcomingMeetings,
     isSaving,
-    openMenuId,
+    isStartingInstant,
+    newMeetingMenuOpen,
+    setNewMeetingMenuOpen,
     menuPosition,
     addParticipantsOpen,
     selectedMeetingForParticipants,
@@ -389,23 +448,21 @@ export function useMeetingPage() {
     invitingUserId,
     usersLoading,
     usersError: usersQueryState.error,
-    weekDays,
-    selectedDateKey,
     currentMeetingForMenu,
     visibleUsers,
+    userEmail: user?.email ?? null,
     showToast,
     openCreateModal,
     openEditModal,
     saveMeeting,
+    startInstantMeeting,
+    scheduleInCalendar,
     endMeeting,
     handleAddParticipants,
     handleInviteParticipant,
     openMeetingRoom,
     toggleMeetingMenu,
     isMeetingActionLoading,
-    goToday,
-    goPrevious,
-    goNext,
     closeParticipantsModal,
     refetchUsers: () => void usersQueryState.refetch?.(),
   };

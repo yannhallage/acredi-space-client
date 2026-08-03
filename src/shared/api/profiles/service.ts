@@ -16,6 +16,10 @@ export const profileService = {
     return unwrapApiResponse(response);
   },
 
+  async delete(id: string): Promise<void> {
+    await http.delete<ApiResponse<void>>(profileEndpoints.delete(id));
+  },
+
   async findAll(): Promise<ProfileResponse[]> {
     const response = await http.get<ApiResponse<ProfileResponse[]>>(
       profileEndpoints.findAll

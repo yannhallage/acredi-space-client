@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { CalendarEvent } from "../../../../shared/api/callendar/types";
 import { Icon } from "../../../../shared/ui";
+import { isManagedCalendarEvent } from "../../utils";
 
 export type CalendarEventContextMenuState = {
   event: CalendarEvent;
@@ -51,7 +52,7 @@ export function CalendarEventContextMenu({
     };
   }, [menu, onClose]);
 
-  const canDelete = menu?.event.type === "EVENT";
+  const canDelete = menu ? isManagedCalendarEvent(menu.event) : false;
 
   return (
     <AnimatePresence>

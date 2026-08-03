@@ -2,12 +2,17 @@ import { AnimatePresence, motion } from "framer-motion";
 import { resolveEventColor } from "../../../../shared/api/callendar/normalizers";
 import type { CalendarEvent } from "../../../../shared/api/callendar/types";
 import { Avatar, Icon } from "../../../../shared/ui";
+import {
+  canJoinMeetingFromEvent,
+  isManagedCalendarEvent,
+} from "../../utils";
 
 type CalendarEventDetailModalProps = {
   event: CalendarEvent | null;
   isDeleting?: boolean;
   onClose: () => void;
   onDelete?: (event: CalendarEvent) => void;
+  onJoinMeeting?: (event: CalendarEvent) => void;
   onManageParticipants: (event: CalendarEvent) => void;
 };
 
@@ -83,11 +88,14 @@ export function CalendarEventDetailModal({
   isDeleting = false,
   onClose,
   onDelete,
+  onJoinMeeting,
   onManageParticipants,
 }: CalendarEventDetailModalProps) {
   const eventColor = event
     ? resolveEventColor(event.color, event.type)
     : "#039BE5";
+  const managed = event ? isManagedCalendarEvent(event) : false;
+  const canJoin = event ? canJoinMeetingFromEvent(event) : false;
 
   return (
     <AnimatePresence>
@@ -114,7 +122,7 @@ export function CalendarEventDetailModal({
           >
             <header className="calendar-event-popover-toolbar">
               <div className="calendar-event-popover-actions">
-                {event.type === "EVENT" ? (
+                {managed ? (
                   <>
                     <button
                       type="button"
@@ -180,7 +188,18 @@ export function CalendarEventDetailModal({
               </div>
             </div>
 
-            {event.type === "EVENT" ? (
+            {canJoin && onJoinMeeting ? (
+              <button
+                type="button"
+                className="calendar-event-popover-invite"
+                onClick={() => onJoinMeeting(event)}
+              >
+                <Icon name="video" size={15} />
+                Rejoindre la reunion
+              </button>
+            ) : null}
+
+            {managed ? (
               <button
                 type="button"
                 className="calendar-event-popover-invite"

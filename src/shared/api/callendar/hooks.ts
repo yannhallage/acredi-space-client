@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { meetingKeys } from "../meeting/hooks";
 import { calendarService } from "./service";
 
 import type {
@@ -31,8 +32,11 @@ export function useCreateCalendarEvent() {
     return useMutation({
         mutationFn: (request: CreateCalendarEventRequest) =>
             calendarService.create(request),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: calendarKeys.events() });
+        onSuccess: (event) => {
+            void queryClient.invalidateQueries({ queryKey: calendarKeys.events() });
+            if (event.meetingId || event.type === "MEETING") {
+                void queryClient.invalidateQueries({ queryKey: meetingKeys.all });
+            }
         },
     });
 }
@@ -48,8 +52,11 @@ export function useUpdateCalendarEvent() {
             id: string;
             request: UpdateCalendarEventRequest;
         }) => calendarService.update(id, request),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: calendarKeys.events() });
+        onSuccess: (event) => {
+            void queryClient.invalidateQueries({ queryKey: calendarKeys.events() });
+            if (event.meetingId || event.type === "MEETING") {
+                void queryClient.invalidateQueries({ queryKey: meetingKeys.all });
+            }
         },
     });
 }
@@ -60,7 +67,8 @@ export function useDeleteCalendarEvent() {
     return useMutation({
         mutationFn: (id: string) => calendarService.delete(id),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: calendarKeys.events() });
+            void queryClient.invalidateQueries({ queryKey: calendarKeys.events() });
+            void queryClient.invalidateQueries({ queryKey: meetingKeys.all });
         },
     });
 }

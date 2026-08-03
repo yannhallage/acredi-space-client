@@ -101,6 +101,8 @@ export function normalizeCalendarEvent(
     createdAt: event.createdAt ? new Date(event.createdAt) : null,
     updatedAt: event.updatedAt ? new Date(event.updatedAt) : null,
     type,
+    roomName: event.roomName ?? null,
+    joinUrl: event.joinUrl ?? null,
     start: startsAt,
     end: endsAt,
   };

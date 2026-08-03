@@ -36,10 +36,13 @@ export function ChangePasswordForm() {
         currentPassword,
         newPassword,
       });
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setMessage({ type: 'success', text: 'Mot de passe mis a jour.' });
+      // Déconnexion complète et redirection vers la page de login
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+      // Si vous avez une logique de logout côté front, appelez-la ici, ex:
+      // await logout(); 
+      window.location.href = '/login';
+      // Pas besoin de setMessage ou de reset les champs ici, l'utilisateur sera déconnecté
     } catch (error) {
       setMessage({
         type: 'error',

@@ -9,7 +9,7 @@ import {
 } from "../../../../shared/components/messaging";
 import { useShareDiscussionMessage } from "../../../../shared/api/discussions/hooks";
 import { discussionService } from "../../../../shared/api/discussions/service";
-import { useTeamsQuery } from "../../../../shared/api/teams";
+import { useMyTeamsQuery } from "../../../../shared/api/teams";
 import { useUsersQuery } from "../../../../shared/api/users";
 import { Avatar, EmptyState, Icon } from "../../../../shared/ui";
 
@@ -70,7 +70,7 @@ export function ChatThread({
   const [shareError, setShareError] = useState<string | null>(null);
 
   const usersQuery = useUsersQuery({ enabled: Boolean(messageToShare) });
-  const teamsQuery = useTeamsQuery({ enabled: Boolean(messageToShare) });
+  const teamsQuery = useMyTeamsQuery({ enabled: Boolean(messageToShare) });
   const shareDiscussionMessage = useShareDiscussionMessage();
 
   const shareLoading = usersQuery.loading || teamsQuery.loading;

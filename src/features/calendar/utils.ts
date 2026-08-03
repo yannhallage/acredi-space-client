@@ -49,6 +49,22 @@ export function getEventTypeLabel(event: CalendarEvent) {
   return event.type === "MEETING" ? "Reunion" : "Evenement";
 }
 
+/** Evenement stocke dans calendar_events (pas une projection Meeting orpheline). */
+export function isManagedCalendarEvent(event: CalendarEvent) {
+  if (event.type === "EVENT") return true;
+  if (!event.meetingId) return true;
+  return event.id !== event.meetingId;
+}
+
+export function canJoinMeetingFromEvent(event: CalendarEvent) {
+  return Boolean(
+    event.type === "MEETING" ||
+      event.meetingId ||
+      event.roomName ||
+      event.joinUrl,
+  );
+}
+
 export function getEventTop(event: CalendarEvent) {
   return getCalendarTop(getLocalTime(event.start));
 }

@@ -2,6 +2,8 @@ export { teamService } from "./service";
 export { teamEndpoints } from "./endpoints";
 export {
   useTeamsQuery,
+  useMyTeamsQuery,
+  useUserTeamsQuery,
   useCreateTeamMutation,
   useUpdateTeamMutation,
   useDeleteTeamMutation,

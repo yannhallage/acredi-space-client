@@ -32,6 +32,20 @@ export const teamService = {
     }
   },
 
+  async findMine(): Promise<TeamResponse[]> {
+    const response = await http.get<ApiResponse<TeamResponse[]>>(
+      teamEndpoints.findMine
+    );
+    return unwrapApiResponse(response);
+  },
+
+  async findByUser(userId: string): Promise<TeamResponse[]> {
+    const response = await http.get<ApiResponse<TeamResponse[]>>(
+      teamEndpoints.findByUser(userId)
+    );
+    return unwrapApiResponse(response);
+  },
+
   async create(request: CreateTeamRequest): Promise<TeamResponse> {
     try {
       const response = await http.post<ApiResponse<TeamResponse>>(

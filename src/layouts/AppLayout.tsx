@@ -21,7 +21,7 @@ import {
 } from "../shared/permissions";
 import { useTheme } from "../shared/theme";
 import { AccessDeniedState, AcrediLockup, Avatar, Icon, type IconName } from "../shared/ui";
-import ModalSetting from "../shared/others/ModalSetting";
+import { ModalSetting } from "../features/settings/components";
 import { DesktopNotificationBanner } from "../shared/notifications/DesktopNotificationBanner";
 import { DESKTOP_NOTIFICATION_CLICK_EVENT } from "../shared/notifications/desktop";
 import { getNotificationTarget } from "../shared/notifications/routing";

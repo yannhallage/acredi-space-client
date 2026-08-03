@@ -18,6 +18,7 @@ type CreateCalendarEventForm = {
   allDay: boolean;
   location: string;
   color: string;
+  createMeeting: boolean;
   reminders: ReminderDraft[];
 };
 
@@ -51,6 +52,7 @@ const initialForm: CreateCalendarEventForm = {
   allDay: false,
   location: "",
   color: DEFAULT_EVENT_COLOR,
+  createMeeting: false,
   reminders: [DEFAULT_REMINDER],
 };
 
@@ -175,6 +177,7 @@ export function CreateCalendarEventModal({
       allDay: form.allDay,
       location: form.location.trim(),
       color: form.color,
+      createMeeting: form.createMeeting,
       reminders: form.reminders,
     });
 
@@ -279,6 +282,27 @@ export function CreateCalendarEventModal({
                   }
                 />
                 <span>Journee entiere</span>
+              </label>
+
+              <label className="calendar-field calendar-checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={form.createMeeting}
+                  onChange={(inputEvent) => {
+                    const checked = inputEvent.target.checked;
+                    setForm((current) => ({
+                      ...current,
+                      createMeeting: checked,
+                      color:
+                        checked && current.color === DEFAULT_EVENT_COLOR
+                          ? "#22C55E"
+                          : !checked && current.color === "#22C55E"
+                            ? DEFAULT_EVENT_COLOR
+                            : current.color,
+                    }));
+                  }}
+                />
+                <span>Ajouter une visioconference Acredi Meet</span>
               </label>
 
               <label className="calendar-field">
