@@ -5,6 +5,7 @@ export type EmptyIllustration =
   | "note"
   | "notification"
   | "teams"
+  | "trash"
   | "user";
 
 const EMPTY_ILLUSTRATIONS_DARK: Record<EmptyIllustration, string> = {
@@ -14,6 +15,7 @@ const EMPTY_ILLUSTRATIONS_DARK: Record<EmptyIllustration, string> = {
   note: "/custom/note-black.png",
   notification: "/custom/notification-black.png",
   teams: "/custom/user-balck.png",
+  trash: "/custom/trash-empty.png",
   user: "/custom/user-balck.png",
 };
 
@@ -24,6 +26,7 @@ const EMPTY_ILLUSTRATIONS_LIGHT: Record<EmptyIllustration, string> = {
   note: "/not-found-white/note.png",
   notification: "/not-found-white/chat.png",
   teams: "/not-found-white/teams.png",
+  trash: "/not-found-white/trash.png",
   user: "/not-found-white/user.png",
 };
 

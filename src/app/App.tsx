@@ -11,6 +11,8 @@ import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { DirectMessagesPage } from '../features/dm/DirectMessagesPage';
 import { FolderFilesPage } from '../features/files/FolderFilesPage';
 import { FilesPage } from '../features/files/FilesPage';
+import { SharedFilesPage } from '../features/shared-files/SharedFilesPage';
+import { TrashFilesPage } from '../features/trash/TrashFilesPage';
 import MeetingPage from '../features/meeting/MeetingPage';
 import { MeetingRoom } from '../features/meeting/MeetingRoom';
 import { NotesPage } from '../features/notes/NotesPage';
@@ -74,7 +76,11 @@ export default function App() {
                   <Route index element={<DefaultAppRoute />} />
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="files" element={<FilesPage />} />
+                  <Route path="files/shared" element={<Navigate to="/app/shared-files" replace />} />
+                  <Route path="files/trash" element={<Navigate to="/app/trash" replace />} />
                   <Route path="files/:folderId" element={<FolderFilesPage />} />
+                  <Route path="shared-files" element={<SharedFilesPage />} />
+                  <Route path="trash" element={<TrashFilesPage />} />
                   <Route path="chat" element={<ChatPage />} />
                   <Route path="chat/:channelId" element={<ChatPage />} />
                   <Route path="dm" element={<DirectMessagesPage />} />
