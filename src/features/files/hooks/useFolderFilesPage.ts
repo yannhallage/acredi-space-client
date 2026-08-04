@@ -335,7 +335,7 @@ export function useFolderFilesPage(folderId: string | undefined) {
   async function handleDeleteFile(file: WorkspaceFile) {
     setOpenMenuFileId(null);
 
-    if (!window.confirm(`Mettre "${file.name}" dans la corbeille ?`)) {
+    if (!window.confirm(`Supprimer "${file.name}" ?\nLe fichier sera deplace dans la corbeille.`)) {
       return;
     }
 

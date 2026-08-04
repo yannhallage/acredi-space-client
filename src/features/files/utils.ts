@@ -1,4 +1,12 @@
+import type { WorkspaceFile } from "../../shared/api/files";
 import type { Folder } from "../../shared/api/folders";
+
+export function isFileOwnedBy(
+  file: WorkspaceFile,
+  userId: string | null | undefined,
+) {
+  return Boolean(userId && file.ownerId && file.ownerId === userId);
+}
 
 export function normalizeSearch(value: string) {
   return value

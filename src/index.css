@@ -2467,6 +2467,11 @@ a {
   background: var(--surface);
 }
 
+/* Allow action menus to escape the rounded list without being clipped. */
+.files-file-list:has(.menu-open) {
+  overflow: visible;
+}
+
 .files-file-list-header,
 .files-file-list-row {
   display: grid;
@@ -2503,7 +2508,7 @@ a {
 }
 
 .files-file-list-row.menu-open {
-  z-index: 20;
+  z-index: 40;
 }
 
 .files-file-list-open {
@@ -2766,6 +2771,11 @@ a {
 .files-file-list-row .files-file-dropdown {
   top: calc(100% - 4px);
   right: 0;
+}
+
+.files-file-list-row:last-child .files-file-dropdown {
+  top: auto;
+  bottom: calc(100% - 4px);
 }
 
 .files-manager-header h1 {
@@ -3164,9 +3174,9 @@ a {
   position: absolute;
   top: 40px;
   right: 6px;
-  z-index: 20;
-  min-width: 148px;
-  overflow: hidden;
+  z-index: 50;
+  min-width: 168px;
+  overflow: visible;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 4px;
@@ -3737,9 +3747,9 @@ a {
   position: absolute;
   top: 40px;
   right: 6px;
-  z-index: 20;
-  min-width: 152px;
-  overflow: hidden;
+  z-index: 50;
+  min-width: 168px;
+  overflow: visible;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 4px;
