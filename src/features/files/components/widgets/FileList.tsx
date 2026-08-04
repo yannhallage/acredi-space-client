@@ -1,10 +1,11 @@
 import type { WorkspaceFile } from "../../../../shared/api/files";
+import { useAuth } from "../../../../shared/context";
 import type { User } from "../../../../shared/types";
 import { PERMISSIONS, PermissionGate } from "../../../../shared/permissions";
 import { Avatar, FileIcon, Icon } from "../../../../shared/ui";
 
 import { getFileColor, getFileExtension } from "../../filePreview";
-import { formatFileDate, formatFileSize } from "../../utils";
+import { formatFileDate, formatFileSize, isFileOwnedBy } from "../../utils";
 import { FilesEmptyIllustration } from "./FilesEmptyIllustration";
 import { SharedByProfileHover } from "./SharedByProfileHover";
 
@@ -55,6 +56,8 @@ export function FileList({
   showRestore?: boolean;
   showShare?: boolean;
 }) {
+  const { user } = useAuth();
+
   if (files.length === 0) {
     return (
       <div className="files-empty-state">
@@ -84,6 +87,7 @@ export function FileList({
       {files.map((file) => {
         const ownerUser = getOwnerUser?.(file) ?? null;
         const ownerLabel = getOwnerLabel?.(file) ?? "—";
+        const canDelete = showDelete && onDelete && isFileOwnedBy(file, user?.id);
 
         return (
           <article
@@ -217,23 +221,21 @@ export function FileList({
                     </PermissionGate>
                   ) : null}
 
-                  {showDelete && onDelete ? (
-                    <PermissionGate permission={PERMISSIONS.DELETE_FILES}>
-                      <button
-                        className="danger"
-                        type="button"
-                        role="menuitem"
-                        disabled={deletePending}
-                        onClick={() => {
-                          void onDelete(file);
-                        }}
-                      >
-                        <Icon name="trash" size={13} />
-                        {showRestore
-                          ? "Supprimer definitivement"
-                          : "Mettre a la corbeille"}
-                      </button>
-                    </PermissionGate>
+                  {canDelete ? (
+                    <button
+                      className="danger"
+                      type="button"
+                      role="menuitem"
+                      disabled={deletePending}
+                      onClick={() => {
+                        void onDelete(file);
+                      }}
+                    >
+                      <Icon name="trash" size={13} />
+                      {showRestore
+                        ? "Supprimer definitivement"
+                        : "Supprimer"}
+                    </button>
                   ) : null}
                 </div>
               ) : null}

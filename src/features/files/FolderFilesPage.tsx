@@ -16,6 +16,7 @@ import {
 } from "./components";
 import { useFilesViewMode } from "./hooks/useFilesViewMode";
 import { useFolderFilesPage } from "./hooks/useFolderFilesPage";
+import { isFileOwnedBy } from "./utils";
 
 export function FolderFilesPage() {
   const { folderId } = useParams<{ folderId: string }>();
@@ -228,7 +229,8 @@ export function FolderFilesPage() {
               </button>
             </PermissionGate>
 
-            <PermissionGate permission={PERMISSIONS.DELETE_FILES}>
+            {page.selectedFile &&
+            isFileOwnedBy(page.selectedFile, user?.id) ? (
               <button
                 className="icon-button bordered danger"
                 type="button"
@@ -242,7 +244,7 @@ export function FolderFilesPage() {
               >
                 <Icon name="trash" size={14} />
               </button>
-            </PermissionGate>
+            ) : null}
           </>
         }
         details={[{ label: "Chemin", value: `/Acredi Space/${page.currentPath}` }]}
