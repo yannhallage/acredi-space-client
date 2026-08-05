@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   buildOtpSession,
   getLoginAuthResponse,
@@ -117,6 +117,9 @@ export function LoginForm({ redirectTo, authLoading = false }: LoginFormProps) {
         <button className="button primary button-wide" type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Connexion...' : 'Entrer dans Acredi Space'}
         </button>
+        <p className="login-footnote">
+          Pas encore de compte ? <Link to="/signup">Creer un compte</Link>
+        </p>
       </form>
     </div>
   );

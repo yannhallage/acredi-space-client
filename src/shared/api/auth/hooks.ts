@@ -3,12 +3,14 @@ import { authService } from "./service";
 import type {
   ApiResponse,
   AuthResponse,
+  CompleteOrganizationRequest,
   ForgotPasswordRequest,
   LoginRequest,
   LoginResponse,
   RefreshTokenRequest,
   RegisterRequest,
   ResetPasswordRequest,
+  SignupStartRequest,
   VerifyOtpRequest,
 } from "./types";
 
@@ -146,5 +148,23 @@ export function useResetPasswordMutation() {
 export function useVerifyOtpMutation() {
   return useApiMutation<VerifyOtpRequest, ApiResponse<AuthResponse>>(
     authService.verifyOtp
+  );
+}
+
+export function useSignupStartMutation() {
+  return useApiMutation<SignupStartRequest, ApiResponse<LoginResponse>>(
+    authService.signupStart
+  );
+}
+
+export function useSignupVerifyEmailMutation() {
+  return useApiMutation<VerifyOtpRequest, ApiResponse<AuthResponse>>(
+    authService.signupVerifyEmail
+  );
+}
+
+export function useSignupCompleteOrganizationMutation() {
+  return useApiMutation<CompleteOrganizationRequest, ApiResponse<AuthResponse>>(
+    authService.signupCompleteOrganization
   );
 }

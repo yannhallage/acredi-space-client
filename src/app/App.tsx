@@ -26,6 +26,9 @@ import { CreateTeamPage } from "../features/teams/CreateTeamPage";
 import { UserDetailPage } from '../features/users/UserDetailPage';
 import { UsersPage } from '../features/users/UsersPage';
 import { OtpPage } from '../features/otp/OtpPage';
+import { SignupOrganizationPage } from '../features/signup/SignupOrganizationPage';
+import { SignupPage } from '../features/signup/SignupPage';
+import { SignupSuccessPage } from '../features/signup/SignupSuccessPage';
 import { AppLayout } from '../layouts/AppLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { AuthProvider, WorkspaceProvider } from '../shared/context';
@@ -56,6 +59,7 @@ export default function App() {
 
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
                 <Route path="/verify-otp" element={<OtpPage />} />
 
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -68,6 +72,8 @@ export default function App() {
               </Route>
 
               <Route element={<ProtectedRoute />}>
+                <Route path="/signup/organization" element={<SignupOrganizationPage />} />
+                <Route path="/signup/success" element={<SignupSuccessPage />} />
                 <Route path="/settings/password" element={<ChangePasswordPage />} />
                 <Route path="/settings/plans" element={<PlansPage />} />
                 <Route path="/app/meeting-room/:roomName" element={<MeetingRoom />} />
