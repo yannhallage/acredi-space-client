@@ -1,5 +1,6 @@
 import type { User } from '../../shared/types';
-import type { InvoiceStatus } from './billing/data';
+
+export type InvoiceStatus = 'paid' | 'pending' | 'failed';
 
 export const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 

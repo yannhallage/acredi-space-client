@@ -4,12 +4,14 @@ import { withTrustedDevice } from "./session";
 import type {
   ApiResponse,
   AuthResponse,
+  CompleteOrganizationRequest,
   ForgotPasswordRequest,
   LoginRequest,
   LoginResponse,
   RefreshTokenRequest,
   RegisterRequest,
   ResetPasswordRequest,
+  SignupStartRequest,
   VerifyOtpRequest,
 } from "./types";
 
@@ -45,6 +47,22 @@ export const authService = {
     return http.post<ApiResponse<AuthResponse>>(authEndpoints.register, request, {
       auth: false,
     });
+  },
+
+  signupStart(request: SignupStartRequest) {
+    return http.post<ApiResponse<LoginResponse>>(authEndpoints.signupStart, request, {
+      auth: false,
+    });
+  },
+
+  signupVerifyEmail(request: VerifyOtpRequest) {
+    return http.post<ApiResponse<AuthResponse>>(authEndpoints.signupVerifyEmail, request, {
+      auth: false,
+    });
+  },
+
+  signupCompleteOrganization(request: CompleteOrganizationRequest) {
+    return http.post<ApiResponse<AuthResponse>>(authEndpoints.signupCompleteOrganization, request);
   },
 
   resetPassword(request: ResetPasswordRequest) {

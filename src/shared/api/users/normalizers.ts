@@ -259,6 +259,13 @@ export function normalizeUser(
     onboardingStatus: readString(payload.onboardingStatus),
     phoneNumber: readString(payload.phoneNumber),
     profile: buildProfile(payload),
+    organizationId:
+      readId(payload.organizationId) ??
+      (isRecord(payload.organization) ? readId(payload.organization.id) : undefined) ??
+      null,
+    organizationName:
+      (isRecord(payload.organization) ? readString(payload.organization.name) : undefined) ??
+      null,
     adminRole,
   };
 }

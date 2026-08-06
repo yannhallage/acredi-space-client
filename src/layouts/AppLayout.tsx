@@ -28,9 +28,12 @@ import { getNotificationTarget } from "../shared/notifications/routing";
 
 const pageMeta: Record<string, { title: string; crumb: string }> = {
   "/app/dashboard": { title: "Tableau de bord", crumb: "ACCUEIL" },
+  "/app/shared-files": { title: "Fichiers partages", crumb: "CONTENU" },
+  "/app/trash": { title: "Corbeille", crumb: "CONTENU" },
   "/app/files": { title: "Fichiers Acredi Space", crumb: "CONTENU" },
   "/app/chat": { title: "Canal equipe", crumb: "COLLABORATION" },
   "/app/dm": { title: "Messages directs", crumb: "COLLABORATION" },
+  "/app/mail": { title: "Mail", crumb: "COLLABORATION" },
   "/app/calendar": { title: "Calendrier", crumb: "PLANNING" },
   "/app/meeting": { title: "Salle de reunion", crumb: "VISIO" },
   "/app/profile": { title: "Mon profil", crumb: "PARAMETRES" },
@@ -44,6 +47,7 @@ const pageMeta: Record<string, { title: string; crumb: string }> = {
 interface NavItem {
   canShow?: boolean;
   icon: IconName;
+  isActive?: (pathname: string) => boolean;
   label: string;
   permissions: readonly PermissionCode[];
   to: string;
@@ -120,11 +124,25 @@ export function AppLayout() {
       icon: "folder",
       label: "Fichiers",
       permissions: FEATURE_PERMISSION_REQUIREMENTS.files,
+      isActive: (pathname) => pathname.startsWith("/app/files"),
+    },
+    {
+      to: "/app/shared-files",
+      icon: "users",
+      label: "Fichiers partages",
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.files,
+      isActive: (pathname) => pathname.startsWith("/app/shared-files"),
     },
     {
       to: "/app/dm/dm-yann",
       icon: "message",
       label: "Chat",
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.chat,
+    },
+    {
+      to: "/app/mail",
+      icon: "mail",
+      label: "Mail",
       permissions: FEATURE_PERMISSION_REQUIREMENTS.chat,
     },
     {
@@ -164,6 +182,13 @@ export function AppLayout() {
       icon: "notes",
       label: "Notes",
       permissions: FEATURE_PERMISSION_REQUIREMENTS.notes,
+    },
+    {
+      to: "/app/trash",
+      icon: "trash",
+      label: "Corbeille",
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.files,
+      isActive: (pathname) => pathname.startsWith("/app/trash"),
     },
   ];
   const visibleNavItems = navItems.filter(
@@ -223,6 +248,8 @@ export function AppLayout() {
     "/app/chat",
     "/app/dm",
     "/app/files",
+    "/app/shared-files",
+    "/app/trash",
     "/app/meeting",
     "/app/calendar",
   ].some((path) => location.pathname.startsWith(path));
@@ -382,7 +409,13 @@ export function AppLayout() {
             {visibleNavItems.map((item) => (
               <NavLink
                 key={`${item.to}-${item.label}`}
-                className="nav-link"
+                className={({ isActive }) => {
+                  const active = item.isActive
+                    ? item.isActive(location.pathname)
+                    : isActive;
+
+                  return active ? "nav-link active" : "nav-link";
+                }}
                 to={item.to}
               >
                 <Icon name={item.icon} size={18} />
@@ -475,6 +508,18 @@ export function AppLayout() {
               >
                 <Icon name={dark ? "sun" : "moon"} size={18} />
               </button>
+              <PermissionGate permissions={FEATURE_PERMISSION_REQUIREMENTS.chat}>
+                <a
+                  className="icon-button gmail-link"
+                  href="/app/mail"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Ouvrir Gmail"
+                  title="Gmail"
+                >
+                  <img src="/gmail-logo.svg" alt="" aria-hidden="true" />
+                </a>
+              </PermissionGate>
               <a
                 className="icon-button nuum-link"
                 href="https://app.nuum-ci.com/authentification"

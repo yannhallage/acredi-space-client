@@ -8,10 +8,8 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import {
-  useDownloadFileUrl,
   useFiles,
   useShareFile,
-  useSharedFiles,
   type FilePermissionLevel,
   type WorkspaceFile,
 } from "../../../shared/api/files";
@@ -23,12 +21,8 @@ import {
   type Folder,
 } from "../../../shared/api/folders";
 import { useUsersQuery } from "../../../shared/api/users";
-import { resolveAssetUrl } from "../../../shared/api/http";
 import type { User } from "../../../shared/types";
-import { downloadFileFromUrl } from "../../../shared/utils/downloadFile";
 
-import type { PreviewState } from "../filePreview";
-import { cacheFilePreviewUrl } from "../filePreviewUrlCache";
 import {
   buildFolderTrail,
   getFolderBranchIds,
@@ -55,14 +49,6 @@ export function useFilesPage() {
   const [sharingUserId, setSharingUserId] = useState<string | null>(null);
   const [folderName, setFolderName] = useState("");
   const [openMenuFolderId, setOpenMenuFolderId] = useState<string | null>(null);
-  const [openSharedFileMenuId, setOpenSharedFileMenuId] = useState<string | null>(null);
-  const [selectedSharedFileId, setSelectedSharedFileId] = useState<string | null>(null);
-  const [preview, setPreview] = useState<PreviewState>({
-    error: null,
-    fileId: null,
-    loading: false,
-    url: null,
-  });
   const [searchTerm, setSearchTerm] = useState("");
   const [toast, setToast] = useState<ToastState>({
     show: false,
@@ -74,8 +60,6 @@ export function useFilesPage() {
   const updateFolderMutation = useUpdateFolder();
   const deleteFolderMutation = useDeleteFolder();
   const shareFileMutation = useShareFile();
-  const previewSharedFileUrlMutation = useDownloadFileUrl();
-  const downloadSharedFileUrlMutation = useDownloadFileUrl();
 
   const {
     data: filesData,
@@ -93,25 +77,12 @@ export function useFilesPage() {
     isLoading,
     isPending,
   } = useFolders();
-  const {
-    data: sharedFilesData,
-    error: sharedFilesError,
-    isError: isSharedFilesError,
-    isFetching: isSharedFilesFetching,
-    isLoading: isSharedFilesLoading,
-    isPending: isSharedFilesPending,
-  } = useSharedFiles();
   const usersQuery = useUsersQuery({ enabled: Boolean(shareTargetFolder) });
 
   const folders = foldersData ?? emptyFolders;
   const files = filesData ?? emptyFiles;
-  const sharedFiles = sharedFilesData ?? emptyFiles;
   const isFoldersInitialLoading =
     isPending || isLoading || (isFetching && !foldersData && !isError);
-  const isSharedFilesInitialLoading =
-    isSharedFilesPending ||
-    isSharedFilesLoading ||
-    (isSharedFilesFetching && !sharedFilesData && !isSharedFilesError);
   const isFilesInitialLoading =
     isFilesPending || isFilesLoading || (isFilesFetching && !filesData && !isFilesError);
 
@@ -140,10 +111,6 @@ export function useFilesPage() {
       return isInCurrentFolder && matchesSearch;
     });
   }, [currentFolder, folders, searchTerm]);
-
-  const selectedSharedFile = selectedSharedFileId
-    ? (sharedFiles.find((file) => file.id === selectedSharedFileId) ?? null)
-    : null;
 
   const shareTargetFiles = useMemo(() => {
     if (!shareTargetFolder) {
@@ -218,57 +185,6 @@ export function useFilesPage() {
   }, [openMenuFolderId]);
 
   useEffect(() => {
-    if (!openSharedFileMenuId) {
-      return undefined;
-    }
-
-    function closeMenu() {
-      setOpenSharedFileMenuId(null);
-    }
-
-    function closeMenuOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        closeMenu();
-      }
-    }
-
-    window.addEventListener("click", closeMenu);
-    window.addEventListener("keydown", closeMenuOnEscape);
-
-    return () => {
-      window.removeEventListener("click", closeMenu);
-      window.removeEventListener("keydown", closeMenuOnEscape);
-    };
-  }, [openSharedFileMenuId]);
-
-  useEffect(() => {
-    if (!selectedSharedFileId) {
-      return undefined;
-    }
-
-    function closePreviewOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setSelectedSharedFileId(null);
-      }
-    }
-
-    window.addEventListener("keydown", closePreviewOnEscape);
-
-    return () => {
-      window.removeEventListener("keydown", closePreviewOnEscape);
-    };
-  }, [selectedSharedFileId]);
-
-  useEffect(() => {
-    if (
-      selectedSharedFileId &&
-      !sharedFiles.some((file) => file.id === selectedSharedFileId)
-    ) {
-      setSelectedSharedFileId(null);
-    }
-  }, [selectedSharedFileId, sharedFiles]);
-
-  useEffect(() => {
     if (!isError) {
       return;
     }
@@ -281,20 +197,6 @@ export function useFilesPage() {
       5000,
     );
   }, [error, isError, showToast]);
-
-  useEffect(() => {
-    if (!isSharedFilesError) {
-      return;
-    }
-
-    showToast(
-      "error",
-      sharedFilesError instanceof Error
-        ? sharedFilesError.message
-        : "Impossible de charger les fichiers partages.",
-      5000,
-    );
-  }, [isSharedFilesError, sharedFilesError, showToast]);
 
   function openCreateModal() {
     setEditingFolder(null);
@@ -406,73 +308,6 @@ export function useFilesPage() {
     }
   }
 
-  async function handleOpenSharedFilePreview(file: WorkspaceFile) {
-    setOpenSharedFileMenuId(null);
-    setSelectedSharedFileId(file.id);
-    setPreview({
-      error: null,
-      fileId: file.id,
-      loading: true,
-      url: null,
-    });
-
-    try {
-      const url = await previewSharedFileUrlMutation.mutateAsync(file.id);
-      const resolvedUrl = await cacheFilePreviewUrl(
-        file.id,
-        resolveAssetUrl(url) ?? url,
-      );
-
-      setPreview((current) =>
-        current.fileId === file.id
-          ? {
-              error: null,
-              fileId: file.id,
-              loading: false,
-              url: resolvedUrl,
-            }
-          : current,
-      );
-    } catch (caughtError) {
-      setPreview((current) =>
-        current.fileId === file.id
-          ? {
-              error:
-                caughtError instanceof Error
-                  ? caughtError.message
-                  : "Impossible de charger l'apercu.",
-              fileId: file.id,
-              loading: false,
-              url: null,
-            }
-          : current,
-      );
-    }
-  }
-
-  async function handleDownloadSharedFile(file: WorkspaceFile) {
-    setOpenSharedFileMenuId(null);
-
-    try {
-      const url = await downloadSharedFileUrlMutation.mutateAsync(file.id);
-
-      if (!url) {
-        showToast("error", "Lien de telechargement introuvable.", 5000);
-        return;
-      }
-
-      await downloadFileFromUrl(url, file.name);
-    } catch (caughtError) {
-      showToast(
-        "error",
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Impossible de telecharger ce fichier.",
-        5000,
-      );
-    }
-  }
-
   async function handleDeleteFolder(folder: Folder) {
     setOpenMenuFolderId(null);
 
@@ -544,7 +379,6 @@ export function useFilesPage() {
     closeFolderShareModal,
     currentFolder,
     deleteFolderMutation,
-    downloadSharedFileUrlMutation,
     editingFolder,
     error,
     folderFormError,
@@ -553,8 +387,6 @@ export function useFilesPage() {
     folderSavingLabel,
     folderSubmitLabel,
     handleDeleteFolder,
-    handleDownloadSharedFile,
-    handleOpenSharedFilePreview,
     handleSaveFolder,
     handleShareFolder,
     isError,
@@ -562,31 +394,21 @@ export function useFilesPage() {
     isFolderSaving,
     isFoldersInitialLoading,
     isFilesInitialLoading,
-    isSharedFilesError,
-    isSharedFilesInitialLoading,
     navigate,
     openCreateModal,
     openEditModal,
     openMenuFolderId,
-    openSharedFileMenuId,
     pluralizeFolder,
-    preview,
     searchTerm,
-    selectedSharedFile,
-    selectedSharedFileId,
     setCurrentFolderId,
     setFolderName,
     setOpenMenuFolderId,
-    setOpenSharedFileMenuId,
     setSearchTerm,
-    setSelectedSharedFileId,
     setShareLevel,
     shareFolderWithUser,
     shareLevel,
     shareTargetFiles,
     shareTargetFolder,
-    sharedFiles,
-    sharedFilesError,
     sharingUserId,
     showToast,
     toast,

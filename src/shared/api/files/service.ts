@@ -62,7 +62,15 @@ function buildUploadFormData(request: UploadFileRequest) {
 
 export const fileService = {
   async delete(id: string) {
-    await http.delete<ApiResponse<void>>(fileEndpoints.delete(id));
+    const response = await http.delete<ApiResponse<FileResponse>>(
+      fileEndpoints.delete(id),
+    );
+
+    return normalizeFile(unwrapApiResponse(response));
+  },
+
+  async deletePermanently(id: string) {
+    await http.delete<ApiResponse<void>>(fileEndpoints.deletePermanently(id));
   },
 
   async downloadUrl(id: string) {
@@ -89,6 +97,22 @@ export const fileService = {
     );
 
     return normalizeFiles(unwrapApiResponse(response));
+  },
+
+  async findTrash() {
+    const response = await http.get<ApiResponse<FileResponse[]>>(
+      fileEndpoints.findTrash,
+    );
+
+    return normalizeFiles(unwrapApiResponse(response));
+  },
+
+  async restore(id: string) {
+    const response = await http.post<ApiResponse<FileResponse>>(
+      fileEndpoints.restore(id),
+    );
+
+    return normalizeFile(unwrapApiResponse(response));
   },
 
   async share(id: string, request: ShareFileRequest) {

@@ -76,9 +76,14 @@ export function useChatPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
-  const [localMessages, setLocalMessages] = useState<LocalGroupMessage[]>([]);
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const editedMessagesRef = useRef(new Map<string, string>());
+
+  const [temporaryMessages, setTemporaryMessages] = useState<
+    LocalGroupMessage[]
+  >([]);
+
+  const [messageOverrides, setMessageOverrides] = useState<
+    Record<string, LocalGroupMessage>
+  >({});
 
   const {
     data: discussions = [],
@@ -141,6 +146,7 @@ export function useChatPage() {
     isFetching: messagesFetching,
     isError: messagesError,
     error: messagesErrorDetails,
+    refetch: refetchMessages,
   } = useDiscussionMessages(activeDiscussion?.id, {
     enabled: Boolean(activeDiscussion?.id),
   });
@@ -186,34 +192,41 @@ export function useChatPage() {
   }
 
   useEffect(() => {
-    setLocalMessages((currentMessages) => {
-      const pendingMessages = currentMessages.filter(
-        (message) => message.pending || message.failed,
-      );
+    closeMentionSuggestions();
+    setTemporaryMessages([]);
+  }, [activeDiscussion?.id]);
 
-      const pendingWithoutDuplicate = pendingMessages.filter(
-        (pendingMessage) =>
-          !messages.some(
-            (message) =>
-              message.content === pendingMessage.content &&
-              message.senderId === pendingMessage.senderId &&
-              Math.abs(
-                new Date(message.createdAt).getTime() -
-                  new Date(pendingMessage.createdAt).getTime(),
-              ) < 10000,
-          ),
-      );
+  const localMessages = useMemo(() => {
+    const serverMessagesWithOverrides = messages.map((message) => {
+      const override = messageOverrides[message.id];
 
-      const syncedMessages = messages.map((message) => {
-          const editedContent = editedMessagesRef.current.get(message.id);
-          return editedContent && !message.deletedAt
-            ? { ...message, content: editedContent }
-            : message;
-        });
+      if (!override) {
+        return message;
+      }
 
-      return [...syncedMessages, ...pendingWithoutDuplicate];
+      return {
+        ...message,
+        ...override,
+        pending: false,
+        failed: false,
+      };
     });
-  }, [messages]);
+
+    const pendingWithoutDuplicate = temporaryMessages.filter(
+      (pendingMessage) =>
+        !serverMessagesWithOverrides.some(
+          (message) =>
+            message.content === pendingMessage.content &&
+            message.senderId === pendingMessage.senderId &&
+            Math.abs(
+              new Date(message.createdAt).getTime() -
+                new Date(pendingMessage.createdAt).getTime()
+            ) < 10000
+        )
+    );
+
+    return [...serverMessagesWithOverrides, ...pendingWithoutDuplicate];
+  }, [messages, temporaryMessages, messageOverrides]);
 
   useEffect(() => {
     closeMentionSuggestions();
@@ -256,7 +269,7 @@ export function useChatPage() {
 
   const messageGroups = useMemo(
     () => groupMessagesByDay(localMessages),
-    [localMessages],
+    [localMessages]
   );
 
   function handleEmojiClick(emojiData: EmojiClickData) {
@@ -279,6 +292,7 @@ export function useChatPage() {
 
   function handleDraftChange(event: ChangeEvent<HTMLTextAreaElement>) {
     const { value, selectionStart } = event.target;
+
     setDraft(value);
     syncMentionContext(value, selectionStart);
 
@@ -306,11 +320,12 @@ export function useChatPage() {
     }
 
     const cursor = textareaRef.current?.selectionStart ?? draft.length;
+
     const { nextValue, nextCursor } = insertMention(
       draft,
       mentionStart,
       cursor,
-      member.name,
+      member.name
     );
 
     setDraft(nextValue);
@@ -419,10 +434,14 @@ export function useChatPage() {
       senderName: user.name || "Vous",
       content: temporaryContent,
       createdAt: new Date().toISOString(),
+      editedAt: null,
+      deletedAt: null,
+      deletedById: null,
+      deleted: false,
       pending: true,
     };
 
-    setLocalMessages((currentMessages) => [
+    setTemporaryMessages((currentMessages) => [
       ...currentMessages,
       temporaryMessage,
     ]);
@@ -451,20 +470,18 @@ export function useChatPage() {
         });
       }
 
-      const savedMessage = await sendMessage.mutateAsync({
+      await sendMessage.mutateAsync({
         discussionId: activeDiscussion.id,
         request: {
           content: finalContent,
         },
       });
 
-      setLocalMessages((currentMessages) =>
-        currentMessages.map((message) =>
-          message.id === temporaryId ? savedMessage : message,
-        ),
+      setTemporaryMessages((currentMessages) =>
+        currentMessages.filter((message) => message.id !== temporaryId)
       );
     } catch {
-      setLocalMessages((currentMessages) =>
+      setTemporaryMessages((currentMessages) =>
         currentMessages.map((message) =>
           message.id === temporaryId
             ? {
@@ -472,8 +489,8 @@ export function useChatPage() {
                 pending: false,
                 failed: true,
               }
-            : message,
-        ),
+            : message
+        )
       );
     } finally {
       setUploadingFile(false);
@@ -530,25 +547,30 @@ export function useChatPage() {
     if (mentionDropdownOpen) {
       if (event.key === "ArrowDown") {
         event.preventDefault();
+
         setMentionActiveIndex(
           (currentIndex) =>
-            (currentIndex + 1) % filteredMentionMembers.length,
+            (currentIndex + 1) % filteredMentionMembers.length
         );
+
         return;
       }
 
       if (event.key === "ArrowUp") {
         event.preventDefault();
+
         setMentionActiveIndex(
           (currentIndex) =>
             (currentIndex - 1 + filteredMentionMembers.length) %
-            filteredMentionMembers.length,
+            filteredMentionMembers.length
         );
+
         return;
       }
 
       if (event.key === "Enter" || event.key === "Tab") {
         event.preventDefault();
+
         const selectedMember =
           filteredMentionMembers[mentionActiveIndex] ??
           filteredMentionMembers[0];
@@ -571,6 +593,21 @@ export function useChatPage() {
       event.preventDefault();
       event.currentTarget.form?.requestSubmit();
     }
+  }
+
+  function replaceLocalMessage(updatedMessage: LocalGroupMessage) {
+    setMessageOverrides((currentOverrides) => ({
+      ...currentOverrides,
+      [updatedMessage.id]: {
+        ...updatedMessage,
+        pending: false,
+        failed: false,
+      },
+    }));
+
+    setTemporaryMessages((currentMessages) =>
+      currentMessages.filter((message) => message.id !== updatedMessage.id)
+    );
   }
 
   const sendError =
@@ -615,6 +652,10 @@ export function useChatPage() {
     messageListRef,
     getUserAvatarUrl,
     currentUserId: user?.id,
+
+    refetchMessages,
+    replaceLocalMessage,
+
     draft,
     selectedFile,
     emojiOpen,

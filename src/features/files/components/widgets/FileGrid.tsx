@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 
 import type { WorkspaceFile } from "../../../../shared/api/files";
+import { useAuth } from "../../../../shared/context";
 import { PERMISSIONS, PermissionGate } from "../../../../shared/permissions";
 import { Icon } from "../../../../shared/ui";
 
-import { formatFileDate, formatFileSize } from "../../utils";
+import { formatFileDate, formatFileSize, isFileOwnedBy } from "../../utils";
 import { FilesEmptyIllustration } from "./FilesEmptyIllustration";
 import { FileThumbnail } from "./FileThumbnail";
 
@@ -18,11 +19,15 @@ export function FileGrid({
   onDelete,
   onDownload,
   onOpenPreview,
+  onRestore,
   onShare,
   onToggleMenu,
   openMenuFileId,
+  restorePending,
   selectedFileId,
   showDelete = false,
+  showDownload = true,
+  showRestore = false,
   showShare = false,
 }: {
   deletePending?: boolean;
@@ -34,13 +39,19 @@ export function FileGrid({
   onDelete?: (file: WorkspaceFile) => void;
   onDownload: (file: WorkspaceFile) => void;
   onOpenPreview: (file: WorkspaceFile) => void;
+  onRestore?: (file: WorkspaceFile) => void;
   onShare?: (file: WorkspaceFile) => void;
   onToggleMenu: (fileId: string) => void;
   openMenuFileId: string | null;
+  restorePending?: boolean;
   selectedFileId: string | null;
   showDelete?: boolean;
+  showDownload?: boolean;
+  showRestore?: boolean;
   showShare?: boolean;
 }) {
+  const { user } = useAuth();
+
   if (files.length === 0) {
     return (
       <div className="files-empty-state">
@@ -53,87 +64,105 @@ export function FileGrid({
 
   return (
     <div className="files-file-grid">
-      {files.map((file) => (
-        <article
-          key={file.id}
-          className={
-            [
-              "files-file-card",
-              openMenuFileId === file.id ? "menu-open" : "",
-              selectedFileId === file.id ? "active" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")
-          }
-        >
-          <button
-            className="files-file-open"
-            type="button"
-            onClick={() => {
-              void onOpenPreview(file);
-            }}
-          >
-            <span className="files-file-preview">
-              <FileThumbnail file={file} />
-            </span>
-            <strong>{file.name}</strong>
-            <small>
-              <MetaSpan className={metaSpanClassName}>
-                {formatFileSize(file.size)}
-              </MetaSpan>
-              <MetaSpan className={metaSpanClassName}>
-                {formatFileDate(file.updatedAt)}
-              </MetaSpan>
-            </small>
-          </button>
+      {files.map((file) => {
+        const canDelete = showDelete && onDelete && isFileOwnedBy(file, user?.id);
 
-          <button
-            className="files-file-menu-button"
-            type="button"
-            aria-label={`Actions ${file.name}`}
-            aria-haspopup="menu"
-            aria-expanded={openMenuFileId === file.id}
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleMenu(file.id);
-            }}
+        return (
+          <article
+            key={file.id}
+            className={
+              [
+                "files-file-card",
+                openMenuFileId === file.id ? "menu-open" : "",
+                selectedFileId === file.id ? "active" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")
+            }
           >
-            <Icon name="moreH" size={14} />
-          </button>
-
-          {openMenuFileId === file.id ? (
-            <div
-              className="files-file-dropdown"
-              role="menu"
-              onClick={(event) => event.stopPropagation()}
+            <button
+              className="files-file-open"
+              type="button"
+              onClick={() => {
+                void onOpenPreview(file);
+              }}
             >
-              <button
-                type="button"
-                role="menuitem"
-                disabled={downloadPending}
-                onClick={() => {
-                  void onDownload(file);
-                }}
-              >
-                <Icon name="download" size={13} />
-                Telecharger
-              </button>
+              <span className="files-file-preview">
+                <FileThumbnail file={file} />
+              </span>
+              <strong>{file.name}</strong>
+              <small>
+                <MetaSpan className={metaSpanClassName}>
+                  {formatFileSize(file.size)}
+                </MetaSpan>
+                <MetaSpan className={metaSpanClassName}>
+                  {formatFileDate(file.deletedAt ?? file.updatedAt)}
+                </MetaSpan>
+              </small>
+            </button>
 
-              {showShare && onShare ? (
-                <PermissionGate permission={PERMISSIONS.SHARE_FILES}>
+            <button
+              className="files-file-menu-button"
+              type="button"
+              aria-label={`Actions ${file.name}`}
+              aria-haspopup="menu"
+              aria-expanded={openMenuFileId === file.id}
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleMenu(file.id);
+              }}
+            >
+              <Icon name="moreH" size={14} />
+            </button>
+
+            {openMenuFileId === file.id ? (
+              <div
+                className="files-file-dropdown"
+                role="menu"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {showRestore && onRestore ? (
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={() => onShare(file)}
+                    disabled={restorePending}
+                    onClick={() => {
+                      void onRestore(file);
+                    }}
                   >
-                    <Icon name="users" size={13} />
-                    Partager
+                    <Icon name="refresh" size={13} />
+                    Restaurer
                   </button>
-                </PermissionGate>
-              ) : null}
+                ) : null}
 
-              {showDelete && onDelete ? (
-                <PermissionGate permission={PERMISSIONS.DELETE_FILES}>
+                {showDownload ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={downloadPending}
+                    onClick={() => {
+                      void onDownload(file);
+                    }}
+                  >
+                    <Icon name="download" size={13} />
+                    Telecharger
+                  </button>
+                ) : null}
+
+                {showShare && onShare ? (
+                  <PermissionGate permission={PERMISSIONS.SHARE_FILES}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => onShare(file)}
+                    >
+                      <Icon name="users" size={13} />
+                      Partager
+                    </button>
+                  </PermissionGate>
+                ) : null}
+
+                {canDelete ? (
                   <button
                     className="danger"
                     type="button"
@@ -144,14 +173,14 @@ export function FileGrid({
                     }}
                   >
                     <Icon name="trash" size={13} />
-                    Supprimer
+                    {showRestore ? "Supprimer definitivement" : "Supprimer"}
                   </button>
-                </PermissionGate>
-              ) : null}
-            </div>
-          ) : null}
-        </article>
-      ))}
+                ) : null}
+              </div>
+            ) : null}
+          </article>
+        );
+      })}
     </div>
   );
 }
