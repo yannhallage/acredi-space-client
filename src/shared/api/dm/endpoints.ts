@@ -4,32 +4,13 @@
 //   send: "/chat/messages",
 // } as const;
 
-// export const chatEndpoints = {
-//   channels: "/channels",
-//   createChannel: "/channels",
-//   directChannel: "/channels/direct",
-
-//   messages: (channelId: string) => `/chat/channels/${channelId}/messages`,
-// export const dmEndpoints = {
-//   channels: "/channels",
-//   createChannel: "/channels",
-//   directChannel: "/channels/direct",
-//   messages: (channelId: string) => `/chat/channels/${channelId}/messages`,
-//   send: "/chat/messages",
-//   forward: "/chat/messages/forward",
-// } as const;
-
-// export const chatEndpoints = dmEndpoints;
-
-export const dmEndpoints = {
+export const chatEndpoints = {
   channels: "/channels",
   createChannel: "/channels",
   directChannel: "/channels/direct",
+
   messages: (channelId: string) => `/chat/channels/${channelId}/messages`,
   send: "/chat/messages",
-  forward: "/chat/messages/forward",
-  updateMessage: (messageId: string) => `/chat/messages/${messageId}`,
-  deleteMessage: (messageId: string) => `/chat/messages/${messageId}`,
+  message: (messageId: string) => `/chat/messages/${messageId}`,
+  share: (messageId: string) => `/chat/messages/${messageId}/share`,
 } as const;
-
-export const chatEndpoints = dmEndpoints;

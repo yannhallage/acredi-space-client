@@ -1,27 +1,15 @@
-import { useTeamsQuery } from "../../shared/api/teams";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
-import { ForwardMessageModal } from "./components/modals/ForwardMessageModal";
-import {
-  DmDeleteMessageModal,
-  DmEditMessageModal,
-} from "./components/modals/DmMessageActionModals";
 
 import {
   useChannelsQuery,
   useChannelMessagesSocket,
   useMessagesQueries,
   useMessagesQuery,
-  useForwardMessagesMutation,
-  useUpdateMessageMutation,
-  useDeleteMessageMutation,
-} from "../../shared/api/dm/hooks";
-
+} from "../../shared/api/dm";
 import type { ChannelResponse, MessageResponse } from "../../shared/api/dm/types";
 import { useUsersQuery } from "../../shared/api/users";
 import type { User } from "../../shared/types";
-import { useAuth } from "../../shared/context";
 
 import {
   DirectConversationEmpty,
@@ -30,7 +18,6 @@ import {
   DirectConversationThread,
   DmPageSkeleton,
 } from "./components";
-
 import { useDmMobileLayout } from "./hooks/useDmMobileLayout";
 
 import "./direct-messages.css";
@@ -59,22 +46,10 @@ export function DirectMessagesPage() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const isMobileLayout = useDmMobileLayout();
-  const { user } = useAuth();
-
-  const currentUserId = user?.id ?? "";
 
   const [selectedConversationId, setSelectedConversationId] = useState(
     conversationId ?? ""
   );
-
-  const [selectedMessages, setSelectedMessages] = useState<MessageResponse[]>([]);
-  const [forwardModalOpen, setForwardModalOpen] = useState(false);
-
-  const [messageToEdit, setMessageToEdit] =
-    useState<MessageResponse | null>(null);
-
-  const [messageToDelete, setMessageToDelete] =
-    useState<MessageResponse | null>(null);
 
   const {
     data: channels = [],
@@ -85,11 +60,6 @@ export function DirectMessagesPage() {
   } = useChannelsQuery();
 
   const usersQuery = useUsersQuery();
-  const teamsQuery = useTeamsQuery();
-
-  const forwardMessagesMutation = useForwardMessagesMutation();
-  const updateMessageMutation = useUpdateMessageMutation();
-  const deleteMessageMutation = useDeleteMessageMutation();
 
   const directChannels = useMemo(
     () => channels.filter((channel) => channel.privateChannel),
@@ -122,8 +92,8 @@ export function DirectMessagesPage() {
   const usersByName = useMemo(() => {
     const map = new Map<string, User>();
 
-    (usersQuery.data ?? []).forEach((item) => {
-      map.set(item.name.toLowerCase(), item);
+    (usersQuery.data ?? []).forEach((user) => {
+      map.set(user.name.toLowerCase(), user);
     });
 
     return map;
@@ -156,38 +126,12 @@ export function DirectMessagesPage() {
     if (!activeConversation) return null;
 
     const displayName = getChannelDisplayName(activeConversation);
-
     return usersByName.get(displayName.toLowerCase()) ?? null;
   }, [activeConversation, usersByName]);
-
-  const forwardTargets = useMemo(() => {
-    const userTargets = (usersQuery.data ?? [])
-      .filter((targetUser) => targetUser.id !== currentUserId)
-      .map((targetUser) => ({
-        id: targetUser.id,
-        name: targetUser.name,
-        type: "user" as const,
-      }));
-
-    const teamTargets = (teamsQuery.data ?? []).map((team) => ({
-      id: team.id,
-      name: team.name,
-      type: "team" as const,
-    }));
-
-    return [...userTargets, ...teamTargets];
-  }, [usersQuery.data, teamsQuery.data, currentUserId]);
 
   useEffect(() => {
     setSelectedConversationId(conversationId ?? "");
   }, [conversationId]);
-
-  useEffect(() => {
-    setSelectedMessages([]);
-    setMessageToEdit(null);
-    setMessageToDelete(null);
-    setForwardModalOpen(false);
-  }, [activeConversationId]);
 
   function handleSelectConversation(nextConversationId: string) {
     setSelectedConversationId(nextConversationId);
@@ -211,101 +155,23 @@ export function DirectMessagesPage() {
     ]);
   }
 
-  function clearMessageSelection() {
-    setSelectedMessages([]);
-  }
-
-  function handleForwardMessage(message: MessageResponse) {
-    if (message.deleted) {
-      return;
-    }
-
-    setSelectedMessages([message]);
-    setForwardModalOpen(true);
-  }
-
-  function handleEditMessage(message: MessageResponse) {
-    if (message.senderId !== currentUserId) {
-      alert("Tu ne peux modifier que tes propres messages.");
-      return;
-    }
-
-    if (message.deleted) {
-      alert("Impossible de modifier un message supprimé.");
-      return;
-    }
-
-    setMessageToEdit(message);
-  }
-
-  function handleConfirmEditMessage(content: string) {
-    if (!messageToEdit) {
-      return;
-    }
-
-    updateMessageMutation.mutate(
-      {
-        messageId: messageToEdit.id,
-        content,
-      },
-      {
-        onSuccess: () => {
-          setMessageToEdit(null);
-
-          if (activeConversationId) {
-            void refetchMessages();
-          }
-
-          void refetchChannels();
-        },
-        onError: (error) => {
-          console.error("Erreur modification message", error);
-          alert("Impossible de modifier le message.");
-        },
-      }
-    );
-  }
-
-  function handleDeleteMessage(message: MessageResponse) {
-    if (message.senderId !== currentUserId) {
-      alert("Tu ne peux supprimer que tes propres messages.");
-      return;
-    }
-
-    if (message.deleted) {
-      alert("Ce message est déjà supprimé.");
-      return;
-    }
-
-    setMessageToDelete(message);
-  }
-
-  async function handleConfirmDeleteMessage() {
-    if (!messageToDelete) {
-      return;
-    }
-
-    try {
-      await deleteMessageMutation.mutateAsync({
-        messageId: messageToDelete.id,
-      });
-
-      setMessageToDelete(null);
-
-      if (activeConversationId) {
-        await refetchMessages();
-      }
-
-      await refetchChannels();
-    } catch (error) {
-      console.error("Erreur suppression message", error);
-      alert("Impossible de supprimer le message.");
-    }
-  }
-
   const isRefreshingDiscussion =
     (channelsFetching && !channelsLoading) ||
     (messagesFetching && !messagesLoading);
+
+  if (channelsLoading) {
+    return <DmPageSkeleton />;
+  }
+
+  if (channelsError) {
+    return (
+      <div className="dm-page">
+        <div className="dm-error">
+          Impossible de charger les conversations.
+        </div>
+      </div>
+    );
+  }
 
   const threadSubtitle = activeParticipant?.role ?? "Message direct";
 
@@ -323,25 +189,8 @@ export function DirectMessagesPage() {
         typingUsers,
         publishTyping,
         onRefresh: handleRefreshDiscussion,
-
-        currentUserId,
-        onForwardMessage: handleForwardMessage,
-        onEditMessage: handleEditMessage,
-        onDeleteMessage: handleDeleteMessage,
       }
     : null;
-
-  if (channelsLoading) {
-    return <DmPageSkeleton />;
-  }
-
-  if (channelsError) {
-    return (
-      <div className="dm-page">
-        <div className="dm-error">Impossible de charger les conversations.</div>
-      </div>
-    );
-  }
 
   return (
     <div className="dm-page">
@@ -356,85 +205,26 @@ export function DirectMessagesPage() {
       />
 
       {isMobileLayout ? (
-        <DirectConversationDrawer
-          isOpen={Boolean(activeConversation && threadProps)}
-          title={threadProps?.title ?? "Conversation"}
-          onClose={handleCloseConversation}
-        >
-          {threadProps ? (
-            <DirectConversationThread
-              {...threadProps}
-              showBackButton
-              onClose={handleCloseConversation}
-            />
-          ) : null}
-        </DirectConversationDrawer>
+        <>
+          <DirectConversationDrawer
+            isOpen={Boolean(activeConversation && threadProps)}
+            title={threadProps?.title ?? "Conversation"}
+            onClose={handleCloseConversation}
+          >
+            {threadProps ? (
+              <DirectConversationThread
+                {...threadProps}
+                showBackButton
+                onClose={handleCloseConversation}
+              />
+            ) : null}
+          </DirectConversationDrawer>
+        </>
       ) : !activeConversation ? (
         <DirectConversationEmpty />
       ) : threadProps ? (
         <DirectConversationThread {...threadProps} />
       ) : null}
-
-      <ForwardMessageModal
-        open={forwardModalOpen}
-        selectedMessagesCount={selectedMessages.length}
-        targets={forwardTargets}
-        onClose={() => {
-          setForwardModalOpen(false);
-          clearMessageSelection();
-        }}
-        onConfirm={(payload) => {
-          if (
-            !payload.targetUserIds.length &&
-            !payload.targetChannelIds.length &&
-            !payload.targetTeamIds.length
-          ) {
-            alert("Choisis au moins un destinataire.");
-            return;
-          }
-
-          forwardMessagesMutation.mutate(
-            {
-              sourceType: "CHAT",
-              sourceMessageIds: selectedMessages.map((message) => message.id),
-              targetUserIds: payload.targetUserIds,
-              targetChannelIds: payload.targetChannelIds,
-              targetTeamIds: payload.targetTeamIds,
-            },
-            {
-              onSuccess: () => {
-                setForwardModalOpen(false);
-                clearMessageSelection();
-
-                void refetchChannels();
-
-                if (activeConversationId) {
-                  void refetchMessages();
-                }
-              },
-              onError: (error) => {
-                console.error("Erreur transfert message", error);
-              },
-            }
-          );
-        }}
-      />
-
-      <DmEditMessageModal
-        open={Boolean(messageToEdit)}
-        message={messageToEdit}
-        submitting={updateMessageMutation.isPending}
-        onClose={() => setMessageToEdit(null)}
-        onConfirm={handleConfirmEditMessage}
-      />
-
-      <DmDeleteMessageModal
-        open={Boolean(messageToDelete)}
-        message={messageToDelete}
-        submitting={deleteMessageMutation.isPending}
-        onClose={() => setMessageToDelete(null)}
-        onConfirm={handleConfirmDeleteMessage}
-      />
     </div>
   );
 }

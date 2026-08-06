@@ -8,7 +8,6 @@ import type {
   GroupDiscussionResponse,
   GroupMessageResponse,
   SendGroupMessageRequest,
-  UpdateGroupMessageRequest,
 } from "./types";
 
 function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
@@ -129,23 +128,35 @@ export const discussionService = {
     return unwrapApiResponse(response);
   },
 
-    async updateMessage(
-    discussionId: string,
-    messageId: string,
-    request: UpdateGroupMessageRequest
-  ) {
-    const response = await http.put<ApiResponse<GroupMessageResponse>>(
-      discussionEndpoints.messageById(discussionId, messageId),
-      request
+  async deleteMessage(discussionId: string, messageId: string) {
+    const response = await http.delete<ApiResponse<GroupMessageResponse>>(
+      discussionEndpoints.message(discussionId, messageId)
     );
 
     return unwrapApiResponse(response);
   },
 
-  async deleteMessage(discussionId: string, messageId: string) {
-    const response = await http.delete<ApiResponse<GroupMessageResponse>>(
-      discussionEndpoints.messageById(discussionId, messageId)
+  async updateMessage(
+    discussionId: string,
+    messageId: string,
+    content: string
+  ) {
+    const response = await http.patch<ApiResponse<GroupMessageResponse>>(
+      discussionEndpoints.message(discussionId, messageId),
+      { content }
     );
+
+    return unwrapApiResponse(response);
+  },
+
+  async shareMessage(
+    discussionId: string,
+    messageId: string,
+    request: { userId?: string; discussionId?: string }
+  ) {
+    const response = await http.post<
+      ApiResponse<MessageResponse | GroupMessageResponse>
+    >(discussionEndpoints.shareMessage(discussionId, messageId), request);
 
     return unwrapApiResponse(response);
   },

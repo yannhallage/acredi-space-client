@@ -18,19 +18,27 @@ import {
 interface MessageBubbleProps {
   message: LocalGroupMessage;
   avatarSrc?: string | null;
-  currentUserId?: string;
+  menuOpen: boolean;
+  menuAnchor: MessageMenuAnchor | null;
+  onOpenMenu: (anchor: MessageMenuAnchor) => void;
+  onCloseMenu: () => void;
+  onAction: (action: MessageAction) => void;
 }
 
 export function MessageBubble({
   message,
   avatarSrc,
-  currentUserId,
+  menuOpen,
+  menuAnchor,
+  onOpenMenu,
+  onCloseMenu,
+  onAction,
 }: MessageBubbleProps) {
   const { user } = useAuth();
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  const mine = (currentUserId ?? user?.id) === message.senderId;
-  const isDeleted = Boolean(message.deleted);
+  const mine = user?.id === message.senderId;
+  const isDeleted = Boolean(message.deletedAt);
 
   const statusLabel = message.failed
     ? "échec"
@@ -38,9 +46,8 @@ export function MessageBubble({
       ? "envoi..."
       : null;
 
-  const { text, attachment } = isDeleted
-    ? { text: "", attachment: null }
-    : parseMessageContent(message.content);
+  const { text, attachment } = parseMessageContent(message.content);
+  const canAct = !isDeleted && !message.pending && !message.failed;
 
   async function handleDownloadAttachment() {
     if (!attachment?.id) {
@@ -77,47 +84,53 @@ export function MessageBubble({
         <Avatar name={message.senderName} size={28} src={avatarSrc} />
       ) : null}
 
-      <div>
-        <header>
-          <strong>{mine ? "Vous" : message.senderName}</strong>
-          <small>
-            {formatMessageTime(message.createdAt)}
-            {message.editedAt && !isDeleted ? " · modifié" : ""}
-            {statusLabel ? ` · ${statusLabel}` : ""}
-          </small>
-        </header>
+      <div className="message-actions-shell">
+        <div>
+          <header>
+            <strong>{mine ? "Vous" : message.senderName}</strong>
+            <small>
+              {formatMessageTime(message.createdAt)}
+              {message.editedAt && !isDeleted ? " · modifié" : ""}
+              {statusLabel ? ` · ${statusLabel}` : ""}
+            </small>
+          </header>
 
-        {isDeleted ? (
-          <p className="deleted-message-text">
-            <span aria-hidden="true">🚫</span>{" "}
-            {mine
-              ? "Vous avez supprimé ce message"
-              : "Ce message a été supprimé"}
-          </p>
-        ) : (
-          <>
-            {text ? <p>{text}</p> : null}
+          {isDeleted ? (
+            <p className="message-deleted">Ce message a été supprimé</p>
+          ) : (
+            <>
+              {text ? <p>{text}</p> : null}
 
-            {attachment ? (
-              <button
-                className="message-file-attachment"
-                type="button"
-                disabled={!attachment.id}
-                onClick={() => {
-                  void handleDownloadAttachment();
-                }}
-              >
-                <Icon name="paperclip" size={14} />
-                <span>{attachment.name}</span>
-                <small>{attachment.id ? "Télécharger" : "Envoi..."}</small>
-              </button>
-            ) : null}
+              {attachment ? (
+                <button
+                  className="message-file-attachment"
+                  type="button"
+                  disabled={!attachment.id}
+                  onClick={() => {
+                    void handleDownloadAttachment();
+                  }}
+                >
+                  <Icon name="paperclip" size={14} />
+                  <span>{attachment.name}</span>
+                  <small>{attachment.id ? "Télécharger" : "Envoi..."}</small>
+                </button>
+              ) : null}
 
-            {downloadError ? (
-              <small className="chat-send-error">{downloadError}</small>
-            ) : null}
-          </>
-        )}
+              {downloadError ? (
+                <small className="chat-send-error">{downloadError}</small>
+              ) : null}
+            </>
+          )}
+        </div>
+
+        <MessageActionsMenu
+          open={menuOpen}
+          anchor={menuAnchor}
+          canEdit={mine && canAct}
+          canDelete={mine && canAct}
+          onClose={onCloseMenu}
+          onAction={onAction}
+        />
       </div>
     </article>
   );

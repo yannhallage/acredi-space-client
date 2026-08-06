@@ -2,11 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { chatKeys } from "../dm/hooks";
 import type { MessageResponse } from "../dm/types";
 import { discussionService } from "./service";
-import type {
-  GroupMessageResponse,
-  SendGroupMessageRequest,
-  UpdateGroupMessageRequest,
-} from "./types";
+import type { GroupMessageResponse, SendGroupMessageRequest } from "./types";
 
 interface UseDiscussionQueryOptions {
   enabled?: boolean;
@@ -20,20 +16,6 @@ export const discussionKeys = {
   messages: (discussionId: string) =>
     [...discussionKeys.all, "messages", discussionId] as const,
 };
-
-
-function replaceMessageInCache(
-  oldMessages: GroupMessageResponse[] | undefined,
-  updatedMessage: GroupMessageResponse
-) {
-  if (!oldMessages) {
-    return oldMessages;
-  }
-
-  return oldMessages.map((message) =>
-    message.id === updatedMessage.id ? updatedMessage : message
-  );
-}
 
 export function useMyDiscussions(options: UseDiscussionQueryOptions = {}) {
   const { enabled = true } = options;
@@ -165,58 +147,65 @@ export function useUpdateDiscussionMessage() {
   });
 }
 
-export function useUpdateDiscussionMessage() {
+export function useShareDiscussionMessage() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({
       discussionId,
       messageId,
-      request,
+      userId,
+      targetDiscussionId,
     }: {
       discussionId: string;
       messageId: string;
-      request: UpdateGroupMessageRequest;
-    }) => discussionService.updateMessage(discussionId, messageId, request),
+      userId?: string;
+      targetDiscussionId?: string;
+    }) =>
+      discussionService.shareMessage(discussionId, messageId, {
+        userId,
+        discussionId: targetDiscussionId,
+      }),
+    onSuccess: (message) => {
+      if ("channelId" in message && message.channelId) {
+        queryClient.setQueryData<MessageResponse[]>(
+          chatKeys.messages(message.channelId),
+          (oldMessages = []) => {
+            const alreadyExists = oldMessages.some(
+              (item) => item.id === message.id,
+            );
 
-    onSuccess: (updatedMessage) => {
-      queryClient.setQueryData<GroupMessageResponse[]>(
-        discussionKeys.messages(updatedMessage.discussionId),
-        (oldMessages) => replaceMessageInCache(oldMessages, updatedMessage)
-      );
+            if (alreadyExists) {
+              return oldMessages;
+            }
 
-      queryClient.invalidateQueries({
-        queryKey: discussionKeys.messages(updatedMessage.discussionId),
-      });
-    },
-  });
-}
+            return [...oldMessages, message];
+          },
+        );
 
-export function useDeleteDiscussionMessage() {
-  const queryClient = useQueryClient();
+        queryClient.invalidateQueries({
+          queryKey: chatKeys.channels(),
+        });
+        return;
+      }
 
-  return useMutation({
-    mutationFn: ({
-      discussionId,
-      messageId,
-    }: {
-      discussionId: string;
-      messageId: string;
-    }) => discussionService.deleteMessage(discussionId, messageId),
+      if ("discussionId" in message && message.discussionId) {
+        queryClient.setQueryData<GroupMessageResponse[]>(
+          discussionKeys.messages(message.discussionId),
+          (oldMessages = []) => {
+            const alreadyExists = oldMessages.some(
+              (item) => item.id === message.id,
+            );
 
-    onSuccess: (deletedMessage) => {
-      queryClient.setQueryData<GroupMessageResponse[]>(
-        discussionKeys.messages(deletedMessage.discussionId),
-        (oldMessages) => replaceMessageInCache(oldMessages, deletedMessage)
-      );
+            if (alreadyExists) {
+              return oldMessages;
+            }
 
-      queryClient.invalidateQueries({
-        queryKey: discussionKeys.messages(deletedMessage.discussionId),
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: discussionKeys.mine(),
-      });
+            return [...oldMessages, message];
+          },
+        );
+        queryClient.invalidateQueries({ queryKey: discussionKeys.mine() });
+      }
     },
   });
 }
