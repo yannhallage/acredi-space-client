@@ -1,5 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { CURRENT_SUBSCRIPTION } from '../../billing/data';
+import {
+  formatBillingCycle,
+  normalizeSubscriptionStatus,
+  useCurrentSubscriptionQuery,
+} from '../../../../shared/api/billing';
 import { formatBillingDate, formatSubscriptionStatus } from '../../utils';
 
 type SubscriptionSectionProps = {
@@ -8,6 +12,41 @@ type SubscriptionSectionProps = {
 
 export function SubscriptionSection({ onClose }: SubscriptionSectionProps) {
   const navigate = useNavigate();
+  const subscriptionQuery = useCurrentSubscriptionQuery(true);
+  const subscription = subscriptionQuery.data;
+
+  if (subscriptionQuery.loading) {
+    return (
+      <section className="modal-setting-section modal-setting-billing">
+        <p>Chargement de l abonnement...</p>
+      </section>
+    );
+  }
+
+  if (!subscription) {
+    return (
+      <section className="modal-setting-section modal-setting-billing">
+        <div className="modal-setting-section-heading">
+          <div>
+            <h4>Abonnement actuel</h4>
+            <p>Aucun abonnement actif pour cette organisation.</p>
+          </div>
+        </div>
+        <button
+          className="button primary"
+          type="button"
+          onClick={() => {
+            navigate('/settings/plans');
+            onClose();
+          }}
+        >
+          Choisir un plan
+        </button>
+      </section>
+    );
+  }
+
+  const status = normalizeSubscriptionStatus(subscription.status);
 
   return (
     <section className="modal-setting-section modal-setting-billing">
@@ -22,32 +61,30 @@ export function SubscriptionSection({ onClose }: SubscriptionSectionProps) {
         <div className="modal-setting-subscription-top">
           <div>
             <span className="modal-setting-subscription-eyebrow">Plan en cours</span>
-            <h3>{CURRENT_SUBSCRIPTION.planName}</h3>
-            <p>{CURRENT_SUBSCRIPTION.priceLabel}</p>
+            <h3>{subscription.planName ?? 'Plan'}</h3>
+            <p>{formatBillingCycle()}</p>
           </div>
           <span className="modal-setting-invite-badge modal-setting-subscription-status">
-            {formatSubscriptionStatus(CURRENT_SUBSCRIPTION.status)}
+            {formatSubscriptionStatus(status)}
           </span>
         </div>
 
         <dl className="modal-setting-subscription-meta">
           <div>
-            <dt>Cycle</dt>
-            <dd>{CURRENT_SUBSCRIPTION.billingCycle}</dd>
-          </div>
-          <div>
-            <dt>Sieges</dt>
-            <dd>
-              {CURRENT_SUBSCRIPTION.seatsUsed} / {CURRENT_SUBSCRIPTION.seats}
-            </dd>
+            <dt>Statut</dt>
+            <dd>{formatSubscriptionStatus(status)}</dd>
           </div>
           <div>
             <dt>Debut</dt>
-            <dd>{formatBillingDate(CURRENT_SUBSCRIPTION.startedAt)}</dd>
+            <dd>{formatBillingDate(subscription.startedAt)}</dd>
           </div>
           <div>
             <dt>Renouvellement</dt>
-            <dd>{formatBillingDate(CURRENT_SUBSCRIPTION.renewsAt)}</dd>
+            <dd>{formatBillingDate(subscription.currentPeriodEnd)}</dd>
+          </div>
+          <div>
+            <dt>Identifiant plan</dt>
+            <dd>{subscription.planId}</dd>
           </div>
         </dl>
 

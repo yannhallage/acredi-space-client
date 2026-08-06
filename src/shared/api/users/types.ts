@@ -22,6 +22,13 @@ export interface UserResponse extends Partial<User> {
   invitationStatus?: string;
   lastName?: string;
   onboardingStatus?: string;
+  organization?: {
+    id?: string;
+    name?: string;
+    slug?: string;
+    [key: string]: unknown;
+  } | null;
+  organizationId?: string | null;
   phoneNumber?: string | null;
   profile?: string | {
     id?: string;
