@@ -1603,209 +1603,6 @@ a {
   font-size: 12px;
 }
 
-.modal-setting-invite-table .modal-setting-invite-row {
-  grid-template-columns: minmax(150px, 1.2fr) minmax(160px, 1.4fr) minmax(90px, 0.7fr) minmax(90px, 0.6fr);
-}
-
-.modal-setting-invite-user {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.modal-setting-invite-user strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text);
-  font-size: 13px;
-}
-
-.modal-setting-invite-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 8px;
-  border: 1px solid color-mix(in srgb, #d97706 28%, var(--border));
-  border-radius: 999px;
-  background: color-mix(in srgb, #d97706 12%, transparent);
-  color: #b45309;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.modal-setting-subscription-card {
-  display: grid;
-  gap: 18px;
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-2);
-}
-
-.modal-setting-subscription-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.modal-setting-subscription-eyebrow {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--muted);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.modal-setting-subscription-top h3 {
-  margin: 0;
-  font-size: 22px;
-  line-height: 1.15;
-}
-
-.modal-setting-subscription-top p {
-  margin: 6px 0 0;
-  color: var(--muted-soft);
-  font-size: 14px;
-}
-
-.modal-setting-subscription-status {
-  border-color: color-mix(in srgb, #16a34a 28%, var(--border));
-  background: color-mix(in srgb, #16a34a 12%, transparent);
-  color: #15803d;
-}
-
-.modal-setting-subscription-meta {
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.modal-setting-subscription-meta div {
-  display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: var(--surface);
-}
-
-.modal-setting-subscription-meta dt {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.modal-setting-subscription-meta dd {
-  margin: 0;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.modal-setting-subscription-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.modal-setting-subscription-skeleton-eyebrow {
-  width: 92px;
-  height: 10px;
-}
-
-.modal-setting-subscription-skeleton-title {
-  width: 148px;
-  height: 22px;
-  border-radius: 8px;
-}
-
-.modal-setting-subscription-skeleton-cycle {
-  width: 110px;
-  height: 12px;
-}
-
-.modal-setting-subscription-skeleton-badge {
-  width: 72px;
-  height: 26px;
-  border-radius: 999px;
-}
-
-.modal-setting-subscription-skeleton-label {
-  width: 64px;
-  height: 10px;
-}
-
-.modal-setting-subscription-skeleton-value {
-  width: 88px;
-  height: 13px;
-}
-
-.modal-setting-subscription-skeleton-button {
-  width: 132px;
-  height: 36px;
-  border-radius: 8px;
-}
-
-.modal-setting-subscription-skeleton .skeleton-copy {
-  gap: 8px;
-}
-
-.modal-setting-invoice-table .modal-setting-invoice-row {
-  grid-template-columns:
-    minmax(110px, 1fr)
-    minmax(100px, 0.9fr)
-    minmax(80px, 0.7fr)
-    minmax(90px, 0.8fr)
-    minmax(90px, 0.7fr);
-}
-
-.modal-setting-invoice-table .modal-setting-invoice-row.skeleton .skeleton-line {
-  height: 12px;
-  width: 72%;
-}
-
-.modal-setting-invoice-skeleton-badge {
-  width: 64px !important;
-  height: 22px !important;
-  border-radius: 999px;
-}
-
-.modal-setting-invoice-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.modal-setting-invoice-badge.status-paid {
-  border-color: color-mix(in srgb, #16a34a 28%, var(--border));
-  background: color-mix(in srgb, #16a34a 12%, transparent);
-  color: #15803d;
-}
-
-.modal-setting-invoice-badge.status-pending {
-  border-color: color-mix(in srgb, #d97706 28%, var(--border));
-  background: color-mix(in srgb, #d97706 12%, transparent);
-  color: #b45309;
-}
-
-.modal-setting-invoice-badge.status-failed {
-  border-color: color-mix(in srgb, #dc2626 28%, var(--border));
-  background: color-mix(in srgb, #dc2626 12%, transparent);
-  color: #b91c1c;
-}
-
 .modal-setting-profile-form {
   display: grid;
   gap: 14px;
@@ -7743,20 +7540,6 @@ a {
   flex: none;
 }
 
-.my-teams-page .my-team-card .team-card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.my-team-view-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
 .team-card-actions .icon-button {
   width: 34px;
   height: 34px;
@@ -8920,7 +8703,7 @@ a {
 .notes-page {
   min-height: 100%;
   display: grid;
-  grid-template-rows: auto minmax(240px, 1fr);
+  grid-template-rows: auto auto minmax(240px, 1fr);
   gap: 20px;
   font-size: 14px;
 }
@@ -11978,7 +11761,7 @@ a {
   background: rgba(99, 102, 241, 0.08);
   color: #4f46e5;
 }
-
+/* jshshshshssh */
 .files-shared-empty {
   display: flex;
   align-items: center;
@@ -12374,113 +12157,6 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.composer-input-wrapper {
-  position: relative;
-}
-
-.chat-mention-dropdown {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(100% + 8px);
-  z-index: 30;
-  max-height: 240px;
-  overflow-y: auto;
-  padding: 6px;
-  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.16);
-}
-
-.chat-mention-dropdown,
-.message-list,
-.chat-sidebar,
-.details-panel {
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--muted) 50%, transparent) transparent;
-}
-
-.chat-mention-dropdown::-webkit-scrollbar,
-.message-list::-webkit-scrollbar,
-.chat-sidebar::-webkit-scrollbar,
-.details-panel::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.chat-mention-dropdown::-webkit-scrollbar-track,
-.message-list::-webkit-scrollbar-track,
-.chat-sidebar::-webkit-scrollbar-track,
-.details-panel::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.chat-mention-dropdown::-webkit-scrollbar-track {
-  margin: 8px 0;
-}
-
-.chat-mention-dropdown::-webkit-scrollbar-thumb,
-.message-list::-webkit-scrollbar-thumb,
-.chat-sidebar::-webkit-scrollbar-thumb,
-.details-panel::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background-color: color-mix(in srgb, var(--muted) 40%, transparent);
-  background-clip: padding-box;
-}
-
-.chat-mention-dropdown::-webkit-scrollbar-thumb:hover,
-.message-list::-webkit-scrollbar-thumb:hover,
-.chat-sidebar::-webkit-scrollbar-thumb:hover,
-.details-panel::-webkit-scrollbar-thumb:hover {
-  background-color: color-mix(in srgb, var(--muted-soft) 58%, transparent);
-}
-
-.chat-mention-item {
-  width: 100%;
-  min-height: 48px;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: inherit;
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  text-align: left;
-  cursor: pointer;
-  font: inherit;
-}
-
-.chat-mention-item:hover,
-.chat-mention-item.active,
-.chat-mention-item:focus-visible {
-  outline: 0;
-  background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface));
-}
-
-.chat-mention-copy {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.chat-mention-copy strong {
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chat-mention-copy small {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 650;
 }
 
 
