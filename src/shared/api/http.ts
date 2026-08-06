@@ -1,6 +1,7 @@
 import { clearAuthSession } from "./auth/session";
 
-const PRODUCTION_API_BASE_URL = "https://api-acredispace.acredigroup.com/api";
+// const PRODUCTION_API_BASE_URL = "https://api-acredispace.acredigroup.com/api";
+const PRODUCTION_API_BASE_URL = "https://acredi-space.onrender.com/api";
 // const PRODUCTION_API_BASE_URL = "https://srv.acredispace.acredigroup.com/api";
 const DEVELOPMENT_API_BASE_URL = "http://localhost:8080/api";
 
