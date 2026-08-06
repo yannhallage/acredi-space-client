@@ -11,8 +11,45 @@ export function InvoicesSection() {
 
   if (invoicesQuery.loading) {
     return (
-      <section className="modal-setting-section modal-setting-billing">
-        <p>Chargement des factures...</p>
+      <section
+        className="modal-setting-section modal-setting-billing"
+        aria-busy="true"
+        aria-label="Chargement des factures"
+      >
+        <div className="modal-setting-section-heading">
+          <div>
+            <h4>Historique des factures</h4>
+            <p>Factures recentes de ton espace de travail.</p>
+          </div>
+        </div>
+
+        <div
+          className="modal-setting-profile-table modal-setting-invoice-table"
+          role="table"
+          aria-label="Factures"
+        >
+          <div className="modal-setting-profile-table-head modal-setting-invoice-row" role="row">
+            <span role="columnheader">Numero</span>
+            <span role="columnheader">Date</span>
+            <span role="columnheader">Devise</span>
+            <span role="columnheader">Montant</span>
+            <span role="columnheader">Statut</span>
+          </div>
+
+          {['invoice-skeleton-1', 'invoice-skeleton-2', 'invoice-skeleton-3'].map((item) => (
+            <div
+              className="modal-setting-profile-row modal-setting-invoice-row skeleton"
+              key={item}
+              role="row"
+            >
+              <span className="skeleton-line" />
+              <span className="skeleton-line" />
+              <span className="skeleton-line" />
+              <span className="skeleton-line" />
+              <span className="skeleton-line modal-setting-invoice-skeleton-badge" />
+            </div>
+          ))}
+        </div>
       </section>
     );
   }

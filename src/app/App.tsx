@@ -15,6 +15,7 @@ import { SharedFilesPage } from '../features/shared-files/SharedFilesPage';
 import { TrashFilesPage } from '../features/trash/TrashFilesPage';
 import MeetingPage from '../features/meeting/MeetingPage';
 import { MeetingRoom } from '../features/meeting/MeetingRoom';
+import { MailPage } from '../features/mail/MailPage';
 import { NotesPage } from '../features/notes/NotesPage';
 import { PreviewPage } from '../features/preview/PreviewPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
@@ -77,6 +78,7 @@ export default function App() {
                 <Route path="/settings/password" element={<ChangePasswordPage />} />
                 <Route path="/settings/plans" element={<PlansPage />} />
                 <Route path="/app/meeting-room/:roomName" element={<MeetingRoom />} />
+                <Route path="/app/mail" element={<MailPage />} />
 
                 <Route path="/app" element={<AppLayout />}>
                   <Route index element={<DefaultAppRoute />} />

@@ -33,6 +33,7 @@ const pageMeta: Record<string, { title: string; crumb: string }> = {
   "/app/files": { title: "Fichiers Acredi Space", crumb: "CONTENU" },
   "/app/chat": { title: "Canal equipe", crumb: "COLLABORATION" },
   "/app/dm": { title: "Messages directs", crumb: "COLLABORATION" },
+  "/app/mail": { title: "Mail", crumb: "COLLABORATION" },
   "/app/calendar": { title: "Calendrier", crumb: "PLANNING" },
   "/app/meeting": { title: "Salle de reunion", crumb: "VISIO" },
   "/app/profile": { title: "Mon profil", crumb: "PARAMETRES" },
@@ -136,6 +137,12 @@ export function AppLayout() {
       to: "/app/dm/dm-yann",
       icon: "message",
       label: "Chat",
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.chat,
+    },
+    {
+      to: "/app/mail",
+      icon: "mail",
+      label: "Mail",
       permissions: FEATURE_PERMISSION_REQUIREMENTS.chat,
     },
     {
@@ -501,6 +508,18 @@ export function AppLayout() {
               >
                 <Icon name={dark ? "sun" : "moon"} size={18} />
               </button>
+              <PermissionGate permissions={FEATURE_PERMISSION_REQUIREMENTS.chat}>
+                <a
+                  className="icon-button gmail-link"
+                  href="/app/mail"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Ouvrir Gmail"
+                  title="Gmail"
+                >
+                  <img src="/gmail-logo.svg" alt="" aria-hidden="true" />
+                </a>
+              </PermissionGate>
               <a
                 className="icon-button nuum-link"
                 href="https://app.nuum-ci.com/authentification"

@@ -32,4 +32,15 @@ export const organizationService = {
     );
     return unwrapApiResponse(response);
   },
+
+  async uploadLogo(id: string, file: File): Promise<OrganizationResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await http.put<ApiResponse<OrganizationResponse>>(
+      organizationEndpoints.uploadLogo(id),
+      formData
+    );
+    return unwrapApiResponse(response);
+  },
 };

@@ -164,6 +164,51 @@
   color: var(--accent);
 }
 
+.plan-card-skeleton .skeleton-copy {
+  gap: 8px;
+}
+
+.plan-skeleton-tag {
+  width: 78px;
+  height: 22px;
+  border-radius: 999px;
+}
+
+.plan-skeleton-title {
+  width: 58%;
+  height: 22px;
+  border-radius: 8px;
+}
+
+.plan-skeleton-price {
+  width: 96px;
+  height: 30px;
+  border-radius: 8px;
+}
+
+.plan-skeleton-interval {
+  width: 54px;
+  height: 12px;
+}
+
+.plan-skeleton-check {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.plan-skeleton-feature {
+  flex: 1;
+  height: 12px;
+}
+
+.plan-skeleton-button {
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+}
+
 @media (max-width: 900px) {
   .plans-grid {
     grid-template-columns: 1fr;

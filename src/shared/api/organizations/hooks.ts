@@ -95,3 +95,25 @@ export function useUpdateOrganizationMutation() {
 
   return { mutateAsync, isPending, error };
 }
+
+export function useUploadOrganizationLogoMutation() {
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutateAsync = useCallback(async (id: string, file: File) => {
+    setIsPending(true);
+    setError(null);
+    try {
+      const data = await organizationService.uploadLogo(id, file);
+      setIsPending(false);
+      return data;
+    } catch (err) {
+      const normalized = toError(err);
+      setError(normalized);
+      setIsPending(false);
+      throw normalized;
+    }
+  }, []);
+
+  return { mutateAsync, isPending, error };
+}

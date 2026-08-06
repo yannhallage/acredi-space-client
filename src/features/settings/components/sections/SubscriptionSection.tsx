@@ -17,8 +17,41 @@ export function SubscriptionSection({ onClose }: SubscriptionSectionProps) {
 
   if (subscriptionQuery.loading) {
     return (
-      <section className="modal-setting-section modal-setting-billing">
-        <p>Chargement de l abonnement...</p>
+      <section
+        className="modal-setting-section modal-setting-billing"
+        aria-busy="true"
+        aria-label="Chargement de l'abonnement"
+      >
+        <div className="modal-setting-section-heading">
+          <div>
+            <h4>Abonnement actuel</h4>
+            <p>Resume de ton plan Acredi Space en cours.</p>
+          </div>
+        </div>
+
+        <article className="modal-setting-subscription-card modal-setting-subscription-skeleton">
+          <div className="modal-setting-subscription-top">
+            <div className="skeleton-copy">
+              <span className="skeleton-line modal-setting-subscription-skeleton-eyebrow" />
+              <span className="skeleton-line modal-setting-subscription-skeleton-title" />
+              <span className="skeleton-line modal-setting-subscription-skeleton-cycle" />
+            </div>
+            <span className="skeleton-line modal-setting-subscription-skeleton-badge" />
+          </div>
+
+          <div className="modal-setting-subscription-meta">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={`subscription-skeleton-meta-${index}`}>
+                <span className="skeleton-line modal-setting-subscription-skeleton-label" />
+                <span className="skeleton-line modal-setting-subscription-skeleton-value" />
+              </div>
+            ))}
+          </div>
+
+          <div className="modal-setting-subscription-actions">
+            <span className="skeleton-line modal-setting-subscription-skeleton-button" />
+          </div>
+        </article>
       </section>
     );
   }

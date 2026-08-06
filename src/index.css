@@ -1210,6 +1210,266 @@ a {
   line-height: 1.5;
 }
 
+.modal-setting-org-form {
+  display: grid;
+  gap: 28px;
+}
+
+.modal-setting-org-label {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.modal-setting-org-logo-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.modal-setting-org-logo-preview {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1.5px dashed color-mix(in srgb, var(--muted) 55%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+  color: color-mix(in srgb, var(--muted) 75%, transparent);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.modal-setting-org-logo-preview:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface));
+}
+
+.modal-setting-org-logo-preview:disabled {
+  cursor: default;
+}
+
+.modal-setting-org-logo-preview.has-image {
+  border-style: solid;
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.modal-setting-org-logo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.modal-setting-org-logo-meta {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 6px;
+}
+
+.modal-setting-org-logo-action {
+  justify-self: start;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.modal-setting-org-logo-action:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.modal-setting-org-logo-action:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.modal-setting-org-logo-meta > p {
+  margin: 0;
+  max-width: 360px;
+  color: var(--muted-soft);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.modal-setting-org-logo-message {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.modal-setting-org-logo-message.success {
+  color: #16a34a;
+}
+
+.modal-setting-org-logo-message.error {
+  color: var(--red);
+}
+
+.modal-setting-org-logo-file {
+  display: none;
+}
+
+.modal-setting-org-logo-url {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  max-width: 360px;
+  color: var(--muted-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.modal-setting-org-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+}
+
+.modal-setting-org-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.modal-setting-org-field-full {
+  grid-column: 1 / -1;
+}
+
+.modal-setting-org-field em {
+  color: var(--red);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.modal-setting-org-field input,
+.modal-setting-org-logo-url input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: 0;
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.modal-setting-org-field input::placeholder,
+.modal-setting-org-logo-url input::placeholder {
+  color: color-mix(in srgb, var(--muted-soft) 80%, transparent);
+}
+
+.modal-setting-org-field input:focus,
+.modal-setting-org-logo-url input:focus {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.modal-setting-org-field input:disabled,
+.modal-setting-org-logo-url input:disabled {
+  color: var(--muted-soft);
+  background: var(--surface-2);
+  cursor: not-allowed;
+}
+
+.modal-setting-org-message {
+  margin: 0;
+  font-size: 13px;
+}
+
+.modal-setting-org-message.success {
+  color: #16a34a;
+}
+
+.modal-setting-org-message.error,
+.modal-setting-org-state.error {
+  color: var(--red);
+}
+
+.modal-setting-org-state {
+  margin: 8px 0 0;
+  color: var(--muted-soft);
+  font-size: 13px;
+}
+
+.modal-setting-org-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.modal-setting-org-readonly {
+  margin: 0;
+  color: var(--muted-soft);
+  font-size: 13px;
+}
+
+.modal-setting-org-skeleton-label {
+  width: 88px;
+  height: 11px;
+}
+
+.modal-setting-org-skeleton-logo {
+  flex: none;
+  width: 96px;
+  height: 96px;
+  border-radius: 999px;
+}
+
+.modal-setting-org-skeleton-input {
+  width: 100%;
+  height: 40px;
+  border-radius: 6px;
+}
+
+.modal-setting-org-skeleton-button {
+  width: 118px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.modal-setting-org-skeleton .modal-setting-org-logo-meta {
+  width: min(100%, 360px);
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .modal-setting-org-logo-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .modal-setting-org-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-setting-org-logo-url,
+  .modal-setting-org-logo-meta > p {
+    max-width: none;
+  }
+}
+
 .modal-setting-profiles {
   display: grid;
   gap: 16px;
@@ -1456,6 +1716,48 @@ a {
   justify-content: flex-end;
 }
 
+.modal-setting-subscription-skeleton-eyebrow {
+  width: 92px;
+  height: 10px;
+}
+
+.modal-setting-subscription-skeleton-title {
+  width: 148px;
+  height: 22px;
+  border-radius: 8px;
+}
+
+.modal-setting-subscription-skeleton-cycle {
+  width: 110px;
+  height: 12px;
+}
+
+.modal-setting-subscription-skeleton-badge {
+  width: 72px;
+  height: 26px;
+  border-radius: 999px;
+}
+
+.modal-setting-subscription-skeleton-label {
+  width: 64px;
+  height: 10px;
+}
+
+.modal-setting-subscription-skeleton-value {
+  width: 88px;
+  height: 13px;
+}
+
+.modal-setting-subscription-skeleton-button {
+  width: 132px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.modal-setting-subscription-skeleton .skeleton-copy {
+  gap: 8px;
+}
+
 .modal-setting-invoice-table .modal-setting-invoice-row {
   grid-template-columns:
     minmax(110px, 1fr)
@@ -1463,6 +1765,17 @@ a {
     minmax(80px, 0.7fr)
     minmax(90px, 0.8fr)
     minmax(90px, 0.7fr);
+}
+
+.modal-setting-invoice-table .modal-setting-invoice-row.skeleton .skeleton-line {
+  height: 12px;
+  width: 72%;
+}
+
+.modal-setting-invoice-skeleton-badge {
+  width: 64px !important;
+  height: 22px !important;
+  border-radius: 999px;
 }
 
 .modal-setting-invoice-badge {
@@ -1815,15 +2128,18 @@ a {
   position: relative;
 }
 
-.nuum-link {
+.nuum-link,
+.gmail-link {
   text-decoration: none;
 }
 
-.nuum-link:hover {
+.nuum-link:hover,
+.gmail-link:hover {
   background: var(--surface-2);
 }
 
-.nuum-link img {
+.nuum-link img,
+.gmail-link img {
   width: 22px;
   height: 22px;
   display: block;
