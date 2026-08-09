@@ -1,3 +1,16 @@
+export { AuthCardBrand } from './AuthCardBrand';
+export { AuthFeedbackBanner } from './AuthFeedbackBanner';
+export { AuthSubmitButton } from './AuthSubmitButton';
+export {
+  authFeedback,
+  resolveForgotPasswordFeedback,
+  resolveLoginFeedback,
+  resolveOtpFeedback,
+  resolvePasswordChangeFeedback,
+  resolveProfileCompletionFeedback,
+  resolveResetPasswordFeedback,
+  type AuthFeedback,
+} from './authFeedback';
 export { PasswordInput } from './PasswordInput';
 export { ForgotPasswordForm } from './forms/ForgotPasswordForm';
 export { LoginForm } from './forms/LoginForm';

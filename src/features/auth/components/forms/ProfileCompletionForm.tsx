@@ -5,6 +5,14 @@ import { useUpdateProfileMutation, useUploadAvatarMutation } from '../../../../s
 import { useAuth } from '../../../../shared/context';
 import { useTheme } from '../../../../shared/theme';
 import { AcrediLockup, Avatar, Icon, type IconName } from '../../../../shared/ui';
+import {
+  authFeedback,
+  resolveProfileCompletionFeedback,
+  type AuthFeedback,
+} from '../authFeedback';
+import { AuthCardBrand } from '../AuthCardBrand';
+import { AuthFeedbackBanner } from '../AuthFeedbackBanner';
+import { AuthSubmitButton } from '../AuthSubmitButton';
 
 type ThemePreference = 'LIGHT' | 'DARK';
 type PhoneKind = 'mobile' | 'work' | 'whatsapp';
@@ -68,12 +76,6 @@ function profileToString(profile: unknown) {
   return String(profile);
 }
 
-function getErrorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : 'Impossible de mettre a jour le profil.';
-}
-
 export function ProfileCompletionForm() {
   const { user, updateUser } = useAuth();
   const { dark, setDark } = useTheme();
@@ -95,7 +97,7 @@ export function ProfileCompletionForm() {
   const [avatarFileName, setAvatarFileName] = useState('');
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<AuthFeedback | null>(null);
   const profiles = useMemo(() => profilesQuery.data ?? [], [profilesQuery.data]);
 
   useEffect(() => {
@@ -173,16 +175,28 @@ export function ProfileCompletionForm() {
       return;
     }
 
-    setMessage(null);
+    setFeedback(null);
 
     if (!file.type.startsWith('image/')) {
-      setMessage({ type: 'error', text: 'Merci de choisir un fichier image valide.' });
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Fichier non pris en charge',
+          'Choisissez une image valide (JPG, PNG ou WebP) pour votre photo de profil.'
+        )
+      );
       event.target.value = '';
       return;
     }
 
     if (file.size > MAX_AVATAR_SIZE) {
-      setMessage({ type: 'error', text: 'La photo doit faire moins de 5 Mo.' });
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Image trop volumineuse',
+          'La photo de profil doit faire moins de 5 Mo.'
+        )
+      );
       event.target.value = '';
       return;
     }
@@ -205,19 +219,31 @@ export function ProfileCompletionForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage(null);
+    setFeedback(null);
 
     const cleanFirstName = firstName.trim();
     const cleanLastName = lastName.trim();
     const cleanPhoneNumber = phoneNumber.trim();
 
     if (!avatarFile && !avatarUrl) {
-      setMessage({ type: 'error', text: "Merci d'ajouter une photo de profil." });
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Photo de profil requise',
+          'Ajoutez une photo de profil avant de finaliser votre espace.'
+        )
+      );
       return;
     }
 
     if (!cleanFirstName || !cleanLastName || !cleanPhoneNumber || !profileId) {
-      setMessage({ type: 'error', text: 'Merci de renseigner votre prenom, nom, telephone et votre fonction.' });
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Informations incomplètes',
+          'Renseignez votre prénom, nom, téléphone et votre fonction pour continuer.'
+        )
+      );
       return;
     }
 
@@ -260,11 +286,18 @@ export function ProfileCompletionForm() {
         avatarUrl: savedAvatarUrl,
       });
     } catch (error) {
-      setMessage({ type: 'error', text: getErrorMessage(error) });
+      console.error(error);
+      setFeedback(resolveProfileCompletionFeedback(error));
       return;
     }
 
-    setMessage({ type: 'success', text: 'Profil complete avec succes. Redirection...' });
+    setFeedback(
+      authFeedback(
+        'success',
+        'Profil complété',
+        'Vos informations ont été enregistrées. Redirection en cours…'
+      )
+    );
 
     setTimeout(() => {
       navigate('/app/dashboard', { replace: true });
@@ -273,16 +306,14 @@ export function ProfileCompletionForm() {
 
   return (
     <div className="login-card profile-completion-card">
-      <div className="login-mobile-brand">
-        <AcrediLockup size={30} fontSize={22} />
-      </div>
-
-      <div className="profile-completion-heading">
-        <p className="eyebrow">Completion du profil</p>
-        <h1>Completez votre espace</h1>
-        <p className="muted">
-          Finalisez vos informations pour personnaliser votre espace de travail Acredi Space.
-        </p>
+      <div className="login-card-header">
+        <AcrediLockup size={34} fontSize={24} onLight />
+        <div className="profile-completion-heading">
+          <h1>Completez votre profil pour continuer</h1>
+          <p className="muted">
+            Finalisez vos informations pour personnaliser votre espace de travail Acredi Space.
+          </p>
+        </div>
       </div>
 
       <form className="login-form profile-completion-form" onSubmit={handleSubmit}>
@@ -324,7 +355,9 @@ export function ProfileCompletionForm() {
         </div>
 
         <label className="profile-completion-row">
-          <span className="profile-completion-label">Nom complet</span>
+          <span className="profile-completion-label">
+            Nom complet <em aria-hidden="true">*</em>
+          </span>
           <span className="profile-completion-name-grid">
             <span className="profile-input-wrap">
               <input
@@ -350,14 +383,16 @@ export function ProfileCompletionForm() {
         </label>
 
         <label className="profile-completion-row">
-          <span className="profile-completion-label">Email</span>
+          <span className="profile-completion-label">E-mail</span>
           <span className="profile-input-wrap profile-input-readonly">
             <input type="email" value={user.email} readOnly aria-readonly="true" />
           </span>
         </label>
 
         <label className="profile-completion-row">
-          <span className="profile-completion-label">Telephone</span>
+          <span className="profile-completion-label">
+            Telephone <em aria-hidden="true">*</em>
+          </span>
           <span className="profile-phone-control">
             <input
               type="tel"
@@ -384,7 +419,9 @@ export function ProfileCompletionForm() {
         </label>
 
         <label className="profile-completion-row">
-          <span className="profile-completion-label">Fonction / Profil</span>
+          <span className="profile-completion-label">
+            Fonction / Profil <em aria-hidden="true">*</em>
+          </span>
           <span className="profile-input-wrap">
             <select
               value={profileId}
@@ -428,25 +465,21 @@ export function ProfileCompletionForm() {
         </div>
 
         {profilesQuery.error && (
-          <p className="auth-error text-red-500 text-sm">
-            Impossible de charger les profils. Verifiez que le backend repond sur /api/profiles.
-          </p>
+          <AuthFeedbackBanner
+            feedback={authFeedback(
+              'error',
+              'Profils indisponibles',
+              'Impossible de charger la liste des fonctions. Vérifiez la connexion au serveur, puis réessayez.'
+            )}
+          />
         )}
 
-        {message && (
-          <p className={message.type === 'error' ? 'auth-error text-red-500 text-sm' : 'text-green-600 text-sm'}>
-            {message.text}
-          </p>
-        )}
+        {feedback && <AuthFeedbackBanner feedback={feedback} />}
 
-        <button className="button primary button-wide" type="submit" disabled={isSubmitting}>
-          {uploadAvatarMutation.isPending
-            ? 'Upload de la photo...'
-            : updateProfileMutation.isPending
-              ? 'Enregistrement...'
-              : 'Enregistrer et continuer'}
-        </button>
+        <AuthSubmitButton loading={isSubmitting}>Continuer</AuthSubmitButton>
       </form>
+
+      <AuthCardBrand />
     </div>
   );
 }
