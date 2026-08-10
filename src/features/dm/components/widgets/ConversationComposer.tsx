@@ -4,6 +4,8 @@ import {
   KeyboardEvent,
   Suspense,
   lazy,
+  useEffect,
+  useState,
   type RefObject,
 } from "react";
 import type { EmojiClickData, Theme } from "emoji-picker-react";
@@ -14,6 +16,51 @@ import { formatAttachmentSize } from "../utils/dmMessageFormat";
 
 const EmojiPicker = lazy(() => import("emoji-picker-react"));
 
+function SelectedFileChip({
+  file,
+  onRemove,
+}: {
+  file: File;
+  onRemove: () => void;
+}) {
+  const isImage = file.type.startsWith("image/");
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isImage) {
+      setThumbUrl(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    setThumbUrl(url);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file, isImage]);
+
+  return (
+    <span className={`dm-selected-file${isImage ? " is-image" : ""}`}>
+      {thumbUrl ? (
+        <span className="dm-selected-file-thumb">
+          <img alt="" src={thumbUrl} />
+        </span>
+      ) : (
+        <span className="dm-selected-file-icon">
+          <Icon name="file" size={14} />
+        </span>
+      )}
+      <span className="dm-selected-file-copy">
+        <strong>{file.name}</strong>
+        <small>{formatAttachmentSize(file.size)}</small>
+      </span>
+      <button type="button" aria-label={`Retirer ${file.name}`} onClick={onRemove}>
+        <Icon name="x" size={13} />
+      </button>
+    </span>
+  );
+}
 interface ConversationComposerProps {
   title: string;
   content: string;
@@ -96,25 +143,11 @@ export function ConversationComposer({
         {selectedFiles.length && !isEditing ? (
           <div className="dm-selected-files" aria-live="polite">
             {selectedFiles.map((file, index) => (
-              <span
-                className="dm-selected-file"
+              <SelectedFileChip
                 key={`${file.name}-${file.size}-${file.lastModified}`}
-              >
-                <span className="dm-selected-file-icon">
-                  <Icon name="file" size={14} />
-                </span>
-                <span className="dm-selected-file-copy">
-                  <strong>{file.name}</strong>
-                  <small>{formatAttachmentSize(file.size)}</small>
-                </span>
-                <button
-                  type="button"
-                  aria-label={`Retirer ${file.name}`}
-                  onClick={() => onRemoveSelectedFile(index)}
-                >
-                  <Icon name="x" size={13} />
-                </button>
-              </span>
+                file={file}
+                onRemove={() => onRemoveSelectedFile(index)}
+              />
             ))}
           </div>
         ) : null}

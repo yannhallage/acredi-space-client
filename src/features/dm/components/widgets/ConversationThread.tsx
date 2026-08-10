@@ -24,6 +24,7 @@ import {
   groupMessagesByDay,
   isSameSelectedFile,
   messageMatchesPending,
+  revokePendingAttachmentUrls,
   type LocalMessage,
 } from "../utils/dmMessageFormat";
 import { AvatarPreviewOverlay } from "./AvatarPreviewOverlay";
@@ -177,10 +178,17 @@ export function DirectConversationThread({
       );
 
       const pendingWithoutDuplicate = pendingMessages.filter(
-        (pendingMessage) =>
-          !messages.some((message) =>
+        (pendingMessage) => {
+          const matched = messages.some((message) =>
             messageMatchesPending(message, pendingMessage)
-          )
+          );
+
+          if (matched) {
+            revokePendingAttachmentUrls(pendingMessage.attachments);
+          }
+
+          return !matched;
+        }
       );
 
       const syncedMessages = messages.map((message) => {
@@ -435,9 +443,14 @@ export function DirectConversationThread({
       {
         onSuccess: (savedMessage) => {
           setLocalMessages((currentMessages) =>
-            currentMessages.map((message) =>
-              message.id === temporaryId ? savedMessage : message
-            )
+            currentMessages.map((message) => {
+              if (message.id !== temporaryId) {
+                return message;
+              }
+
+              revokePendingAttachmentUrls(message.attachments);
+              return savedMessage;
+            })
           );
         },
         onError: () => {

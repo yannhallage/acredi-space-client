@@ -26,6 +26,7 @@ export {
   groupMessagesByDay,
   isSameSelectedFile,
   messageMatchesPending,
+  revokePendingAttachmentUrls,
   type LocalAttachment,
   type LocalMessage,
 } from "./utils/dmMessageFormat";

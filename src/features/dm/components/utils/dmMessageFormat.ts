@@ -136,15 +136,36 @@ export function isSameSelectedFile(firstFile: File, secondFile: File) {
   );
 }
 
+export function isImageContentType(contentType?: string | null) {
+  return Boolean(contentType?.toLowerCase().startsWith("image/"));
+}
+
 export function createPendingAttachments(files: File[]): LocalAttachment[] {
-  return files.map((file, index) => ({
-    id: `pending-file-${file.name}-${file.lastModified}-${index}`,
-    name: file.name,
-    contentType: file.type || null,
-    sizeBytes: file.size,
-    downloadUrl: "",
-    pending: true,
-  }));
+  return files.map((file, index) => {
+    const isImage = isImageContentType(file.type);
+
+    return {
+      id: `pending-file-${file.name}-${file.lastModified}-${index}`,
+      name: file.name,
+      contentType: file.type || null,
+      sizeBytes: file.size,
+      downloadUrl: isImage ? URL.createObjectURL(file) : "",
+      pending: true,
+    };
+  });
+}
+
+export function revokePendingAttachmentUrls(
+  attachments?: Array<Pick<LocalAttachment, "downloadUrl" | "pending">>
+) {
+  attachments?.forEach((attachment) => {
+    if (
+      attachment.pending &&
+      attachment.downloadUrl.startsWith("blob:")
+    ) {
+      URL.revokeObjectURL(attachment.downloadUrl);
+    }
+  });
 }
 
 export function messageMatchesPending(
