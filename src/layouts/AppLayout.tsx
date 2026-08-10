@@ -496,8 +496,6 @@ export function AppLayout() {
                     <span className="nav-section-divider" aria-hidden="true" />
                   )}
                   {section.items.map((item) => {
-                    const isMessagesItem = item.to === "/app/dm";
-
                     return (
                       <HoverTip
                         key={`${item.to}-${item.label}`}
@@ -520,13 +518,6 @@ export function AppLayout() {
                         >
                           <Icon name={item.icon} size={18} />
                           <span>{item.label}</span>
-                          {isMessagesItem && totalUnreadMessages > 0 ? (
-                            <span className="nav-link-badge">
-                              {totalUnreadMessages > 99
-                                ? "99+"
-                                : totalUnreadMessages}
-                            </span>
-                          ) : null}
                         </NavLink>
                       </HoverTip>
                     );
