@@ -286,9 +286,6 @@ a {
   --auth-accent: #5b6cff;
   --auth-accent-hover: #4a59e6;
   --auth-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  --auth-font: "Inter", "Charlie Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", sans-serif;
-
   position: relative;
   isolation: isolate;
   min-height: 100vh;
@@ -300,10 +297,6 @@ a {
   padding: 32px 16px 140px;
   background: var(--auth-bg);
   color: var(--auth-text);
-  font-family: var(--auth-font);
-  font-optical-sizing: auto;
-  font-feature-settings: "cv11", "ss01";
-  -webkit-font-smoothing: antialiased;
 }
 
 .auth-corner {
@@ -348,7 +341,6 @@ a {
   background: var(--auth-card);
   box-shadow: var(--auth-shadow);
   border: 0;
-  font-family: var(--auth-font);
 }
 
 .login-card-header {
@@ -364,7 +356,6 @@ a {
 
 .login-card-header .brand-wordmark {
   color: var(--auth-text);
-  font-family: var(--auth-font);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -384,7 +375,6 @@ a {
 
 .login-card h1 {
   margin: 0;
-  font-family: var(--auth-font);
   font-size: 16px;
   line-height: 1.25;
   letter-spacing: -0.005em;
@@ -395,7 +385,6 @@ a {
 
 .login-card p {
   margin: 0;
-  font-family: var(--auth-font);
 }
 
 .login-card .muted,
@@ -418,7 +407,6 @@ a {
 .login-form {
   display: grid;
   gap: 12px;
-  font-family: var(--auth-font);
 }
 
 .login-form label {
@@ -444,7 +432,6 @@ a {
 .login-form .input-wrap input {
   color: var(--auth-text);
   height: 40px;
-  font-family: var(--auth-font);
   font-size: 14px;
   font-weight: 400;
 }
@@ -483,7 +470,6 @@ a {
   border-radius: 3px;
   background: var(--auth-accent) !important;
   border: 0;
-  font-family: var(--auth-font);
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0;
@@ -514,7 +500,6 @@ a {
 
 .login-card-footer .forgot-password-link {
   color: var(--auth-accent);
-  font-family: var(--auth-font);
   font-size: 14px;
   font-weight: 500;
 }
@@ -526,7 +511,6 @@ a {
   gap: 8px;
   margin-top: 4px;
   color: #6b778c;
-  font-family: var(--auth-font);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -541,14 +525,12 @@ a {
 .login-card .auth-back-link,
 .login-card .link-button {
   color: var(--auth-accent);
-  font-family: var(--auth-font);
   font-weight: 500;
 }
 
 .login-card .auth-error,
 .login-card .auth-success {
   text-align: left;
-  font-family: var(--auth-font);
 }
 
 .auth-feedback {
@@ -560,7 +542,6 @@ a {
   padding: 12px 12px;
   border-radius: 3px;
   border: 1px solid transparent;
-  font-family: var(--auth-font);
 }
 
 .auth-feedback-icon {
@@ -10644,7 +10625,6 @@ a {
 
 .auth-layout .profile-completion-label {
   color: var(--auth-muted);
-  font-family: var(--auth-font);
   font-size: 12px;
   font-weight: 600;
 }
@@ -10674,7 +10654,6 @@ a {
 .auth-layout .profile-phone-control input,
 .auth-layout .profile-phone-control select {
   color: var(--auth-text);
-  font-family: var(--auth-font);
   font-size: 14px;
 }
 
@@ -10701,7 +10680,6 @@ a {
   border-color: var(--auth-border);
   background: #fff;
   color: var(--auth-text);
-  font-family: var(--auth-font);
 }
 
 .auth-layout .profile-photo-actions small {
@@ -10711,7 +10689,6 @@ a {
 .auth-layout .theme-preference-card {
   border-right-color: var(--auth-border);
   color: var(--auth-muted);
-  font-family: var(--auth-font);
   font-weight: 500;
 }
 

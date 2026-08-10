@@ -388,7 +388,7 @@ export function AppLayout() {
       <div className="app-layout">
         <aside className="sidebar">
           <div className="sidebar-brand">
-            <AcrediLockup size={22} fontSize={16} />
+            <AcrediLockup size={34} fontSize={24} />
             <button
               className="icon-button"
               type="button"

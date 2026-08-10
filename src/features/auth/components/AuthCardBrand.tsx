@@ -13,7 +13,6 @@ export function AuthCardBrand() {
       <span
         style={{
           color: '#000',
-          fontFamily: 'Montserrat, Arial, sans-serif',
           fontSize: 11,
           letterSpacing: 2,
         }}
