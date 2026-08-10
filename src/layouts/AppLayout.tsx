@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useMyDiscussions } from "../shared/api/discussions";
 import { useAuth, useWorkspace } from "../shared/context";
 import { canAccessAllTeams, canAccessMyTeams } from "../features/teams/access";
 import {
@@ -25,6 +24,7 @@ import { ModalSetting } from "../features/settings/components";
 import { DesktopNotificationBanner } from "../shared/notifications/DesktopNotificationBanner";
 import { DESKTOP_NOTIFICATION_CLICK_EVENT } from "../shared/notifications/desktop";
 import { getNotificationTarget } from "../shared/notifications/routing";
+import { DiscussionsDock } from "./DiscussionsDock";
 
 const pageMeta: Record<string, { title: string; crumb: string }> = {
   "/app/dashboard": { title: "Tableau de bord", crumb: "ACCUEIL" },
@@ -237,8 +237,6 @@ export function AppLayout() {
     }))
     .filter((section) => section.items.length > 0);
   const canUseChat = hasAnyPermission(FEATURE_PERMISSION_REQUIREMENTS.chat);
-  const myDiscussionsQuery = useMyDiscussions({ enabled: canUseChat });
-  const recentDiscussions = (myDiscussionsQuery.data ?? []).slice(0, 5);
   const canUseSettings = hasAnyPermission(
     FEATURE_PERMISSION_REQUIREMENTS.settings
   );
@@ -515,74 +513,7 @@ export function AppLayout() {
                   ))}
                 </div>
               ))}
-
-              {canUseSettings ? (
-                <div className="nav-section nav-section-settings">
-                  {!sidebarCollapsed ? (
-                    <p className="nav-section-label">Système</p>
-                  ) : (
-                    <span className="nav-section-divider" aria-hidden="true" />
-                  )}
-                  <button
-                    className={openSetting ? "nav-link active" : "nav-link"}
-                    type="button"
-                    aria-haspopup="dialog"
-                    aria-expanded={openSetting}
-                    title={sidebarCollapsed ? "Paramètres" : undefined}
-                    onClick={() => setOpenSetting(true)}
-                  >
-                    <Icon name="settings" size={18} />
-                    <span>Paramètres</span>
-                  </button>
-                </div>
-              ) : null}
             </nav>
-
-            {canUseChat && !sidebarCollapsed ? (
-              <div className="workspace-list">
-                <div className="eyebrow-row">
-                  <span>Discussions</span>
-                </div>
-                {myDiscussionsQuery.isLoading ? (
-                  notificationSkeletons.map((item) => (
-                    <span
-                      className="skeleton-line workspace-skeleton"
-                      key={item}
-                    />
-                  ))
-                ) : myDiscussionsQuery.isError ? (
-                  <p className="muted workspace-error">
-                    Discussions indisponibles
-                  </p>
-                ) : recentDiscussions.length ? (
-                  recentDiscussions.map((discussion) => {
-                    const isActive = location.pathname.startsWith(
-                      `/app/chat/${discussion.id}`
-                    );
-
-                    return (
-                      <button
-                        key={discussion.id}
-                        className={isActive ? "workspace active" : "workspace"}
-                        type="button"
-                        onClick={() => {
-                          navigate(`/app/chat/${discussion.id}`);
-                        }}
-                      >
-                        <span
-                          style={{
-                            background: discussion.teamColor ?? "#5B6CFF",
-                          }}
-                        />
-                        <em>{discussion.name}</em>
-                      </button>
-                    );
-                  })
-                ) : (
-                  <p className="muted workspace-empty">Aucune discussion</p>
-                )}
-              </div>
-            ) : null}
           </div>
 
           <div className="sidebar-footer">
@@ -847,47 +778,22 @@ export function AppLayout() {
                       }}
                     >
                       <Icon name="edit" size={16} />
-                      Edit Profile
+                      Modifier le profil
                     </button>
-                    {/* <button
-                      className="account-menu-item"
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        toggleTheme();
-                        setOpenDropdown(null);
-                      }}
-                    >
-                      <Icon name="moon" size={16} />
-                      Toggle Theme
-                    </button> */}
-                    {/* <button
-                      className="account-menu-item"
-                      type="button"
-                      role="menuitem"
-                      onClick={() => setOpenDropdown(null)}
-                    >
-                      <Icon name="alert" size={16} />
-                      About
-                    </button> */}
-                    {/* <button
-                      className="account-menu-item"
-                      type="button"
-                      role="menuitem"
-                      onClick={() => setOpenDropdown(null)}
-                    >
-                      <Icon name="phoneOff" size={16} />
-                      Frappe Support
-                    </button> */}
-                    {/* <button
-                      className="account-menu-item"
-                      type="button"
-                      role="menuitem"
-                      onClick={() => setOpenDropdown(null)}
-                    >
-                      <Icon name="refresh" size={16} />
-                      Reset Desktop Layout
-                    </button> */}
+                    {canUseSettings ? (
+                      <button
+                        className="account-menu-item"
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setOpenDropdown(null);
+                          setOpenSetting(true);
+                        }}
+                      >
+                        <Icon name="settings" size={16} />
+                        Paramètres
+                      </button>
+                    ) : null}
                     <button
                       className="account-menu-item"
                       type="button"
@@ -895,17 +801,8 @@ export function AppLayout() {
                       onClick={handleLogout}
                     >
                       <Icon name="logOut" size={16} />
-                      Logout
+                      Déconnexion
                     </button>
-                    {/* <button
-                      className="account-menu-item"
-                      type="button"
-                      role="menuitem"
-                      onClick={() => setOpenDropdown(null)}
-                    >
-                      <Icon name="file" size={16} />
-                      Manage Billing
-                    </button> */}
                   </motion.div>
                 ) : null}
               </AnimatePresence>
@@ -925,6 +822,8 @@ export function AppLayout() {
           </main>
         </div>
       </div>
+
+      {canUseChat ? <DiscussionsDock /> : null}
 
       <AnimatePresence>
         {openSetting ? (

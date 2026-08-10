@@ -2138,6 +2138,250 @@ a {
   display: none;
 }
 
+.discussions-dock-root {
+  position: fixed;
+  right: 20px;
+  bottom: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.discussions-dock-root > * {
+  pointer-events: auto;
+}
+
+.discussions-dock,
+.discussions-dock-launcher {
+  position: relative;
+  right: auto;
+  bottom: auto;
+}
+
+.discussions-dock {
+  display: flex;
+  flex-direction: column;
+  width: min(340px, calc(100vw - 24px));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.discussions-dock.is-minimized {
+  width: min(280px, calc(100vw - 24px));
+}
+
+.discussions-dock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 8px 0 12px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.discussions-dock.is-minimized .discussions-dock-header {
+  border-bottom: 0;
+}
+
+.discussions-dock-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.discussions-dock-title strong {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.discussions-dock-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.discussions-dock-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-soft);
+  cursor: pointer;
+}
+
+.discussions-dock-icon:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.discussions-dock-chev {
+  transition: transform 140ms ease;
+}
+
+.discussions-dock-chev.is-up {
+  transform: rotate(180deg);
+}
+
+.discussions-dock-body-wrap {
+  overflow: hidden;
+}
+
+.discussions-dock-body {
+  max-height: min(420px, 55vh);
+  overflow: auto;
+  padding: 10px 8px 12px;
+  scrollbar-width: thin;
+}
+
+.discussions-dock-section + .discussions-dock-section {
+  margin-top: 12px;
+}
+
+.discussions-dock-label {
+  margin: 0 0 6px;
+  padding: 0 8px;
+  color: var(--muted);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.discussions-dock-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.discussions-dock-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.discussions-dock-item:hover {
+  background: var(--surface-2);
+}
+
+.discussions-dock-item.active {
+  background: var(--accent-soft);
+}
+
+.discussions-dock-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 2px;
+}
+
+.discussions-dock-avatar {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--muted-soft);
+}
+
+.discussions-dock-item-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.discussions-dock-item-text strong,
+.discussions-dock-item-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discussions-dock-item-text strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.discussions-dock-item-text small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.discussions-dock-unread {
+  flex: none;
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.discussions-dock-empty {
+  padding: 18px 12px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.discussions-dock-launcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.discussions-dock-launcher:hover {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface-2));
+}
+
 .app-main {
   display: flex;
   min-width: 0;
@@ -10286,8 +10530,7 @@ a {
   .sidebar-workspace-switch,
   .sidebar-footer,
   .nav-section-label,
-  .nav-section-divider,
-  .workspace-list {
+  .nav-section-divider {
     display: none;
   }
 
@@ -10571,6 +10814,32 @@ a {
   .nav-link.active::before {
     right: 14px;
     left: 14px;
+  }
+
+  .discussions-dock,
+  .discussions-dock-launcher {
+    right: auto;
+    left: auto;
+    width: auto;
+  }
+
+  .discussions-dock-root {
+    right: 10px;
+    left: 10px;
+    align-items: stretch;
+  }
+
+  .discussions-dock.is-minimized {
+    width: auto;
+  }
+
+  .discussions-dock,
+  .discussions-dock.is-minimized {
+    width: 100%;
+  }
+
+  .discussions-dock-body {
+    max-height: min(360px, 45vh);
   }
 
   .topbar {
