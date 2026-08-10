@@ -2037,13 +2037,30 @@ a {
   font-size: 13.5px;
   line-height: 1.2;
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
 }
 
 .nav-link:hover,
 .workspace:hover {
   background: var(--surface-2);
   color: var(--text);
+  transform: translateX(1px);
+}
+
+.sidebar.is-collapsed .nav-link:hover,
+.sidebar.is-collapsed .workspace:hover {
+  transform: none;
+}
+
+.nav-link:active {
+  transform: scale(0.98);
+}
+
+.sidebar.is-collapsed .nav-link:active {
+  transform: scale(0.96);
 }
 
 .nav-link.active,
@@ -2136,6 +2153,107 @@ a {
 
 .sidebar.is-collapsed .sidebar-collapse-btn span {
   display: none;
+}
+
+.hover-tip-trigger {
+  display: block;
+  width: 100%;
+}
+
+.hover-tip-anchor {
+  position: fixed;
+  z-index: 120;
+  pointer-events: none;
+}
+
+.hover-tip {
+  display: inline-block;
+  max-width: 220px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Contraste élevé : tip inversé par rapport au thème */
+[data-theme="dark"] .hover-tip {
+  border-color: #3f3f46;
+  background: #fafafa;
+  color: #0f0f12;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="light"] .hover-tip {
+  border-color: #27272a;
+  background: #18181b;
+  color: #fafafa;
+  box-shadow: 0 8px 24px rgba(15, 15, 18, 0.18);
+}
+
+.hover-tip-right::before,
+.hover-tip-left::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border: 1px solid transparent;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+[data-theme="dark"] .hover-tip-right::before,
+[data-theme="dark"] .hover-tip-left::before,
+[data-theme="dark"] .hover-tip-top::before,
+[data-theme="dark"] .hover-tip-bottom::before {
+  border-color: #3f3f46;
+  background: #fafafa;
+}
+
+[data-theme="light"] .hover-tip-right::before,
+[data-theme="light"] .hover-tip-left::before,
+[data-theme="light"] .hover-tip-top::before,
+[data-theme="light"] .hover-tip-bottom::before {
+  border-color: #27272a;
+  background: #18181b;
+}
+
+.hover-tip-right::before {
+  left: -5px;
+  border-right: 0;
+  border-top: 0;
+}
+
+.hover-tip-left::before {
+  right: -5px;
+  border-left: 0;
+  border-bottom: 0;
+}
+
+.hover-tip-top::before,
+.hover-tip-bottom::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border: 1px solid transparent;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.hover-tip-top::before {
+  bottom: -5px;
+  border-left: 0;
+  border-top: 0;
+}
+
+.hover-tip-bottom::before {
+  top: -5px;
+  border-right: 0;
+  border-bottom: 0;
 }
 
 .discussions-dock-root {

@@ -19,7 +19,7 @@ import {
   type PermissionCode,
 } from "../shared/permissions";
 import { useTheme } from "../shared/theme";
-import { AccessDeniedState, AcrediLockup, AcrediMark, Avatar, Icon, type IconName } from "../shared/ui";
+import { AccessDeniedState, AcrediLockup, AcrediMark, Avatar, HoverTip, Icon, type IconName } from "../shared/ui";
 import { ModalSetting } from "../features/settings/components";
 import { DesktopNotificationBanner } from "../shared/notifications/DesktopNotificationBanner";
 import { DESKTOP_NOTIFICATION_CLICK_EVENT } from "../shared/notifications/desktop";
@@ -467,21 +467,20 @@ export function AppLayout() {
               ) : (
                 <>
                   <AcrediLockup size={34} fontSize={22} />
-                  <span className="sidebar-workspace" title={workspaceName}>
-                    {workspaceName}
-                  </span>
+                  <span className="sidebar-workspace">{workspaceName}</span>
                 </>
               )}
             </div>
             {!sidebarCollapsed ? (
-              <button
-                className="icon-button sidebar-workspace-switch"
-                type="button"
-                aria-label="Changer d'espace"
-                title="Changer d'espace"
-              >
-                <Icon name="chevDown" size={14} />
-              </button>
+              <HoverTip content="Changer d'espace" side="bottom">
+                <button
+                  className="icon-button sidebar-workspace-switch"
+                  type="button"
+                  aria-label="Changer d'espace"
+                >
+                  <Icon name="chevDown" size={14} />
+                </button>
+              </HoverTip>
             ) : null}
           </div>
 
@@ -495,21 +494,29 @@ export function AppLayout() {
                     <span className="nav-section-divider" aria-hidden="true" />
                   )}
                   {section.items.map((item) => (
-                    <NavLink
+                    <HoverTip
                       key={`${item.to}-${item.label}`}
-                      className={({ isActive }) => {
-                        const active = item.isActive
-                          ? item.isActive(location.pathname)
-                          : isActive;
-
-                        return active ? "nav-link active" : "nav-link";
-                      }}
-                      to={item.to}
-                      title={sidebarCollapsed ? item.label : undefined}
+                      content={item.label}
+                      disabled={!sidebarCollapsed}
+                      side="right"
                     >
-                      <Icon name={item.icon} size={18} />
-                      <span>{item.label}</span>
-                    </NavLink>
+                      <NavLink
+                        className={({ isActive }) => {
+                          const active = item.isActive
+                            ? item.isActive(location.pathname)
+                            : isActive;
+
+                          return active ? "nav-link active" : "nav-link";
+                        }}
+                        to={item.to}
+                        aria-label={
+                          sidebarCollapsed ? item.label : undefined
+                        }
+                      >
+                        <Icon name={item.icon} size={18} />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    </HoverTip>
                   ))}
                 </div>
               ))}
@@ -517,23 +524,31 @@ export function AppLayout() {
           </div>
 
           <div className="sidebar-footer">
-            <button
-              className="nav-link sidebar-collapse-btn"
-              type="button"
-              aria-label={
+            <HoverTip
+              content={
                 sidebarCollapsed
                   ? "Développer la navigation"
                   : "Réduire la navigation"
               }
-              title={sidebarCollapsed ? "Développer" : "Réduire"}
-              onClick={handleToggleSidebar}
+              side="right"
             >
-              <Icon
-                name={sidebarCollapsed ? "arrowRight" : "arrowLeft"}
-                size={18}
-              />
-              <span>Réduire</span>
-            </button>
+              <button
+                className="nav-link sidebar-collapse-btn"
+                type="button"
+                aria-label={
+                  sidebarCollapsed
+                    ? "Développer la navigation"
+                    : "Réduire la navigation"
+                }
+                onClick={handleToggleSidebar}
+              >
+                <Icon
+                  name={sidebarCollapsed ? "arrowRight" : "arrowLeft"}
+                  size={18}
+                />
+                <span>Réduire</span>
+              </button>
+            </HoverTip>
           </div>
         </aside>
 
