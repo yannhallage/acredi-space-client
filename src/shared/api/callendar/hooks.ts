@@ -3,6 +3,7 @@ import { meetingKeys } from "../meeting/hooks";
 import { calendarService } from "./service";
 
 import type {
+    AddCalendarParticipantRequest,
     CreateCalendarEventRequest,
     UpdateCalendarEventRequest,
 } from "./types";
@@ -69,6 +70,26 @@ export function useDeleteCalendarEvent() {
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: calendarKeys.events() });
             void queryClient.invalidateQueries({ queryKey: meetingKeys.all });
+        },
+    });
+}
+
+export function useAddCalendarParticipants() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            id,
+            request,
+        }: {
+            id: string;
+            request: AddCalendarParticipantRequest;
+        }) => calendarService.addParticipants(id, request),
+        onSuccess: (event) => {
+            void queryClient.invalidateQueries({ queryKey: calendarKeys.events() });
+            if (event.meetingId || event.type === "MEETING") {
+                void queryClient.invalidateQueries({ queryKey: meetingKeys.all });
+            }
         },
     });
 }

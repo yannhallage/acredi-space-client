@@ -3,4 +3,5 @@ export const calendarEndpoints = {
   create: "/calendar/events",
   update: (id: string) => `/calendar/events/${id}`,
   delete: (id: string) => `/calendar/events/${id}`,
+  participants: (id: string) => `/calendar/events/${id}/participants`,
 } as const;

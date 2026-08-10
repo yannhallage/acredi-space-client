@@ -6,6 +6,7 @@ import {
 } from "./normalizers";
 
 import type {
+    AddCalendarParticipantRequest,
     ApiResponse,
     CalendarEventResponse,
     CreateCalendarEventRequest,
@@ -45,5 +46,14 @@ export const calendarService = {
 
     async delete(id: string) {
         await http.delete<ApiResponse<void>>(calendarEndpoints.delete(id));
+    },
+
+    async addParticipants(id: string, request: AddCalendarParticipantRequest) {
+        const response = await http.post<ApiResponse<CalendarEventResponse>>(
+            calendarEndpoints.participants(id),
+            request
+        );
+
+        return normalizeCalendarEvent(unwrapApiResponse(response));
     },
 };
