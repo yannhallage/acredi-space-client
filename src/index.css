@@ -1932,35 +1932,33 @@ a {
 .sidebar-brand {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
-  padding: 2px 6px 10px;
+  padding: 2px 6px 14px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .sidebar-brand-main {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
+}
+
+.sidebar-brand-main .brand-lockup,
+.sidebar-brand-main .brand-logo {
+  max-width: 100%;
 }
 
 .sidebar-workspace {
   display: block;
-  max-width: 160px;
+  max-width: 200px;
   overflow: hidden;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.sidebar-workspace-switch {
-  flex: none;
-  width: 28px;
-  height: 28px;
-  margin-top: 2px;
 }
 
 .sidebar-scroll {
@@ -2087,6 +2085,53 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.nav-link-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent) !important;
+  color: #fff !important;
+  font-style: normal !important;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.sidebar.is-collapsed .nav-link-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 9px;
+}
+
+.discussions-dock-count,
+.discussions-dock-unread {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--accent) !important;
+  color: #fff !important;
+  font-style: normal !important;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
 }
 
 .nav-link svg {
@@ -2457,18 +2502,9 @@ a {
   font-size: 11px;
 }
 
-.discussions-dock-unread {
-  flex: none;
-  min-width: 18px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font-style: normal;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.4;
-  text-align: center;
+.discussions-dock-title .discussions-dock-count,
+.discussions-dock-launcher .discussions-dock-count {
+  margin-left: 2px;
 }
 
 .discussions-dock-empty {
@@ -10645,7 +10681,6 @@ a {
   }
 
   .sidebar-workspace,
-  .sidebar-workspace-switch,
   .sidebar-footer,
   .nav-section-label,
   .nav-section-divider {

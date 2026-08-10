@@ -54,6 +54,10 @@ function upsertMessage(
 function patchChannelPreview(
   channels: ChannelResponse[] | undefined,
   message: MessageResponse,
+  options?: {
+    activeChannelId?: string | null;
+    currentUserId?: string | null;
+  },
 ) {
   if (!channels?.length) {
     return channels;
@@ -64,12 +68,29 @@ function patchChannelPreview(
       return channel;
     }
 
+    const preview = message.deletedAt
+      ? "Message supprimé"
+      : message.content;
+    const alreadySeen =
+      channel.lastMessageAt === message.createdAt &&
+      channel.lastMessage === preview;
+    const isOwnMessage =
+      Boolean(options?.currentUserId) &&
+      message.senderId === options?.currentUserId;
+    const isActiveChannel = channel.id === options?.activeChannelId;
+    const shouldIncrementUnread =
+      !alreadySeen &&
+      !isOwnMessage &&
+      !isActiveChannel &&
+      !message.deletedAt;
+
     return {
       ...channel,
-      lastMessage: message.deletedAt
-        ? "Message supprimé"
-        : message.content,
+      lastMessage: preview,
       lastMessageAt: message.createdAt,
+      unreadCount: shouldIncrementUnread
+        ? (channel.unreadCount ?? 0) + 1
+        : channel.unreadCount ?? 0,
     };
   });
 }
@@ -178,7 +199,11 @@ export function useChannelMessagesSocket(
 
               queryClient.setQueryData<ChannelResponse[]>(
                 chatKeys.channels(),
-                (current) => patchChannelPreview(current, payload),
+                (current) =>
+                  patchChannelPreview(current, payload, {
+                    activeChannelId: activeChannelIdRef.current,
+                    currentUserId,
+                  }),
               );
 
               if (

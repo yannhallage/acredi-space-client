@@ -9,6 +9,11 @@ const DOCK_STATE_KEY = "acredi-discussions-dock";
 
 type DockState = "expanded" | "minimized" | "closed";
 
+interface DiscussionsDockProps {
+  newDiscussionsCount?: number;
+  unreadByChannelId?: Record<string, number>;
+}
+
 const dockMotion = {
   initial: { y: 28, opacity: 0, scale: 0.98 },
   animate: { y: 0, opacity: 1, scale: 1 },
@@ -51,7 +56,22 @@ function getPrivateName(channel: {
   return channel.displayName || channel.name || "Discussion privée";
 }
 
-export function DiscussionsDock() {
+function formatCount(count: number) {
+  return count > 99 ? "99+" : String(count);
+}
+
+function DockCountBadge({ count }: { count?: number | null }) {
+  if (!count || count <= 0) {
+    return null;
+  }
+
+  return <span className="discussions-dock-count">{formatCount(count)}</span>;
+}
+
+export function DiscussionsDock({
+  newDiscussionsCount = 0,
+  unreadByChannelId = {},
+}: DiscussionsDockProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [dockState, setDockState] = useState<DockState>(() => readDockState());
@@ -111,6 +131,7 @@ export function DiscussionsDock() {
           >
             <Icon name="message" size={16} />
             <span>Discussions</span>
+            <DockCountBadge count={newDiscussionsCount} />
           </motion.button>
         ) : (
           <motion.div
@@ -130,6 +151,7 @@ export function DiscussionsDock() {
               >
                 <Icon name="message" size={15} />
                 <strong>Discussions</strong>
+                <DockCountBadge count={newDiscussionsCount} />
               </button>
               <div className="discussions-dock-actions">
                 <button
@@ -233,6 +255,10 @@ export function DiscussionsDock() {
                                 const active = location.pathname.startsWith(
                                   `/app/dm/${channel.id}`
                                 );
+                                const unread =
+                                  unreadByChannelId[channel.id] ??
+                                  channel.unreadCount ??
+                                  0;
 
                                 return (
                                   <li key={channel.id}>
@@ -260,13 +286,7 @@ export function DiscussionsDock() {
                                           <small>Message privé</small>
                                         )}
                                       </span>
-                                      {(channel.unreadCount ?? 0) > 0 ? (
-                                        <em className="discussions-dock-unread">
-                                          {(channel.unreadCount ?? 0) > 99
-                                            ? "99+"
-                                            : channel.unreadCount}
-                                        </em>
-                                      ) : null}
+                                      <DockCountBadge count={unread} />
                                     </button>
                                   </li>
                                 );

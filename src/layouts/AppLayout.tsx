@@ -12,6 +12,10 @@ import {
   type DashboardNotification,
 } from "../shared/api/dashboard";
 import {
+  useChannelMessagesSocket,
+  useDmUnread,
+} from "../shared/api/dm";
+import {
   FEATURE_PERMISSION_REQUIREMENTS,
   getRoutePermissionRule,
   PermissionGate,
@@ -237,6 +241,15 @@ export function AppLayout() {
     }))
     .filter((section) => section.items.length > 0);
   const canUseChat = hasAnyPermission(FEATURE_PERMISSION_REQUIREMENTS.chat);
+  const activeDmId = location.pathname.startsWith("/app/dm/")
+    ? location.pathname.split("/")[3] ?? null
+    : null;
+  const {
+    privateChannelIds,
+    unreadByChannelId,
+    totalUnreadMessages,
+  } = useDmUnread(canUseChat, activeDmId);
+  useChannelMessagesSocket(privateChannelIds, activeDmId);
   const canUseSettings = hasAnyPermission(
     FEATURE_PERMISSION_REQUIREMENTS.settings
   );
@@ -459,29 +472,18 @@ export function AppLayout() {
             <div className="sidebar-brand-main">
               {sidebarCollapsed ? (
                 <AcrediMark
-                  size={28}
+                  size={32}
                   top={palette.markTop}
                   left={palette.accent2}
                   right={palette.accent}
                 />
               ) : (
                 <>
-                  <AcrediLockup size={34} fontSize={22} />
+                  <AcrediLockup size={48} fontSize={28} />
                   <span className="sidebar-workspace">{workspaceName}</span>
                 </>
               )}
             </div>
-            {!sidebarCollapsed ? (
-              <HoverTip content="Changer d'espace" side="bottom">
-                <button
-                  className="icon-button sidebar-workspace-switch"
-                  type="button"
-                  aria-label="Changer d'espace"
-                >
-                  <Icon name="chevDown" size={14} />
-                </button>
-              </HoverTip>
-            ) : null}
           </div>
 
           <div className="sidebar-scroll">
@@ -493,33 +495,71 @@ export function AppLayout() {
                   ) : (
                     <span className="nav-section-divider" aria-hidden="true" />
                   )}
-                  {section.items.map((item) => (
-                    <HoverTip
-                      key={`${item.to}-${item.label}`}
-                      content={item.label}
-                      disabled={!sidebarCollapsed}
-                      side="right"
-                    >
-                      <NavLink
-                        className={({ isActive }) => {
-                          const active = item.isActive
-                            ? item.isActive(location.pathname)
-                            : isActive;
+                  {section.items.map((item) => {
+                    const isMessagesItem = item.to === "/app/dm";
 
-                          return active ? "nav-link active" : "nav-link";
-                        }}
-                        to={item.to}
-                        aria-label={
-                          sidebarCollapsed ? item.label : undefined
-                        }
+                    return (
+                      <HoverTip
+                        key={`${item.to}-${item.label}`}
+                        content={item.label}
+                        disabled={!sidebarCollapsed}
+                        side="right"
                       >
-                        <Icon name={item.icon} size={18} />
-                        <span>{item.label}</span>
-                      </NavLink>
-                    </HoverTip>
-                  ))}
+                        <NavLink
+                          className={({ isActive }) => {
+                            const active = item.isActive
+                              ? item.isActive(location.pathname)
+                              : isActive;
+
+                            return active ? "nav-link active" : "nav-link";
+                          }}
+                          to={item.to}
+                          aria-label={
+                            sidebarCollapsed ? item.label : undefined
+                          }
+                        >
+                          <Icon name={item.icon} size={18} />
+                          <span>{item.label}</span>
+                          {isMessagesItem && totalUnreadMessages > 0 ? (
+                            <span className="nav-link-badge">
+                              {totalUnreadMessages > 99
+                                ? "99+"
+                                : totalUnreadMessages}
+                            </span>
+                          ) : null}
+                        </NavLink>
+                      </HoverTip>
+                    );
+                  })}
                 </div>
               ))}
+
+              {canUseSettings ? (
+                <div className="nav-section nav-section-settings">
+                  {!sidebarCollapsed ? (
+                    <p className="nav-section-label">Système</p>
+                  ) : (
+                    <span className="nav-section-divider" aria-hidden="true" />
+                  )}
+                  <HoverTip
+                    content="Paramètres"
+                    disabled={!sidebarCollapsed}
+                    side="right"
+                  >
+                    <button
+                      className={openSetting ? "nav-link active" : "nav-link"}
+                      type="button"
+                      aria-haspopup="dialog"
+                      aria-expanded={openSetting}
+                      aria-label={sidebarCollapsed ? "Paramètres" : undefined}
+                      onClick={() => setOpenSetting(true)}
+                    >
+                      <Icon name="settings" size={18} />
+                      <span>Paramètres</span>
+                    </button>
+                  </HoverTip>
+                </div>
+              ) : null}
             </nav>
           </div>
 
@@ -838,7 +878,12 @@ export function AppLayout() {
         </div>
       </div>
 
-      {canUseChat ? <DiscussionsDock /> : null}
+      {canUseChat ? (
+        <DiscussionsDock
+          newDiscussionsCount={totalUnreadMessages}
+          unreadByChannelId={unreadByChannelId}
+        />
+      ) : null}
 
       <AnimatePresence>
         {openSetting ? (
