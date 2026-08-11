@@ -116,9 +116,9 @@ export function AppLayout() {
   const [openSetting, setOpenSetting] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
-      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) !== "0";
     } catch {
-      return false;
+      return true;
     }
   });
   const [openDropdown, setOpenDropdown] = useState<
