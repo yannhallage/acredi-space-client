@@ -291,43 +291,127 @@ a {
   min-height: 100vh;
   min-height: 100dvh;
   display: grid;
-  place-items: center;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 32px 16px 140px;
+  padding: 0;
   background: var(--auth-bg);
   color: var(--auth-text);
 }
 
-.auth-corner {
+.auth-hero {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 40px 32px 36px;
+  overflow: hidden;
+  background:
+    radial-gradient(1200px 700px at 18% 12%, rgba(123, 134, 255, 0.38), transparent 55%),
+    radial-gradient(900px 620px at 92% 88%, rgba(139, 92, 246, 0.28), transparent 50%),
+    linear-gradient(160deg, #e8ebff 0%, #efe8ff 46%, #f3f0ff 100%);
+}
+
+.auth-hero-glow {
   position: absolute;
-  bottom: 0;
-  z-index: 0;
+  border-radius: 50%;
+  filter: blur(40px);
   pointer-events: none;
-  user-select: none;
-  object-fit: contain;
-  width: min(360px, 34vw);
-  max-height: min(280px, 34vh);
+}
+
+.auth-hero-glow-a {
+  width: min(420px, 58%);
+  aspect-ratio: 1;
+  top: 18%;
+  left: 22%;
+  background: rgba(91, 108, 255, 0.32);
+}
+
+.auth-hero-glow-b {
+  width: min(260px, 40%);
+  aspect-ratio: 1;
+  right: 8%;
+  bottom: 16%;
+  background: rgba(167, 139, 250, 0.28);
+}
+
+.auth-hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(91, 108, 255, 0.16) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse at 50% 42%, #000 35%, transparent 78%);
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.auth-hero-art {
+  position: relative;
+  z-index: 1;
+  width: min(490px, 80%);
+  justify-self: center;
+}
+
+.auth-hero-image {
+  position: relative;
+  display: block;
+  width: 100%;
   height: auto;
+  aspect-ratio: auto;
+  object-fit: contain;
+  object-position: center;
+  user-select: none;
 }
 
-.auth-corner-left {
-  left: 0;
-  object-position: left bottom;
+.auth-hero-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 420px;
+  justify-self: center;
+  text-align: center;
+  padding-top: 4px;
 }
 
-.auth-corner-right {
-  right: 0;
-  object-position: right bottom;
+.auth-hero-kicker {
+  margin: 0 0 8px;
+  color: #5b6cff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.auth-hero-copy h2 {
+  margin: 0 0 8px;
+  color: #172b4d;
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.auth-hero-copy p:last-child {
+  margin: 0;
+  color: #5a6a85;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .auth-panel {
   position: relative;
   z-index: 1;
   width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 8px 0;
+  padding: 48px 24px;
+  background: var(--auth-bg);
 }
 
 .login-card {
@@ -494,14 +578,55 @@ a {
   justify-content: center;
   align-items: center;
   gap: 10px;
-  padding-top: 4px;
-  border-top: 1px solid #ebecf0;
+  padding: 8px 0 4px;
+  border-top: 0;
 }
 
 .login-card-footer .forgot-password-link {
   color: var(--auth-accent);
   font-size: 14px;
   font-weight: 500;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.login-card-footer .forgot-password-link:hover {
+  text-decoration: underline;
+}
+
+.auth-card-brand {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 18px 0 4px;
+  border-top: 1px solid #ebecf0;
+}
+
+.auth-card-brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #172b4d;
+  font-family: "Outfit", "IBM Plex Sans", ui-sans-serif, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.auth-card-brand-tagline {
+  margin: 0;
+  color: #6b778c;
+  font-family: "Outfit", "IBM Plex Sans", ui-sans-serif, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-align: center;
 }
 
 .login-card-brand {
@@ -10612,7 +10737,6 @@ a {
     overflow: auto;
   }
 
-  .auth-layout,
   .app-layout,
   .files-page,
   .chat-page,
@@ -10638,12 +10762,20 @@ a {
   }
 
   .auth-layout {
-    padding: 30px 30px 30px;
+    grid-template-columns: 1fr;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: auto;
   }
 
-  .auth-corner {
-    width: min(240px, 48vw);
-    max-height: min(190px, 26vh);
+  .auth-hero {
+    display: none;
+  }
+
+  .auth-panel {
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 30px;
   }
 
   .login-card {

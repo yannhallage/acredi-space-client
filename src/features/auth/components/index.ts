@@ -1,4 +1,5 @@
 export { AuthCardBrand } from './AuthCardBrand';
+export { AuthHero } from './AuthHero';
 export { AuthFeedbackBanner } from './AuthFeedbackBanner';
 export { AuthSubmitButton } from './AuthSubmitButton';
 export {

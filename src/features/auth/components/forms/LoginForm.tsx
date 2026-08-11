@@ -140,7 +140,7 @@ export function LoginForm({ redirectTo, authLoading = false }: LoginFormProps) {
         <button
           type="button"
           className="forgot-password-link"
-          onClick={() => navigate('/forgot-password')}
+          onClick={() => window.location.href= "/forgot-password"}
         >
           Vous ne pouvez pas vous connecter ?
         </button>

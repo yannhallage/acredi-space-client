@@ -1,24 +1,13 @@
+import { AcrediMark } from '../../../shared/ui';
+
 export function AuthCardBrand() {
   return (
-    <div
-      aria-label="Acredi Group"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px 0',
-        width: '100%',
-      }}
-    >
-      <span
-        style={{
-          color: '#000',
-          fontSize: 11,
-          letterSpacing: 2,
-        }}
-      >
-        Acredi Group
-      </span>
+    <div className="auth-card-brand">
+      <div className="auth-card-brand-lockup" aria-label="Acredi Group">
+        <AcrediMark size={18} top="#172B4D" left="#8B7FFF" right="#5B6CFF" />
+        <span>Acredi Group</span>
+      </div>
+      <p className="auth-card-brand-tagline">Un compte pour Acredi Space.</p>
     </div>
   );
 }
