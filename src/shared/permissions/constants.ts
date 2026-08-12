@@ -40,6 +40,13 @@ export const PERMISSIONS = {
   DELETE_NOTES: 'notes.delete',
   SHARE_NOTES: 'notes.share',
 
+  VIEW_POLLS: 'polls.view',
+  CREATE_POLLS: 'polls.create',
+  UPDATE_POLLS: 'polls.update',
+  DELETE_POLLS: 'polls.delete',
+  RESPOND_POLLS: 'polls.respond',
+  MANAGE_POLL_PARTICIPANTS: 'polls.manage_participants',
+
   VIEW_DASHBOARD: 'dashboard.view',
 
   VIEW_ORGANIZATION: 'organization.view',

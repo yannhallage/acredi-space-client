@@ -42,6 +42,7 @@ const pageMeta: Record<string, { title: string; crumb: string }> = {
   "/app/teams": { title: "Teams", crumb: "COLLABORATION" },
   "/app/users": { title: "Users", crumb: "CRM" },
   "/app/notes": { title: "Notes", crumb: "CRM" },
+  "/app/polls": { title: "Sondages", crumb: "CRM" },
 };
 
 interface NavItem {
@@ -182,6 +183,13 @@ export function AppLayout() {
       icon: "notes",
       label: "Notes",
       permissions: FEATURE_PERMISSION_REQUIREMENTS.notes,
+    },
+    {
+      to: "/app/polls",
+      icon: "poll",
+      label: "Sondages",
+      permissions: FEATURE_PERMISSION_REQUIREMENTS.polls,
+      isActive: (pathname) => pathname.startsWith("/app/polls"),
     },
     {
       to: "/app/trash",
