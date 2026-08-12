@@ -1,5 +1,13 @@
 * {
   box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 :root {
@@ -2535,7 +2543,14 @@ a {
   max-height: min(420px, 55vh);
   overflow: auto;
   padding: 10px 8px 12px;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.discussions-dock-body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .discussions-dock-section + .discussions-dock-section {
