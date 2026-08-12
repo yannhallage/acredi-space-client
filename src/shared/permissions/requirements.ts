@@ -57,13 +57,9 @@ export const NOTES_FEATURE_PERMISSIONS = [
   PERMISSIONS.SHARE_NOTES,
 ] as const satisfies readonly PermissionCode[];
 
+/** Accès nav / routes Polls : visible pour tout rôle ayant polls.view (collaborateur inclus). */
 export const POLLS_FEATURE_PERMISSIONS = [
   PERMISSIONS.VIEW_POLLS,
-  PERMISSIONS.CREATE_POLLS,
-  PERMISSIONS.UPDATE_POLLS,
-  PERMISSIONS.DELETE_POLLS,
-  PERMISSIONS.RESPOND_POLLS,
-  PERMISSIONS.MANAGE_POLL_PARTICIPANTS,
 ] as const satisfies readonly PermissionCode[];
 
 export const POLLS_CREATE_PERMISSIONS = [
