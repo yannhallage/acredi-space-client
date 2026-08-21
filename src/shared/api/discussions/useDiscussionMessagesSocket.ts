@@ -10,7 +10,7 @@ import {
   websocketReconnectDelayMs,
   websocketUrl,
 } from "../websocket";
-import { discussionKeys } from "./hooks";
+import { discussionKeys, writeGroupMessageToCache } from "./messagesCache";
 import type { GroupMessageResponse } from "./types";
 
 export type DiscussionTypingUser = {
@@ -33,22 +33,6 @@ function readGroupMessage(message: IMessage) {
 
 function readTypingEvent(message: IMessage) {
   return parseSocketJson<GroupTypingEvent>(message.body);
-}
-
-function upsertMessage(
-  current: GroupMessageResponse[] | undefined,
-  incoming: GroupMessageResponse,
-) {
-  const existing = current ?? [];
-  const index = existing.findIndex((item) => item.id === incoming.id);
-
-  if (index === -1) {
-    return [...existing, incoming];
-  }
-
-  return existing.map((item, itemIndex) =>
-    itemIndex === index ? incoming : item,
-  );
 }
 
 /**
@@ -141,10 +125,7 @@ export function useDiscussionMessagesSocket(discussionId?: string | null) {
               return;
             }
 
-            queryClient.setQueryData<GroupMessageResponse[]>(
-              discussionKeys.messages(payload.discussionId),
-              (current) => upsertMessage(current, payload),
-            );
+            writeGroupMessageToCache(queryClient, payload);
 
             queryClient.invalidateQueries({
               queryKey: discussionKeys.mine(),

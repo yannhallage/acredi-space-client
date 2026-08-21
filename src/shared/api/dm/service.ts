@@ -4,6 +4,8 @@ import type {
   ChannelResponse,
   CreateChannelRequest,
   CreateDirectChannelRequest,
+  MessagePageParams,
+  MessagePageResponse,
   MessageResponse,
   SendMessageRequest,
   ShareMessageRequest,
@@ -60,9 +62,19 @@ export const chatService = {
     return unwrapApiResponse(response);
   },
 
-  async findMessages(channelId: string): Promise<MessageResponse[]> {
-    const response = await http.get<ApiResponse<MessageResponse[]>>(
-      chatEndpoints.messages(channelId)
+  async findMessages(
+    channelId: string,
+    params?: MessagePageParams
+  ): Promise<MessagePageResponse> {
+    const response = await http.get<ApiResponse<MessagePageResponse>>(
+      chatEndpoints.messages(channelId),
+      {
+        params: {
+          before: params?.before,
+          beforeId: params?.beforeId,
+          limit: params?.limit,
+        },
+      }
     );
     return unwrapApiResponse(response);
   },

@@ -21,11 +21,12 @@ export const chatService = {
   },
 
   async findMessages(channelId: string) {
-    const response = await http.get<ApiResponse<MessageResponse[]>>(
-      chatEndpoints.messages(channelId),
-    );
+    const response = await http.get<
+      ApiResponse<{ messages?: MessageResponse[] } | MessageResponse[]>
+    >(chatEndpoints.messages(channelId));
 
-    return unwrapApiResponse(response);
+    const data = unwrapApiResponse(response);
+    return Array.isArray(data) ? data : data.messages ?? [];
   },
 
   async send(request: SendMessageRequest) {

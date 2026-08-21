@@ -1,27 +1,24 @@
 import {
+  useInfiniteQuery,
   useMutation,
   useQueries,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { chatKeys, writeMessageToCaches } from "./messagesCache";
 import { chatService } from "./service";
 import type {
   ChannelResponse,
   CreateChannelRequest,
   CreateDirectChannelRequest,
+  MessagePageCursor,
+  MessagePageResponse,
   MessageResponse,
   SendMessageRequest,
   ShareMessageRequest,
 } from "./types";
 
-export const chatKeys = {
-  all: ["chat"] as const,
-
-  channels: () => [...chatKeys.all, "channels"] as const,
-
-  messages: (channelId: string) =>
-    [...chatKeys.all, "messages", channelId] as const,
-};
+export { chatKeys } from "./messagesCache";
 
 export function useChannelsQuery(enabled = true) {
   return useQuery<ChannelResponse[]>({
@@ -32,22 +29,49 @@ export function useChannelsQuery(enabled = true) {
   });
 }
 
-export function useMessagesQuery(channelId?: string) {
-  return useQuery<MessageResponse[]>({
+export function useInfiniteMessagesQuery(channelId?: string) {
+  return useInfiniteQuery({
     queryKey: chatKeys.messages(channelId ?? ""),
-    queryFn: () => chatService.findMessages(channelId!),
+    queryFn: ({ pageParam }) =>
+      chatService.findMessages(channelId!, pageParam),
     enabled: Boolean(channelId),
+    initialPageParam: undefined as MessagePageCursor | undefined,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.hasMore || !lastPage.nextBefore) {
+        return undefined;
+      }
+
+      return {
+        before: lastPage.nextBefore,
+        beforeId: lastPage.nextBeforeId ?? undefined,
+      };
+    },
     staleTime: 1000 * 10,
   });
+}
+
+export function useMessagesQuery(channelId?: string) {
+  const query = useInfiniteMessagesQuery(channelId);
+
+  return {
+    ...query,
+    data: query.data
+      ? query.data.pages
+          .slice()
+          .reverse()
+          .flatMap((page) => page.messages ?? [])
+      : undefined,
+  };
 }
 
 export function useMessagesQueries(channelIds: string[]) {
   return useQueries({
     queries: channelIds.map((channelId) => ({
-      queryKey: chatKeys.messages(channelId),
+      queryKey: chatKeys.messagePreview(channelId),
       queryFn: () => chatService.findMessages(channelId),
       enabled: Boolean(channelId),
       staleTime: 1000 * 10,
+      select: (page: MessagePageResponse) => page.messages,
     })),
   });
 }
@@ -84,20 +108,7 @@ export function useSendMessageMutation() {
   return useMutation<MessageResponse, Error, SendMessageRequest>({
     mutationFn: (request) => chatService.sendMessage(request),
     onSuccess: (message) => {
-      queryClient.setQueryData<MessageResponse[]>(
-        chatKeys.messages(message.channelId),
-        (oldMessages = []) => {
-          const alreadyExists = oldMessages.some(
-            (item) => item.id === message.id
-          );
-
-          if (alreadyExists) {
-            return oldMessages;
-          }
-
-          return [...oldMessages, message];
-        }
-      );
+      writeMessageToCaches(queryClient, message);
 
       queryClient.invalidateQueries({
         queryKey: chatKeys.channels(),
@@ -112,11 +123,7 @@ export function useDeleteMessageMutation() {
   return useMutation<MessageResponse, Error, string>({
     mutationFn: (messageId) => chatService.deleteMessage(messageId),
     onSuccess: (message) => {
-      queryClient.setQueryData<MessageResponse[]>(
-        chatKeys.messages(message.channelId),
-        (oldMessages = []) =>
-          oldMessages.map((item) => (item.id === message.id ? message : item)),
-      );
+      writeMessageToCaches(queryClient, message);
 
       queryClient.invalidateQueries({
         queryKey: chatKeys.channels(),
@@ -136,11 +143,7 @@ export function useUpdateMessageMutation() {
     mutationFn: ({ messageId, content }) =>
       chatService.updateMessage(messageId, content),
     onSuccess: (message) => {
-      queryClient.setQueryData<MessageResponse[]>(
-        chatKeys.messages(message.channelId),
-        (oldMessages = []) =>
-          oldMessages.map((item) => (item.id === message.id ? message : item)),
-      );
+      writeMessageToCaches(queryClient, message);
 
       queryClient.invalidateQueries({
         queryKey: chatKeys.channels(),
@@ -161,20 +164,7 @@ export function useShareMessageMutation() {
       chatService.shareMessage(messageId, request),
     onSuccess: (message) => {
       if ("channelId" in message && message.channelId) {
-        queryClient.setQueryData<MessageResponse[]>(
-          chatKeys.messages(message.channelId),
-          (oldMessages = []) => {
-            const alreadyExists = oldMessages.some(
-              (item) => item.id === message.id,
-            );
-
-            if (alreadyExists) {
-              return oldMessages;
-            }
-
-            return [...oldMessages, message];
-          },
-        );
+        writeMessageToCaches(queryClient, message);
 
         queryClient.invalidateQueries({
           queryKey: chatKeys.channels(),

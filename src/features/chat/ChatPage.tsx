@@ -52,6 +52,7 @@ export function ChatPage() {
       messagesError={page.messagesError}
       messagesErrorDetails={page.messagesErrorDetails}
       messagesFetching={page.messagesFetching}
+      loadingOlder={page.loadingOlder}
       messageGroups={page.messageGroups}
       messageListRef={page.messageListRef}
       getUserAvatarUrl={page.getUserAvatarUrl}

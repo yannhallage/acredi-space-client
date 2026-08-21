@@ -2,6 +2,7 @@ import {
   ChangeEvent,
   FormEvent,
   KeyboardEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -38,6 +39,9 @@ import {
 } from "../utils/messageFormat";
 import { useChatMobileLayout } from "./useChatMobileLayout";
 
+const SCROLL_BOTTOM_THRESHOLD = 120;
+const SCROLL_TOP_LOAD_THRESHOLD = 80;
+
 export function useChatPage() {
   const { channelId: discussionId } = useParams();
   const navigate = useNavigate();
@@ -66,6 +70,13 @@ export function useChatPage() {
 
   const messageListRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const shouldStickToBottomRef = useRef(true);
+  const previousDiscussionIdRef = useRef<string | null>(null);
+  const loadingOlderRef = useRef(false);
+  const pendingScrollRestoreRef = useRef<{
+    height: number;
+    top: number;
+  } | null>(null);
 
   const [draft, setDraft] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -139,6 +150,9 @@ export function useChatPage() {
     data: messages = [],
     isLoading: messagesLoading,
     isFetching: messagesFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     isError: messagesError,
     error: messagesErrorDetails,
   } = useDiscussionMessages(activeDiscussion?.id, {
@@ -251,8 +265,113 @@ export function useChatPage() {
       return;
     }
 
-    list.scrollTop = list.scrollHeight;
+    const discussionChanged =
+      previousDiscussionIdRef.current !== (activeDiscussion?.id ?? null);
+    previousDiscussionIdRef.current = activeDiscussion?.id ?? null;
+
+    if (pendingScrollRestoreRef.current) {
+      return;
+    }
+
+    if (discussionChanged || shouldStickToBottomRef.current) {
+      list.scrollTop = list.scrollHeight;
+      shouldStickToBottomRef.current = true;
+    }
   }, [localMessages, activeDiscussion?.id]);
+
+  const loadOlderMessages = useCallback(() => {
+    const list = messageListRef.current;
+
+    if (
+      !list ||
+      !hasNextPage ||
+      isFetchingNextPage ||
+      loadingOlderRef.current
+    ) {
+      return;
+    }
+
+    loadingOlderRef.current = true;
+    if (!shouldStickToBottomRef.current) {
+      pendingScrollRestoreRef.current = {
+        height: list.scrollHeight,
+        top: list.scrollTop,
+      };
+    }
+
+    void Promise.resolve(fetchNextPage()).finally(() => {
+      loadingOlderRef.current = false;
+    });
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  useEffect(() => {
+    const list = messageListRef.current;
+
+    if (!list || messagesLoading) {
+      return;
+    }
+
+    function handleScroll() {
+      const currentList = messageListRef.current;
+      if (!currentList) {
+        return;
+      }
+
+      const distanceFromBottom = Math.max(
+        0,
+        currentList.scrollHeight - currentList.scrollTop - currentList.clientHeight,
+      );
+      shouldStickToBottomRef.current =
+        distanceFromBottom <= SCROLL_BOTTOM_THRESHOLD;
+
+      if (currentList.scrollTop <= SCROLL_TOP_LOAD_THRESHOLD) {
+        loadOlderMessages();
+      }
+    }
+
+    handleScroll();
+    list.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      list.removeEventListener("scroll", handleScroll);
+    };
+  }, [activeDiscussion?.id, loadOlderMessages, messagesLoading]);
+
+  useEffect(() => {
+    const list = messageListRef.current;
+
+    if (!list || messagesLoading || !hasNextPage || isFetchingNextPage) {
+      return;
+    }
+
+    if (list.scrollHeight <= list.clientHeight + SCROLL_TOP_LOAD_THRESHOLD) {
+      loadOlderMessages();
+    }
+  }, [
+    hasNextPage,
+    isFetchingNextPage,
+    loadOlderMessages,
+    localMessages.length,
+    messagesLoading,
+  ]);
+
+  useEffect(() => {
+    const pending = pendingScrollRestoreRef.current;
+    const list = messageListRef.current;
+
+    if (!pending || !list || isFetchingNextPage) {
+      return;
+    }
+
+    list.scrollTop = pending.top + (list.scrollHeight - pending.height);
+    pendingScrollRestoreRef.current = null;
+  }, [isFetchingNextPage, localMessages]);
+
+  useEffect(() => {
+    pendingScrollRestoreRef.current = null;
+    loadingOlderRef.current = false;
+    shouldStickToBottomRef.current = true;
+  }, [activeDiscussion?.id]);
 
   const messageGroups = useMemo(
     () => groupMessagesByDay(localMessages),
@@ -610,7 +729,10 @@ export function useChatPage() {
     messagesLoading,
     messagesError,
     messagesErrorDetails,
-    messagesFetching,
+    messagesFetching: messagesFetching && !isFetchingNextPage,
+    hasMore: Boolean(hasNextPage),
+    loadingOlder: isFetchingNextPage,
+    onLoadOlder: loadOlderMessages,
     messageGroups,
     messageListRef,
     getUserAvatarUrl,

@@ -5555,6 +5555,13 @@ a {
   font-size: 11px;
 }
 
+.chat-history-hint {
+  margin: 0 0 8px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .chat-send-error {
   color: var(--red);
 }

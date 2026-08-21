@@ -66,3 +66,19 @@ export interface ShareMessageRequest {
 export interface UpdateMessageRequest {
   content: string;
 }
+
+export interface MessagePageCursor {
+  before?: string;
+  beforeId?: string;
+}
+
+export interface MessagePageParams extends MessagePageCursor {
+  limit?: number;
+}
+
+export interface MessagePageResponse {
+  messages: MessageResponse[];
+  hasMore: boolean;
+  nextBefore?: string | null;
+  nextBeforeId?: string | null;
+}

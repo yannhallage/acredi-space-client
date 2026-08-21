@@ -1320,6 +1320,13 @@
   line-height: 1.55;
 }
 
+.dm-thread-older-loader {
+  padding: 10px 12px 4px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
 .dm-typing-indicator {
   margin-bottom: 6px;
 }

@@ -6,6 +6,8 @@ import type {
   CreateGroupDiscussionRequest,
   GroupDiscussionMemberResponse,
   GroupDiscussionResponse,
+  GroupMessagePageParams,
+  GroupMessagePageResponse,
   GroupMessageResponse,
   SendGroupMessageRequest,
 } from "./types";
@@ -111,9 +113,19 @@ export const discussionService = {
     return unwrapApiResponse(response);
   },
 
-  async findMessages(discussionId: string) {
-    const response = await http.get<ApiResponse<GroupMessageResponse[]>>(
-      discussionEndpoints.messages(discussionId)
+  async findMessages(
+    discussionId: string,
+    params?: GroupMessagePageParams
+  ) {
+    const response = await http.get<ApiResponse<GroupMessagePageResponse>>(
+      discussionEndpoints.messages(discussionId),
+      {
+        params: {
+          before: params?.before,
+          beforeId: params?.beforeId,
+          limit: params?.limit,
+        },
+      }
     );
 
     return unwrapApiResponse(response);

@@ -742,6 +742,7 @@ interface ConversationMessageListProps {
   currentUserName?: string;
   currentUserAvatarUrl?: string | null;
   isTyping?: boolean;
+  loadingOlder?: boolean;
   onEditMessage: (message: LocalMessage) => void;
   onDeleteMessage: (messageId: string) => void;
 }
@@ -756,6 +757,7 @@ export function ConversationMessageList({
   currentUserName,
   currentUserAvatarUrl,
   isTyping = false,
+  loadingOlder = false,
   onEditMessage,
   onDeleteMessage,
 }: ConversationMessageListProps) {
@@ -854,6 +856,9 @@ export function ConversationMessageList({
   return (
     <>
       <main ref={messageListRef} className="dm-thread-body">
+        {loadingOlder ? (
+          <div className="dm-thread-older-loader">Chargement de l'historique...</div>
+        ) : null}
         {messageGroups.length === 0 ? (
           <div className="dm-thread-empty">
             <div>
