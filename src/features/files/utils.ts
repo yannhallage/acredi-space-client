@@ -48,6 +48,42 @@ export function formatFileDate(date: Date | null) {
   }).format(date);
 }
 
+export function formatFileDateShort(date: Date | null) {
+  if (!date) {
+    return "date inconnue";
+  }
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
+
+export function formatFileActivity(
+  file: WorkspaceFile,
+  options?: { isOwner?: boolean },
+) {
+  const date = formatFileDateShort(
+    file.deletedAt ?? file.updatedAt ?? file.createdAt,
+  );
+
+  if (file.deletedAt) {
+    return `Supprime • ${date}`;
+  }
+
+  const wasUpdated =
+    Boolean(file.updatedAt && file.createdAt) &&
+    file.updatedAt!.getTime() !== file.createdAt!.getTime();
+
+  if (options?.isOwner) {
+    return wasUpdated
+      ? `Vous avez modifie • ${date}`
+      : `Vous avez importe • ${date}`;
+  }
+
+  return wasUpdated ? `Modifie • ${date}` : `Importe • ${date}`;
+}
+
 export function buildFolderTrail(
   folder: Folder | null,
   folderById: Map<string, Folder>,

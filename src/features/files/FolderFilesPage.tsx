@@ -180,6 +180,12 @@ export function FolderFilesPage() {
             emptyDescription="Importez un fichier dans ce dossier."
             emptyTitle="Aucun fichier"
             files={page.visibleFiles}
+            getOwnerLabel={(file) =>
+              file.ownerId && user?.id === file.ownerId ? "Vous" : "—"
+            }
+            getOwnerUser={(file) =>
+              file.ownerId && user?.id === file.ownerId ? user : null
+            }
             onDelete={page.handleDeleteFile}
             onDownload={page.handleDownloadFile}
             onOpenPreview={page.handleOpenPreview}
@@ -247,9 +253,11 @@ export function FolderFilesPage() {
             ) : null}
           </>
         }
-        details={[{ label: "Chemin", value: `/Acredi Space/${page.currentPath}` }]}
         file={page.selectedFile}
+        files={page.visibleFiles}
         onClose={() => page.setSelectedFileId(null)}
+        onNavigate={page.handleOpenPreview}
+        path={`/Acredi Space/${page.currentPath}`}
         preview={page.preview}
         subtitle="Apercu fichier"
       />

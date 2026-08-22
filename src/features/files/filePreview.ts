@@ -84,3 +84,11 @@ export function getPreviewKind(file: WorkspaceFile): FilePreviewKind {
 export function isImageFile(file: WorkspaceFile) {
   return getPreviewKind(file) === "image";
 }
+
+export function isVideoFile(file: WorkspaceFile) {
+  return getPreviewKind(file) === "video";
+}
+
+export function canZoomPreview(file: WorkspaceFile) {
+  return getPreviewKind(file) === "image";
+}

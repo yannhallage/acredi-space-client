@@ -14,13 +14,11 @@ import {
 } from "../../../shared/api/files";
 import { useFolders, type Folder } from "../../../shared/api/folders";
 import { useUsersQuery } from "../../../shared/api/users";
-import { resolveAssetUrl } from "../../../shared/api/http";
 import type { User } from "../../../shared/types";
 import { downloadFileFromUrl } from "../../../shared/utils/downloadFile";
 
-import type { PreviewState } from "../filePreview";
-import { cacheFilePreviewUrl } from "../filePreviewUrlCache";
 import { buildFolderTrail, pluralizeFile } from "../utils";
+import { useFilePreviewLoader } from "./useFilePreviewLoader";
 
 const emptyFolders: Folder[] = [];
 const emptyFiles: WorkspaceFile[] = [];
@@ -35,16 +33,15 @@ export function useFolderFilesPage(folderId: string | undefined) {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [openMenuFileId, setOpenMenuFileId] = useState<string | null>(null);
-  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [shareTargetFile, setShareTargetFile] = useState<WorkspaceFile | null>(null);
   const [shareLevel, setShareLevel] = useState<FilePermissionLevel>("READ");
   const [sharingUserId, setSharingUserId] = useState<string | null>(null);
-  const [preview, setPreview] = useState<PreviewState>({
-    error: null,
-    fileId: null,
-    loading: false,
-    url: null,
-  });
+  const {
+    openPreview,
+    preview,
+    selectedFileId,
+    setSelectedFileId,
+  } = useFilePreviewLoader();
   const [toast, setToast] = useState<ToastState>({
     show: false,
     intent: "success",
@@ -68,7 +65,6 @@ export function useFolderFilesPage(folderId: string | undefined) {
     isPending: isFilesPending,
   } = useFiles();
   const uploadFileMutation = useUploadFile();
-  const previewFileUrlMutation = useDownloadFileUrl();
   const downloadFileUrlMutation = useDownloadFileUrl();
   const shareFileMutation = useShareFile();
   const deleteFileMutation = useDeleteFile();
@@ -216,49 +212,13 @@ export function useFolderFilesPage(folderId: string | undefined) {
     }
   }
 
-  async function handleOpenPreview(file: WorkspaceFile) {
-    setOpenMenuFileId(null);
-    setSelectedFileId(file.id);
-    setPreview({
-      error: null,
-      fileId: file.id,
-      loading: true,
-      url: null,
-    });
-
-    try {
-      const url = await previewFileUrlMutation.mutateAsync(file.id);
-      const resolvedUrl = await cacheFilePreviewUrl(
-        file.id,
-        resolveAssetUrl(url) ?? url,
-      );
-
-      setPreview((current) =>
-        current.fileId === file.id
-          ? {
-              error: null,
-              fileId: file.id,
-              loading: false,
-              url: resolvedUrl,
-            }
-          : current,
-      );
-    } catch (caughtError) {
-      setPreview((current) =>
-        current.fileId === file.id
-          ? {
-              error:
-                caughtError instanceof Error
-                  ? caughtError.message
-                  : "Impossible de charger l'apercu.",
-              fileId: file.id,
-              loading: false,
-              url: null,
-            }
-          : current,
-      );
-    }
-  }
+  const handleOpenPreview = useCallback(
+    async (file: WorkspaceFile) => {
+      setOpenMenuFileId(null);
+      await openPreview(file);
+    },
+    [openPreview],
+  );
 
   async function handleDownloadFile(file: WorkspaceFile) {
     setOpenMenuFileId(null);

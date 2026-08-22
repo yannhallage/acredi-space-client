@@ -26,9 +26,15 @@ export function FolderFilesPageSkeleton() {
         <div className="files-file-grid" aria-hidden="true">
           {fileSkeletons.map((item) => (
             <article className="files-file-card files-file-card-skeleton" key={item}>
+              <span className="files-file-card-header">
+                <span className="skeleton-line files-file-skeleton-icon" />
+                <span className="skeleton-line files-file-skeleton-name" />
+              </span>
               <span className="files-file-preview files-file-skeleton-preview" />
-              <span className="skeleton-line files-file-skeleton-name" />
-              <span className="skeleton-line files-file-skeleton-meta" />
+              <span className="files-file-card-footer">
+                <span className="skeleton-line files-file-skeleton-avatar" />
+                <span className="skeleton-line files-file-skeleton-meta" />
+              </span>
             </article>
           ))}
         </div>

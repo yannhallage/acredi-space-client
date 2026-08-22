@@ -3,6 +3,7 @@ export { ShareModal } from "./modals/ShareModal";
 export type { ShareModalProps } from "./modals/ShareModal";
 export { FilesPageSkeleton } from "./skeletons/FilesPageSkeleton";
 export { FolderFilesPageSkeleton } from "./skeletons/FolderFilesPageSkeleton";
+export { FileCard } from "./widgets/FileCard";
 export { FileGrid } from "./widgets/FileGrid";
 export { FileList } from "./widgets/FileList";
 export { FilePreviewContent } from "./widgets/FilePreviewContent";

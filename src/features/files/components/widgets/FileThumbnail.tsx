@@ -56,7 +56,7 @@ export function FileThumbnail({ file }: { file: WorkspaceFile }) {
         <FileIcon
           ext={getFileExtension(file)}
           color={getFileColor(file)}
-          size={46}
+          size={54}
         />
       </span>
     );

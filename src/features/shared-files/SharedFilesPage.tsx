@@ -99,6 +99,8 @@ export function SharedFilesPage() {
             emptyDescription="Les fichiers que l'on vous partage apparaitront ici."
             emptyTitle="Aucun fichier partage"
             files={page.visibleFiles}
+            getOwnerLabel={page.getOwnerLabel}
+            getOwnerUser={page.getOwnerUser}
             onDownload={page.handleDownload}
             onOpenPreview={page.handleOpenPreview}
             onToggleMenu={(fileId) =>
@@ -128,9 +130,11 @@ export function SharedFilesPage() {
             Telecharger
           </button>
         }
-        details={[{ label: "Chemin", value: "/Acredi Space/Fichiers partages" }]}
         file={page.selectedFile}
+        files={page.visibleFiles}
         onClose={() => page.setSelectedFileId(null)}
+        onNavigate={page.handleOpenPreview}
+        path="/Acredi Space/Fichiers partages"
         preview={page.preview}
         subtitle="Fichier partage"
       />

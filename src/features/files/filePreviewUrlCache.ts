@@ -62,6 +62,18 @@ async function fetchFilePreviewUrl(fileId: string) {
   return cache.get(fileId)!.promise!;
 }
 
+export function getCachedFilePreviewUrl(fileId: string) {
+  return cache.get(fileId)?.url ?? null;
+}
+
+export function prefetchFilePreviewUrl(fileId: string) {
+  void fetchFilePreviewUrl(fileId).catch(() => undefined);
+}
+
+export function loadFilePreviewUrl(fileId: string) {
+  return fetchFilePreviewUrl(fileId);
+}
+
 export function setCachedFilePreviewUrl(fileId: string, url: string) {
   void cacheFilePreviewUrl(fileId, url);
 }
