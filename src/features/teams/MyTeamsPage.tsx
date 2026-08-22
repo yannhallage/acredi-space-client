@@ -76,7 +76,7 @@ function MyTeamCard({
           onClick={() => onOpenDetails(team)}
         >
           <Icon name="eye" size={14} />
-          Voir l&apos;equipe
+          {/* Voir l&apos;equipe */}
         </button>
       </div>
     </article>

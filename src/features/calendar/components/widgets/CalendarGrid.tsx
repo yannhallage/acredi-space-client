@@ -5,6 +5,7 @@ import {
   resolveEventColor,
 } from "../../../../shared/api/callendar/normalizers";
 import {
+  addDays,
   formatDayName,
   formatDayNumber,
   getCalendarHours,
@@ -358,7 +359,11 @@ export function CalendarGrid({
                 {hours.map((hour) => (
                   <button
                     key={hour}
-                    onClick={() => onOpenCreateModal(dateKey, hour)}
+                    onClick={() =>
+                      hour === "00:00"
+                        ? onOpenCreateModal(toDateKey(addDays(day, 1)), hour)
+                        : onOpenCreateModal(dateKey, hour)
+                    }
                     className="block h-[72px] w-full cursor-pointer border-b border-[var(--border)] text-left hover:bg-[var(--surface-2)]"
                     type="button"
                   />

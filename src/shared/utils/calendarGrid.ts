@@ -1,8 +1,8 @@
 export type CalendarViewMode = "list" | "month" | "week" | "day";
 
 export const CALENDAR_HOUR_HEIGHT = 72;
-export const CALENDAR_START_HOUR = 0;
-export const CALENDAR_END_HOUR = 23;
+export const CALENDAR_START_HOUR = 6;
+export const CALENDAR_END_HOUR = 24;
 
 export function toDateKey(date: Date) {
   const copy = new Date(date);
@@ -93,13 +93,18 @@ export function buildDateTimeLocal(dateKey: string, time: string) {
   return `${dateKey}T${time}`;
 }
 
+export function formatCalendarHour(hour: number) {
+  return `${String(((hour % 24) + 24) % 24).padStart(2, "0")}:00`;
+}
+
 export function getCalendarHours(
   startHour = CALENDAR_START_HOUR,
   endHour = CALENDAR_END_HOUR
 ) {
-  return Array.from(
-    { length: endHour - startHour + 1 },
-    (_, index) => `${String(startHour + index).padStart(2, "0")}:00`
+  const lastHour = endHour === 0 ? 24 : endHour;
+
+  return Array.from({ length: lastHour - startHour + 1 }, (_, index) =>
+    formatCalendarHour(startHour + index)
   );
 }
 
