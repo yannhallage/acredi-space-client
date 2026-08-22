@@ -26,6 +26,7 @@ import { useTheme } from "../shared/theme";
 import { AccessDeniedState, AcrediLockup, AcrediMark, Avatar, HoverTip, Icon, type IconName } from "../shared/ui";
 import { ModalSetting } from "../features/settings/components";
 import { DesktopNotificationBanner } from "../shared/notifications/DesktopNotificationBanner";
+import { SidebarCurrentPlan } from "./SidebarCurrentPlan";
 import { DESKTOP_NOTIFICATION_CLICK_EVENT } from "../shared/notifications/desktop";
 import { getNotificationTarget } from "../shared/notifications/routing";
 import { DiscussionsDock } from "./DiscussionsDock";
@@ -35,8 +36,9 @@ const pageMeta: Record<string, { title: string; crumb: string }> = {
   "/app/shared-files": { title: "Fichiers partagés", crumb: "CONTENU" },
   "/app/trash": { title: "Corbeille", crumb: "CONTENU" },
   "/app/files": { title: "Fichiers Acredi Space", crumb: "CONTENU" },
-  "/app/chat": { title: "Canal équipe", crumb: "COLLABORATION" },
-  "/app/dm": { title: "Messages", crumb: "COLLABORATION" },
+  "/app/chat": { title: "Canal equipe", crumb: "COLLABORATION" },
+  "/app/dm": { title: "Messages directs", crumb: "COLLABORATION" },
+  "/app/mail": { title: "Mail", crumb: "COLLABORATION" },
   "/app/calendar": { title: "Calendrier", crumb: "PLANNING" },
   "/app/meeting": { title: "Réunions", crumb: "VISIO" },
   "/app/profile": { title: "Mon profil", crumb: "PARAMÈTRES" },
@@ -45,6 +47,7 @@ const pageMeta: Record<string, { title: string; crumb: string }> = {
   "/app/teams": { title: "Équipes", crumb: "COLLABORATION" },
   "/app/users": { title: "Utilisateurs", crumb: "CRM" },
   "/app/notes": { title: "Notes", crumb: "CRM" },
+  "/app/polls": { title: "Sondages", crumb: "CRM" },
 };
 
 const SIDEBAR_COLLAPSED_KEY = "acredi-sidebar-collapsed";
@@ -185,6 +188,12 @@ export function AppLayout() {
             pathname.startsWith("/app/dm") || pathname.startsWith("/app/chat"),
         },
         {
+          to: "/app/mail",
+          icon: "mail",
+          label: "Mail",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.chat,
+        },
+        {
           to: "/app/meeting",
           icon: "video",
           label: "Réunions",
@@ -219,7 +228,7 @@ export function AppLayout() {
       items: [
         {
           to: "/app/users",
-          icon: "user",
+          icon: "users",
           label: "Utilisateurs",
           permissions: FEATURE_PERMISSION_REQUIREMENTS.users,
         },
@@ -228,6 +237,13 @@ export function AppLayout() {
           icon: "notes",
           label: "Notes",
           permissions: FEATURE_PERMISSION_REQUIREMENTS.notes,
+        },
+        {
+          to: "/app/polls",
+          icon: "poll",
+          label: "Sondages",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.polls,
+          isActive: (pathname) => pathname.startsWith("/app/polls"),
         },
       ],
     },
@@ -479,7 +495,10 @@ export function AppLayout() {
                 />
               ) : (
                 <>
-                  <AcrediLockup size={48} fontSize={28} />
+                  <div className="sidebar-brand-lockup">
+                    <AcrediLockup size={38} fontSize={22} />
+                    <SidebarCurrentPlan />
+                  </div>
                   <span className="sidebar-workspace">{workspaceName}</span>
                 </>
               )}
@@ -611,6 +630,18 @@ export function AppLayout() {
               >
                 <Icon name={dark ? "sun" : "moon"} size={18} />
               </button>
+              <PermissionGate permissions={FEATURE_PERMISSION_REQUIREMENTS.chat}>
+                <a
+                  className="icon-button gmail-link"
+                  href="/app/mail"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Ouvrir Gmail"
+                  title="Gmail"
+                >
+                  <img src="/gmail-logo.svg" alt="" aria-hidden="true" />
+                </a>
+              </PermissionGate>
               <a
                 className="icon-button nuum-link"
                 href="https://app.nuum-ci.com/authentification"
@@ -886,11 +917,11 @@ export function AppLayout() {
           // />
 
           <ModalSetting
-          userName={user.name}
-          userEmail={user.email}
-          workspaceName={workspaceName}
-          onClose={() => setOpenSetting(false)}
-/>
+            userName={user.name}
+            userEmail={user.email}
+            workspaceName={workspaceName}
+            onClose={() => setOpenSetting(false)}
+          />
         ) : null}
       </AnimatePresence>
     </>

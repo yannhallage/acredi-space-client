@@ -50,7 +50,6 @@ export interface GroupDiscussionResponse {
   updatedAt?: string | null;
   members?: GroupDiscussionMemberResponse[];
 }
-
 export interface GroupMessageResponse {
   id: string;
   discussionId: string;
@@ -60,6 +59,8 @@ export interface GroupMessageResponse {
   createdAt: string;
   editedAt?: string | null;
   deletedAt?: string | null;
+  deletedById?: string | null;
+  deleted: boolean;
 }
 
 export interface SendGroupMessageRequest {
@@ -72,18 +73,24 @@ export interface CreateGroupDiscussionRequest {
   memberIds?: string[];
 }
 
+export interface UpdateGroupMessageRequest {
+  content: string;
+}
+
 export interface GroupMessagePageCursor {
-  before?: string;
+  before: string;
   beforeId?: string;
 }
 
-export interface GroupMessagePageParams extends GroupMessagePageCursor {
+export interface GroupMessagePageParams {
+  before?: string;
+  beforeId?: string;
   limit?: number;
 }
 
 export interface GroupMessagePageResponse {
   messages: GroupMessageResponse[];
   hasMore: boolean;
-  nextBefore?: string | null;
-  nextBeforeId?: string | null;
+  nextBefore: string | null;
+  nextBeforeId: string | null;
 }

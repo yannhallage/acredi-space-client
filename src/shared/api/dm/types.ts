@@ -68,17 +68,19 @@ export interface UpdateMessageRequest {
 }
 
 export interface MessagePageCursor {
-  before?: string;
+  before: string;
   beforeId?: string;
 }
 
-export interface MessagePageParams extends MessagePageCursor {
+export interface MessagePageParams {
+  before?: string;
+  beforeId?: string;
   limit?: number;
 }
 
 export interface MessagePageResponse {
   messages: MessageResponse[];
   hasMore: boolean;
-  nextBefore?: string | null;
-  nextBeforeId?: string | null;
+  nextBefore: string | null;
+  nextBeforeId: string | null;
 }

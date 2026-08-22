@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   buildOtpSession,
   getLoginAuthResponse,
@@ -121,19 +121,30 @@ export function LoginForm({ redirectTo, authLoading = false }: LoginFormProps) {
             required
           />
         </label>
-
-        <label className="check-row">
-          <input
-            type="checkbox"
-            checked={trustDevice}
-            onChange={(event) => setTrustDevice(event.target.checked)}
-          />
-          Faire confiance a cet appareil
-        </label>
-
+        <div className="login-row text-[11px]">
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={trustDevice}
+              onChange={(event) => setTrustDevice(event.target.checked)}
+            />
+            Faire confiance a cet appareil
+          </label>
+         <button
+  type="button"
+  className="forgot-password-link"
+  onClick={() => navigate("/forgot-password")}
+>
+  Mot de passe oublié ?
+</button>
+        </div>
         {feedback && <AuthFeedbackBanner feedback={feedback} />}
-
-        <AuthSubmitButton loading={isSubmitting}>Continuer</AuthSubmitButton>
+        <button className="button primary button-wide" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Connexion...' : 'Entrer dans Acredi Space'}
+        </button>
+        <p className="login-footnote">
+          Pas encore de compte ? <Link to="/signup">Creer un compte</Link>
+        </p>
       </form>
 
       <div className="login-card-footer">

@@ -30,6 +30,8 @@ export interface User {
   onboardingStatus?: string;
   phoneNumber?: string | null;
   profile?: string | UserProfileDetails | null;
+  organizationId?: string | null;
+  organizationName?: string | null;
   adminRole: AdminRole;
 }
 

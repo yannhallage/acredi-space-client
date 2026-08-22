@@ -15,7 +15,12 @@ import { SharedFilesPage } from '../features/shared-files/SharedFilesPage';
 import { TrashFilesPage } from '../features/trash/TrashFilesPage';
 import MeetingPage from '../features/meeting/MeetingPage';
 import { MeetingRoom } from '../features/meeting/MeetingRoom';
+import { MailPage } from '../features/mail/MailPage';
 import { NotesPage } from '../features/notes/NotesPage';
+import { PollsPage } from '../features/polls/PollsPage';
+import { PollCreatePage } from '../features/polls/PollCreatePage';
+import { PollDetailPage } from '../features/polls/PollDetailPage';
+import { PollTakePage } from '../features/polls/PollTakePage';
 import { PreviewPage } from '../features/preview/PreviewPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
 import { ChangePasswordPage } from '../features/settings/ChangePasswordPage';
@@ -26,6 +31,9 @@ import { CreateTeamPage } from "../features/teams/CreateTeamPage";
 import { UserDetailPage } from '../features/users/UserDetailPage';
 import { UsersPage } from '../features/users/UsersPage';
 import { OtpPage } from '../features/otp/OtpPage';
+import { SignupOrganizationPage } from '../features/signup/SignupOrganizationPage';
+import { SignupPage } from '../features/signup/SignupPage';
+import { SignupSuccessPage } from '../features/signup/SignupSuccessPage';
 import { AppLayout } from '../layouts/AppLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { AuthProvider, WorkspaceProvider } from '../shared/context';
@@ -56,6 +64,7 @@ export default function App() {
 
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
                 <Route path="/verify-otp" element={<OtpPage />} />
 
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -68,9 +77,12 @@ export default function App() {
               </Route>
 
               <Route element={<ProtectedRoute />}>
+                <Route path="/signup/organization" element={<SignupOrganizationPage />} />
+                <Route path="/signup/success" element={<SignupSuccessPage />} />
                 <Route path="/settings/password" element={<ChangePasswordPage />} />
                 <Route path="/settings/plans" element={<PlansPage />} />
                 <Route path="/app/meeting-room/:roomName" element={<MeetingRoom />} />
+                <Route path="/app/mail" element={<MailPage />} />
 
                 <Route path="/app" element={<AppLayout />}>
                   <Route index element={<DefaultAppRoute />} />
@@ -96,6 +108,11 @@ export default function App() {
                   <Route path="users" element={<UsersPage />} />
                   <Route path="users/:userId" element={<UserDetailPage />} />
                   <Route path="notes" element={<NotesPage />} />
+                  <Route path="polls/create" element={<PollCreatePage />} />
+                  <Route path="polls/:pollId/edit" element={<PollCreatePage />} />
+                  <Route path="polls/:pollId/take" element={<PollTakePage />} />
+                  <Route path="polls/:pollId" element={<PollDetailPage />} />
+                  <Route path="polls" element={<PollsPage />} />
                 </Route>
               </Route>
 

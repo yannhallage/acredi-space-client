@@ -1,5 +1,10 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { getOnboardingRedirectPath, isOnboardingPath } from '../shared/auth/onboarding';
+import {
+  getCompletedOnboardingExitPath,
+  getOnboardingRedirectPath,
+  isOnboardingPath,
+  isSignupSuccessPath,
+} from '../shared/auth/onboarding';
 import { useAuth } from '../shared/context';
 import { LoadingState } from '../shared/ui';
 
@@ -34,13 +39,15 @@ export function ProtectedRoute() {
 
   if (
     onboardingRedirectPath &&
-    !location.pathname.startsWith(onboardingRedirectPath)
+    !location.pathname.startsWith(onboardingRedirectPath) &&
+    !isSignupSuccessPath(location.pathname)
   ) {
     return <Navigate to={onboardingRedirectPath} replace />;
   }
 
+  // Après setup orga, ne pas renvoyer au dashboard : laisser /signup/success s'afficher.
   if (!onboardingRedirectPath && isOnboardingPath(location.pathname)) {
-    return <Navigate to="/app/dashboard" replace />;
+    return <Navigate to={getCompletedOnboardingExitPath(location.pathname)} replace />;
   }
 
   return <Outlet />;

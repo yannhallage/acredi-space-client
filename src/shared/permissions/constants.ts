@@ -40,6 +40,13 @@ export const PERMISSIONS = {
   DELETE_NOTES: 'notes.delete',
   SHARE_NOTES: 'notes.share',
 
+  VIEW_POLLS: 'polls.view',
+  CREATE_POLLS: 'polls.create',
+  UPDATE_POLLS: 'polls.update',
+  DELETE_POLLS: 'polls.delete',
+  RESPOND_POLLS: 'polls.respond',
+  MANAGE_POLL_PARTICIPANTS: 'polls.manage_participants',
+
   VIEW_DASHBOARD: 'dashboard.view',
 
   VIEW_ORGANIZATION: 'organization.view',
@@ -72,8 +79,8 @@ export const PERMISSIONS = {
   UPDATE_BILLING_SETTINGS: 'settings.billing.update',
   MANAGE_SETTINGS: 'settings.manage',
 
-  VIEW_PROFILE_SETTINGS: 'settings.profile.view',
-  UPDATE_PROFILE_SETTINGS: 'settings.profile.update',
+  VIEW_ACCOUNT_SETTINGS: 'settings.account.view',
+  UPDATE_ACCOUNT_SETTINGS: 'settings.account.update',
   VIEW_PREFERENCES_SETTINGS: 'settings.preferences.view',
   UPDATE_PREFERENCES_SETTINGS: 'settings.preferences.update',
 
@@ -83,6 +90,10 @@ export const PERMISSIONS = {
   UPDATE_ROLES_SETTINGS: 'settings.roles.update',
   VIEW_INVITATIONS_SETTINGS: 'settings.invitations.view',
   UPDATE_INVITATIONS_SETTINGS: 'settings.invitations.update',
+  VIEW_PROFILE_SETTINGS: 'settings.profil.view',
+  CREATE_PROFILE_SETTINGS:'settings.create.profil',
+  DELETE_PROFILE_SETTINGS:'settings.delete.profil',
+  UPDATE_PROFILE_SETTINGS:'settings.update.profil',
 
   VIEW_GENERAL_SETTINGS: 'settings.general.view',
   UPDATE_GENERAL_SETTINGS: 'settings.general.update',

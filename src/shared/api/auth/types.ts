@@ -69,6 +69,34 @@ export interface RegisterRequest {
   [key: string]: unknown;
 }
 
+export interface SignupStartRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+}
+
+export type CompanySize = "MICRO" | "SMALL" | "MEDIUM" | "LARGE" | "ENTERPRISE";
+
+export interface CompleteOrganizationRequest {
+  name: string;
+  slug: string;
+  industry?: string;
+  companySize?: CompanySize;
+  websiteUrl?: string;
+  billingEmail?: string;
+  timezone?: string;
+  locale?: string;
+  currency?: string;
+  country?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  postalCode?: string;
+  siret?: string;
+  vatNumber?: string;
+}
+
 export interface AuthResponse {
   accessToken?: string;
   expiresIn?: number;

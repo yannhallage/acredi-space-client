@@ -9,6 +9,7 @@ import { AccountSection } from '../sections/AccountSection';
 import { GenericSettingsRows } from '../sections/GenericSettingsRows';
 import { InvitationsSection } from '../sections/InvitationsSection';
 import { InvoicesSection } from '../sections/InvoicesSection';
+import { OrganizationSection } from '../sections/OrganizationSection';
 import { ProfilesSection } from '../sections/ProfilesSection';
 import { SubscriptionSection } from '../sections/SubscriptionSection';
 import { SettingsSidebar } from './SettingsSidebar';
@@ -86,6 +87,10 @@ export function ModalSetting({ userEmail, userName, workspaceName, onClose }: Mo
         return <ProfilesSection />;
       case 'invitations':
         return <InvitationsSection />;
+      case 'general':
+        return (
+          <OrganizationSection canUpdate={canUpdateActiveItem} />
+        );
       case 'subscription':
         return <SubscriptionSection onClose={onClose} />;
       case 'invoices':
