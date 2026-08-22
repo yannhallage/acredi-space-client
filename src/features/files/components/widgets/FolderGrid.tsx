@@ -1,12 +1,28 @@
+import { useState } from "react";
+
 import type { Folder } from "../../../../shared/api/folders";
 import { PERMISSIONS, PermissionGate } from "../../../../shared/permissions";
-import { Icon } from "../../../../shared/ui";
 
+import type { FolderContentsStats } from "../../utils";
+import { CreateFolderCard, FolderCard } from "./FolderCard";
 import { FilesEmptyIllustration } from "./FilesEmptyIllustration";
+
+function FoldersEmptyState() {
+  return (
+    <div className="files-empty-state">
+      <FilesEmptyIllustration />
+      <strong>Aucun dossier</strong>
+      <p>Creez un dossier pour organiser cet espace.</p>
+    </div>
+  );
+}
 
 export function FolderGrid({
   deletePending,
   folders,
+  getStats,
+  hideEmptyState = false,
+  onCreate,
   onDelete,
   onEdit,
   onOpen,
@@ -16,6 +32,9 @@ export function FolderGrid({
 }: {
   deletePending: boolean;
   folders: Folder[];
+  getStats?: (folder: Folder) => FolderContentsStats | undefined;
+  hideEmptyState?: boolean;
+  onCreate?: () => void;
   onDelete: (folder: Folder) => void;
   onEdit: (folder: Folder) => void;
   onOpen: (folder: Folder) => void;
@@ -23,113 +42,62 @@ export function FolderGrid({
   onToggleMenu: (folderId: string) => void;
   openMenuFolderId: string | null;
 }) {
+  const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
+
+  function toggleSelect(folderId: string) {
+    setSelectedFolderIds((current) =>
+      current.includes(folderId)
+        ? current.filter((id) => id !== folderId)
+        : [...current, folderId],
+    );
+  }
+
+  const folderCards = folders.map((folder) => (
+    <FolderCard
+      key={folder.id}
+      deletePending={deletePending}
+      folder={folder}
+      isMenuOpen={openMenuFolderId === folder.id}
+      isSelected={selectedFolderIds.includes(folder.id)}
+      onDelete={onDelete}
+      onEdit={onEdit}
+      onOpen={onOpen}
+      onShare={onShare}
+      onToggleMenu={onToggleMenu}
+      onToggleSelect={toggleSelect}
+      stats={getStats?.(folder)}
+    />
+  ));
+
+  const createCard = onCreate ? (
+    <CreateFolderCard onCreate={onCreate} />
+  ) : null;
+
   if (folders.length === 0) {
+    if (!onCreate) {
+      return hideEmptyState ? null : <FoldersEmptyState />;
+    }
+
     return (
-      <div className="files-empty-state">
-        <FilesEmptyIllustration />
-        <strong>Aucun dossier</strong>
-        <p>Creez un dossier pour organiser cet espace.</p>
-      </div>
+      <PermissionGate
+        permissions={[PERMISSIONS.CREATE_FOLDER, PERMISSIONS.MANAGE_FOLDERS]}
+        fallback={hideEmptyState ? null : <FoldersEmptyState />}
+      >
+        <div className="files-folder-grid">{createCard}</div>
+      </PermissionGate>
     );
   }
 
   return (
     <div className="files-folder-grid">
-      {folders.map((folder) => (
-        <article
-          key={folder.id}
-          className={
-            openMenuFolderId === folder.id
-              ? "files-folder-tile menu-open"
-              : "files-folder-tile"
-          }
+      {folderCards}
+      {onCreate ? (
+        <PermissionGate
+          permissions={[PERMISSIONS.CREATE_FOLDER, PERMISSIONS.MANAGE_FOLDERS]}
         >
-          <button
-            className="files-folder-open"
-            type="button"
-            onClick={() => onOpen(folder)}
-          >
-            <span className="files-folder-art">
-              <span className="files-folder-shape" aria-hidden="true" />
-            </span>
-            <strong>{folder.name}</strong>
-          </button>
-
-          <button
-            className="files-folder-menu-button"
-            type="button"
-            aria-label={`Actions ${folder.name}`}
-            aria-haspopup="menu"
-            aria-expanded={openMenuFolderId === folder.id}
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleMenu(folder.id);
-            }}
-          >
-            <Icon name="moreH" size={14} />
-          </button>
-
-          {openMenuFolderId === folder.id ? (
-            <div
-              className="files-folder-dropdown"
-              role="menu"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <PermissionGate
-                permissions={[
-                  PERMISSIONS.UPDATE_FOLDERS,
-                  PERMISSIONS.MANAGE_FOLDERS,
-                ]}
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => onEdit(folder)}
-                >
-                  <Icon name="edit" size={13} />
-                  Modifier
-                </button>
-              </PermissionGate>
-
-              <PermissionGate
-                permissions={[
-                  PERMISSIONS.SHARE_FILES,
-                  PERMISSIONS.MANAGE_FOLDERS,
-                ]}
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => onShare(folder)}
-                >
-                  <Icon name="users" size={13} />
-                  Partager
-                </button>
-              </PermissionGate>
-
-              <PermissionGate
-                permissions={[
-                  PERMISSIONS.DELETE_FOLDERS,
-                  PERMISSIONS.MANAGE_FOLDERS,
-                ]}
-              >
-                <button
-                  className="danger"
-                  type="button"
-                  role="menuitem"
-                  disabled={deletePending}
-                  onClick={() => {
-                    void onDelete(folder);
-                  }}
-                >
-                  <Icon name="trash" size={13} />
-                  Supprimer
-                </button>
-              </PermissionGate>
-            </div>
-          ) : null}
-        </article>
-      ))}
+          {createCard}
+        </PermissionGate>
+      ) : null}
     </div>
   );
 }

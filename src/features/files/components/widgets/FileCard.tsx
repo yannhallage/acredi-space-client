@@ -7,6 +7,7 @@ import { Avatar, FileIcon, Icon } from "../../../../shared/ui";
 import { getFileColor, getFileExtension } from "../../filePreview";
 import { formatFileActivity, isFileOwnedBy } from "../../utils";
 import { FileThumbnail } from "./FileThumbnail";
+import { FilesActionsDropdown } from "./FilesActionsDropdown";
 
 export function FileCard({
   deletePending,
@@ -99,83 +100,68 @@ export function FileCard({
         </span>
       </button>
 
-      <button
-        className="files-file-menu-button"
-        type="button"
-        aria-label={`Actions ${file.name}`}
-        aria-haspopup="menu"
-        aria-expanded={isMenuOpen}
-        onClick={(event) => {
-          event.stopPropagation();
-          onToggleMenu(file.id);
-        }}
+      <FilesActionsDropdown
+        isOpen={isMenuOpen}
+        label={`Actions ${file.name}`}
+        onToggle={() => onToggleMenu(file.id)}
+        triggerClassName="files-file-menu-button"
       >
-        <Icon name="moreV" size={14} />
-      </button>
+        {showRestore && onRestore ? (
+          <button
+            type="button"
+            role="menuitem"
+            disabled={restorePending}
+            onClick={() => {
+              void onRestore(file);
+            }}
+          >
+            <Icon name="refresh" size={14} />
+            Restaurer
+          </button>
+        ) : null}
 
-      {isMenuOpen ? (
-        <div
-          className="files-file-dropdown"
-          role="menu"
-          onClick={(event) => event.stopPropagation()}
-        >
-          {showRestore && onRestore ? (
+        {showDownload ? (
+          <button
+            type="button"
+            role="menuitem"
+            disabled={downloadPending}
+            onClick={() => {
+              void onDownload(file);
+            }}
+          >
+            <Icon name="download" size={14} />
+            Telecharger
+          </button>
+        ) : null}
+
+        {showShare && onShare ? (
+          <PermissionGate permission={PERMISSIONS.SHARE_FILES}>
             <button
               type="button"
               role="menuitem"
-              disabled={restorePending}
-              onClick={() => {
-                void onRestore(file);
-              }}
+              onClick={() => onShare(file)}
             >
-              <Icon name="refresh" size={13} />
-              Restaurer
+              <Icon name="users" size={14} />
+              Partager
             </button>
-          ) : null}
+          </PermissionGate>
+        ) : null}
 
-          {showDownload ? (
-            <button
-              type="button"
-              role="menuitem"
-              disabled={downloadPending}
-              onClick={() => {
-                void onDownload(file);
-              }}
-            >
-              <Icon name="download" size={13} />
-              Telecharger
-            </button>
-          ) : null}
-
-          {showShare && onShare ? (
-            <PermissionGate permission={PERMISSIONS.SHARE_FILES}>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => onShare(file)}
-              >
-                <Icon name="users" size={13} />
-                Partager
-              </button>
-            </PermissionGate>
-          ) : null}
-
-          {canDelete ? (
-            <button
-              className="danger"
-              type="button"
-              role="menuitem"
-              disabled={deletePending}
-              onClick={() => {
-                void onDelete?.(file);
-              }}
-            >
-              <Icon name="trash" size={13} />
-              {showRestore ? "Supprimer definitivement" : "Supprimer"}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+        {canDelete ? (
+          <button
+            className="danger"
+            type="button"
+            role="menuitem"
+            disabled={deletePending}
+            onClick={() => {
+              void onDelete?.(file);
+            }}
+          >
+            <Icon name="trash" size={14} />
+            {showRestore ? "Supprimer definitivement" : "Supprimer"}
+          </button>
+        ) : null}
+      </FilesActionsDropdown>
     </article>
   );
 }

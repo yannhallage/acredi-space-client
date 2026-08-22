@@ -38,7 +38,10 @@ export function FilesPageSkeleton() {
               key={item}
             >
               <span className="files-folder-art files-folder-skeleton-art" />
-              <span className="skeleton-line files-folder-skeleton-name" />
+              <span className="files-folder-meta">
+                <span className="skeleton-line files-folder-skeleton-name" />
+                <span className="skeleton-line files-folder-skeleton-meta" />
+              </span>
             </article>
           ))}
         </div>

@@ -139,7 +139,8 @@ export function useSharedFilesPage() {
 
       if (
         target?.closest(".files-file-menu-button") ||
-        target?.closest(".files-file-dropdown")
+        target?.closest(".files-file-dropdown") ||
+        target?.closest(".files-actions-menu")
       ) {
         return;
       }
