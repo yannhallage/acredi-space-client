@@ -24,6 +24,7 @@ import {
   groupMessagesByDay,
   isSameSelectedFile,
   messageMatchesPending,
+  revokePendingAttachmentUrls,
   type LocalMessage,
 } from "../utils/dmMessageFormat";
 import { AvatarPreviewOverlay } from "./AvatarPreviewOverlay";
@@ -32,6 +33,7 @@ import { ConversationHeader } from "./ConversationHeader";
 import { ConversationMessageList } from "./ConversationMessageList";
 
 const SCROLL_BOTTOM_THRESHOLD = 120;
+const SCROLL_TOP_LOAD_THRESHOLD = 80;
 
 interface DirectConversationThreadProps {
   channelId: string;
@@ -43,9 +45,12 @@ interface DirectConversationThreadProps {
   messages: MessageResponse[];
   loading?: boolean;
   refreshing?: boolean;
+  hasMore?: boolean;
+  loadingOlder?: boolean;
   showBackButton?: boolean;
   typingUsers?: ChannelTypingUser[];
   publishTyping?: (typing: boolean) => void;
+  onLoadOlder?: () => Promise<unknown> | unknown;
   onRefresh?: () => void;
   onClose?: () => void;
 }
@@ -60,9 +65,12 @@ export function DirectConversationThread({
   messages,
   loading = false,
   refreshing = false,
+  hasMore = false,
+  loadingOlder = false,
   showBackButton = false,
   typingUsers = [],
   publishTyping,
+  onLoadOlder,
   onRefresh,
   onClose,
 }: DirectConversationThreadProps) {
@@ -84,6 +92,11 @@ export function DirectConversationThread({
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
   const previousChannelIdRef = useRef<string | null>(null);
+  const loadingOlderRef = useRef(false);
+  const pendingScrollRestoreRef = useRef<{
+    height: number;
+    top: number;
+  } | null>(null);
   const editedMessagesRef = useRef(new Map<string, string>());
   const lastTypingSentRef = useRef(false);
   const typingStopTimeoutRef = useRef<number | null>(null);
@@ -154,6 +167,46 @@ export function DirectConversationThread({
     setShowScrollAnchor(isAwayFromBottom);
   }, [getBottomDistance]);
 
+  const loadOlderMessages = useCallback(() => {
+    const list = messageListRef.current;
+
+    if (
+      !list ||
+      !hasMore ||
+      loadingOlder ||
+      loadingOlderRef.current ||
+      !onLoadOlder
+    ) {
+      return;
+    }
+
+    loadingOlderRef.current = true;
+    if (!shouldStickToBottomRef.current) {
+      pendingScrollRestoreRef.current = {
+        height: list.scrollHeight,
+        top: list.scrollTop,
+      };
+    }
+
+    void Promise.resolve(onLoadOlder()).finally(() => {
+      loadingOlderRef.current = false;
+    });
+  }, [hasMore, loadingOlder, onLoadOlder]);
+
+  const handleMessageListScroll = useCallback(() => {
+    const list = messageListRef.current;
+
+    if (!list) {
+      return;
+    }
+
+    syncScrollAnchorVisibility();
+
+    if (list.scrollTop <= SCROLL_TOP_LOAD_THRESHOLD) {
+      loadOlderMessages();
+    }
+  }, [loadOlderMessages, syncScrollAnchorVisibility]);
+
   const scrollMessageListToBottom = useCallback(
     (behavior: ScrollBehavior = "auto") => {
       const list = messageListRef.current;
@@ -177,10 +230,17 @@ export function DirectConversationThread({
       );
 
       const pendingWithoutDuplicate = pendingMessages.filter(
-        (pendingMessage) =>
-          !messages.some((message) =>
+        (pendingMessage) => {
+          const matched = messages.some((message) =>
             messageMatchesPending(message, pendingMessage)
-          )
+          );
+
+          if (matched) {
+            revokePendingAttachmentUrls(pendingMessage.attachments);
+          }
+
+          return !matched;
+        }
       );
 
       const syncedMessages = messages.map((message) => {
@@ -201,6 +261,10 @@ export function DirectConversationThread({
 
     const channelChanged = previousChannelIdRef.current !== channelId;
     previousChannelIdRef.current = channelId;
+
+    if (pendingScrollRestoreRef.current) {
+      return;
+    }
 
     if (channelChanged || shouldStickToBottomRef.current) {
       const frameId = window.requestAnimationFrame(() => {
@@ -225,16 +289,43 @@ export function DirectConversationThread({
     if (!list || loading) return;
 
     syncScrollAnchorVisibility();
-    list.addEventListener("scroll", syncScrollAnchorVisibility, {
+    list.addEventListener("scroll", handleMessageListScroll, {
       passive: true,
     });
 
     return () => {
-      list.removeEventListener("scroll", syncScrollAnchorVisibility);
+      list.removeEventListener("scroll", handleMessageListScroll);
     };
-  }, [channelId, loading, syncScrollAnchorVisibility]);
+  }, [channelId, handleMessageListScroll, loading, syncScrollAnchorVisibility]);
 
   useEffect(() => {
+    const list = messageListRef.current;
+
+    if (!list || loading || !hasMore || loadingOlder) {
+      return;
+    }
+
+    if (list.scrollHeight <= list.clientHeight + SCROLL_TOP_LOAD_THRESHOLD) {
+      loadOlderMessages();
+    }
+  }, [hasMore, loading, loadingOlder, loadOlderMessages, localMessages.length]);
+
+  useEffect(() => {
+    const pending = pendingScrollRestoreRef.current;
+    const list = messageListRef.current;
+
+    if (!pending || !list || loadingOlder) {
+      return;
+    }
+
+    list.scrollTop = pending.top + (list.scrollHeight - pending.height);
+    pendingScrollRestoreRef.current = null;
+    syncScrollAnchorVisibility();
+  }, [loadingOlder, localMessages, syncScrollAnchorVisibility]);
+
+  useEffect(() => {
+    pendingScrollRestoreRef.current = null;
+    loadingOlderRef.current = false;
     setAvatarPreviewOpen(false);
     setContactDetailsOpen(false);
     setEditingMessageId(null);
@@ -435,9 +526,14 @@ export function DirectConversationThread({
       {
         onSuccess: (savedMessage) => {
           setLocalMessages((currentMessages) =>
-            currentMessages.map((message) =>
-              message.id === temporaryId ? savedMessage : message
-            )
+            currentMessages.map((message) => {
+              if (message.id !== temporaryId) {
+                return message;
+              }
+
+              revokePendingAttachmentUrls(message.attachments);
+              return savedMessage;
+            })
           );
         },
         onError: () => {
@@ -512,6 +608,7 @@ export function DirectConversationThread({
             currentUserName={user?.name}
             currentUserAvatarUrl={user?.avatarUrl}
             isTyping={isTyping}
+            loadingOlder={loadingOlder}
             onEditMessage={handleEditMessage}
             onDeleteMessage={handleDeleteMessage}
           />

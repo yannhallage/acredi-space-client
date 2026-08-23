@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useMyDiscussions } from "../shared/api/discussions";
 import { useAuth, useWorkspace } from "../shared/context";
 import { canAccessAllTeams, canAccessMyTeams } from "../features/teams/access";
 import {
@@ -13,6 +12,10 @@ import {
   type DashboardNotification,
 } from "../shared/api/dashboard";
 import {
+  useChannelMessagesSocket,
+  useDmUnread,
+} from "../shared/api/dm";
+import {
   FEATURE_PERMISSION_REQUIREMENTS,
   getRoutePermissionRule,
   PermissionGate,
@@ -20,29 +23,34 @@ import {
   type PermissionCode,
 } from "../shared/permissions";
 import { useTheme } from "../shared/theme";
-import { AccessDeniedState, AcrediLockup, Avatar, Icon, type IconName } from "../shared/ui";
+import { AccessDeniedState, AcrediLockup, AcrediMark, Avatar, HoverTip, Icon, type IconName } from "../shared/ui";
 import { ModalSetting } from "../features/settings/components";
 import { DesktopNotificationBanner } from "../shared/notifications/DesktopNotificationBanner";
+import { SidebarCurrentPlan } from "./SidebarCurrentPlan";
 import { DESKTOP_NOTIFICATION_CLICK_EVENT } from "../shared/notifications/desktop";
 import { getNotificationTarget } from "../shared/notifications/routing";
+import { DiscussionsDock } from "./DiscussionsDock";
 
 const pageMeta: Record<string, { title: string; crumb: string }> = {
   "/app/dashboard": { title: "Tableau de bord", crumb: "ACCUEIL" },
-  "/app/shared-files": { title: "Fichiers partages", crumb: "CONTENU" },
+  "/app/shared-files": { title: "Fichiers partagés", crumb: "CONTENU" },
   "/app/trash": { title: "Corbeille", crumb: "CONTENU" },
   "/app/files": { title: "Fichiers Acredi Space", crumb: "CONTENU" },
   "/app/chat": { title: "Canal equipe", crumb: "COLLABORATION" },
   "/app/dm": { title: "Messages directs", crumb: "COLLABORATION" },
   "/app/mail": { title: "Mail", crumb: "COLLABORATION" },
   "/app/calendar": { title: "Calendrier", crumb: "PLANNING" },
-  "/app/meeting": { title: "Salle de reunion", crumb: "VISIO" },
-  "/app/profile": { title: "Mon profil", crumb: "PARAMETRES" },
-  "/app/admin": { title: "Administration", crumb: "PARAMETRES" },
-  "/app/my-team": { title: "My Team", crumb: "COLLABORATION" },
-  "/app/teams": { title: "Teams", crumb: "COLLABORATION" },
-  "/app/users": { title: "Users", crumb: "CRM" },
+  "/app/meeting": { title: "Réunions", crumb: "VISIO" },
+  "/app/profile": { title: "Mon profil", crumb: "PARAMÈTRES" },
+  "/app/admin": { title: "Administration", crumb: "PARAMÈTRES" },
+  "/app/my-team": { title: "Mon équipe", crumb: "COLLABORATION" },
+  "/app/teams": { title: "Équipes", crumb: "COLLABORATION" },
+  "/app/users": { title: "Utilisateurs", crumb: "CRM" },
   "/app/notes": { title: "Notes", crumb: "CRM" },
+  "/app/polls": { title: "Sondages", crumb: "CRM" },
 };
+
+const SIDEBAR_COLLAPSED_KEY = "acredi-sidebar-collapsed";
 
 interface NavItem {
   canShow?: boolean;
@@ -51,6 +59,12 @@ interface NavItem {
   label: string;
   permissions: readonly PermissionCode[];
   to: string;
+}
+
+interface NavSection {
+  id: string;
+  label: string;
+  items: NavItem[];
 }
 
 const notificationSkeletons = [
@@ -99,10 +113,17 @@ export function AppLayout() {
   const queryClient = useQueryClient();
   const { hasAnyPermission } = usePermissions();
   const workspace = useWorkspace();
-  const { dark, toggleTheme } = useTheme();
+  const { dark, toggleTheme, palette } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [openSetting, setOpenSetting] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) !== "0";
+    } catch {
+      return true;
+    }
+  });
   const [openDropdown, setOpenDropdown] = useState<
     "notifications" | "account" | null
   >(null);
@@ -112,90 +133,139 @@ export function AppLayout() {
   const topbarActionsRef = useRef<HTMLDivElement | null>(null);
   const user = authenticatedUser!;
   const notificationReadStorageKey = `acredi-read-notifications:${user.id}`;
-  const navItems: NavItem[] = [
+  const canShowAllTeams = canAccessAllTeams(user.adminRole);
+  const canShowMyTeam = canAccessMyTeams(user.adminRole);
+  const navSections: NavSection[] = [
     {
-      to: "/app/dashboard",
-      icon: "home",
+      id: "home",
       label: "Accueil",
-      permissions: FEATURE_PERMISSION_REQUIREMENTS.dashboard,
+      items: [
+        {
+          to: "/app/dashboard",
+          icon: "home",
+          label: "Tableau de bord",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.dashboard,
+        },
+      ],
     },
     {
-      to: "/app/files",
-      icon: "folder",
-      label: "Fichiers",
-      permissions: FEATURE_PERMISSION_REQUIREMENTS.files,
-      isActive: (pathname) => pathname.startsWith("/app/files"),
+      id: "content",
+      label: "Contenu",
+      items: [
+        {
+          to: "/app/files",
+          icon: "folder",
+          label: "Fichiers",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.files,
+          isActive: (pathname) => pathname.startsWith("/app/files"),
+        },
+        {
+          to: "/app/shared-files",
+          icon: "share",
+          label: "Partagés",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.files,
+          isActive: (pathname) => pathname.startsWith("/app/shared-files"),
+        },
+        {
+          to: "/app/trash",
+          icon: "trash",
+          label: "Corbeille",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.files,
+          isActive: (pathname) => pathname.startsWith("/app/trash"),
+        },
+      ],
     },
     {
-      to: "/app/shared-files",
-      icon: "users",
-      label: "Fichiers partages",
-      permissions: FEATURE_PERMISSION_REQUIREMENTS.files,
-      isActive: (pathname) => pathname.startsWith("/app/shared-files"),
+      id: "collaboration",
+      label: "Collaboration",
+      items: [
+        {
+          to: "/app/dm",
+          icon: "message",
+          label: "Messages",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.chat,
+          isActive: (pathname) =>
+            pathname.startsWith("/app/dm") || pathname.startsWith("/app/chat"),
+        },
+        // {
+        //   to: "/app/mail",
+        //   icon: "mail",
+        //   label: "Mail",
+        //   permissions: FEATURE_PERMISSION_REQUIREMENTS.chat,
+        // },
+        {
+          to: "/app/meeting",
+          icon: "video",
+          label: "Réunions",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.meetings,
+          isActive: (pathname) => pathname.startsWith("/app/meeting"),
+        },
+        {
+          to: "/app/calendar",
+          icon: "calendar",
+          label: "Calendrier",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.calendar,
+        },
+        {
+          to: "/app/teams",
+          icon: "building",
+          label: "Équipes",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.teams,
+          canShow: canShowAllTeams,
+        },
+        {
+          to: "/app/my-team",
+          icon: "users",
+          label: "Mon équipe",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.myTeams,
+          canShow: canShowMyTeam && !canShowAllTeams,
+        },
+      ],
     },
     {
-      to: "/app/dm/dm-yann",
-      icon: "message",
-      label: "Chat",
-      permissions: FEATURE_PERMISSION_REQUIREMENTS.chat,
-    },
-    {
-      to: "/app/mail",
-      icon: "mail",
-      label: "Mail",
-      permissions: FEATURE_PERMISSION_REQUIREMENTS.chat,
-    },
-    {
-      to: "/app/meeting/meet-daily",
-      icon: "video",
-      label: "Reunions",
-      permissions: FEATURE_PERMISSION_REQUIREMENTS.meetings,
-    },
-    {
-      to: "/app/calendar",
-      icon: "calendar",
-      label: "Calendrier",
-      permissions: FEATURE_PERMISSION_REQUIREMENTS.calendar,
-    },
-    {
-      to: "/app/teams",
-      icon: "building",
-      label: "Teams",
-      permissions: FEATURE_PERMISSION_REQUIREMENTS.teams,
-      canShow: canAccessAllTeams(user.adminRole),
-    },
-    {
-      to: "/app/my-team",
-      icon: "users",
-      label: "My Team",
-      permissions: FEATURE_PERMISSION_REQUIREMENTS.myTeams,
-      canShow: canAccessMyTeams(user.adminRole),
-    },
-    {
-      to: "/app/users",
-      icon: "users",
-      label: "Utilisateurs",
-      permissions: FEATURE_PERMISSION_REQUIREMENTS.users,
-    },
-    {
-      to: "/app/notes",
-      icon: "notes",
-      label: "Notes",
-      permissions: FEATURE_PERMISSION_REQUIREMENTS.notes,
-    },
-    {
-      to: "/app/trash",
-      icon: "trash",
-      label: "Corbeille",
-      permissions: FEATURE_PERMISSION_REQUIREMENTS.files,
-      isActive: (pathname) => pathname.startsWith("/app/trash"),
+      id: "crm",
+      label: "CRM",
+      items: [
+        {
+          to: "/app/users",
+          icon: "users",
+          label: "Utilisateurs",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.users,
+        },
+        {
+          to: "/app/notes",
+          icon: "notes",
+          label: "Notes",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.notes,
+        },
+        // {
+        //   to: "/app/polls",
+        //   icon: "poll",
+        //   label: "Sondages",
+        //   permissions: FEATURE_PERMISSION_REQUIREMENTS.polls,
+        //   isActive: (pathname) => pathname.startsWith("/app/polls"),
+        // },
+      ],
     },
   ];
-  const visibleNavItems = navItems.filter(
-    (item) => item.canShow !== false && hasAnyPermission(item.permissions)
-  );
+  const visibleNavSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => item.canShow !== false && hasAnyPermission(item.permissions)
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
   const canUseChat = hasAnyPermission(FEATURE_PERMISSION_REQUIREMENTS.chat);
-  const myDiscussionsQuery = useMyDiscussions({ enabled: canUseChat });
+  const activeDmId = location.pathname.startsWith("/app/dm/")
+    ? location.pathname.split("/")[3] ?? null
+    : null;
+  const {
+    privateChannelIds,
+    unreadByChannelId,
+    totalUnreadMessages,
+  } = useDmUnread(canUseChat, activeDmId);
+  useChannelMessagesSocket(privateChannelIds, activeDmId);
   const canUseSettings = hasAnyPermission(
     FEATURE_PERMISSION_REQUIREMENTS.settings
   );
@@ -325,6 +395,20 @@ export function AppLayout() {
     navigate("/login", { replace: true });
   }
 
+  function handleToggleSidebar() {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      } catch {
+        // Ignore storage errors (private mode, quota, etc.)
+      }
+
+      return next;
+    });
+  }
+
   function handleMarkAllNotificationsRead() {
     const readAt = new Date();
     const readAtIso = readAt.toISOString();
@@ -392,92 +476,130 @@ export function AppLayout() {
 
   return (
     <>
-      <div className="app-layout">
-        <aside className="sidebar">
+      <div
+        className={
+          sidebarCollapsed ? "app-layout sidebar-collapsed" : "app-layout"
+        }
+      >
+        <aside
+          className={sidebarCollapsed ? "sidebar is-collapsed" : "sidebar"}
+        >
           <div className="sidebar-brand">
-            <AcrediLockup size={22} fontSize={16} />
-            <button
-              className="icon-button"
-              type="button"
-              aria-label="Changer espace"
-            >
-              <Icon name="chevDown" size={14} />
-            </button>
-          </div>
-
-          <nav className="primary-nav" aria-label="Navigation principale">
-            {visibleNavItems.map((item) => (
-              <NavLink
-                key={`${item.to}-${item.label}`}
-                className={({ isActive }) => {
-                  const active = item.isActive
-                    ? item.isActive(location.pathname)
-                    : isActive;
-
-                  return active ? "nav-link active" : "nav-link";
-                }}
-                to={item.to}
-              >
-                <Icon name={item.icon} size={18} />
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
-
-            {canUseSettings ? (
-              <button
-                className={openSetting ? "nav-link active" : "nav-link"}
-                type="button"
-                aria-haspopup="dialog"
-                aria-expanded={openSetting}
-                onClick={() => setOpenSetting(true)}
-              >
-                <Icon name="settings" size={18} />
-                <span>Parametres</span>
-              </button>
-            ) : null}
-          </nav>
-
-          {canUseChat ? (
-            <div className="workspace-list">
-              <div className="eyebrow-row">
-                <span>Equipes</span>
-                {/* <Icon name="plus" size={12} /> */}
-              </div>
-              {myDiscussionsQuery.isLoading ? (
-                notificationSkeletons.map((item) => (
-                  <span className="skeleton-line workspace-skeleton" key={item} />
-                ))
-              ) : myDiscussionsQuery.isError ? (
-                <p className="muted workspace-error">Discussions indisponibles</p>
-              ) : (myDiscussionsQuery.data ?? []).length ? (
-                (myDiscussionsQuery.data ?? []).map((discussion) => {
-                  const isActive = location.pathname.startsWith(
-                    `/app/chat/${discussion.id}`
-                  );
-
-                  return (
-                    <button
-                      key={discussion.id}
-                      className={isActive ? "workspace active" : "workspace"}
-                      type="button"
-                      onClick={() => {
-                        navigate(`/app/chat/${discussion.id}`);
-                      }}
-                    >
-                      <span
-                        style={{
-                          background: discussion.teamColor ?? "#6366F1",
-                        }}
-                      />
-                      {discussion.name}
-                    </button>
-                  );
-                })
+            <div className="sidebar-brand-main">
+              {sidebarCollapsed ? (
+                <AcrediMark
+                  size={32}
+                  top={palette.markTop}
+                  left={palette.accent2}
+                  right={palette.accent}
+                />
               ) : (
-                <p className="muted workspace-empty">Aucune discussion</p>
+                <>
+                  <div className="sidebar-brand-lockup">
+                    <AcrediLockup size={42} fontSize={24} />
+                    <SidebarCurrentPlan />
+                  </div>
+                  <span className="sidebar-workspace">{workspaceName}</span>
+                </>
               )}
             </div>
-          ) : null}
+          </div>
+
+          <div className="sidebar-scroll">
+            <nav className="primary-nav" aria-label="Navigation principale">
+              {visibleNavSections.map((section) => (
+                <div className="nav-section" key={section.id}>
+                  {!sidebarCollapsed ? (
+                    <p className="nav-section-label">{section.label}</p>
+                  ) : (
+                    <span className="nav-section-divider" aria-hidden="true" />
+                  )}
+                  {section.items.map((item) => {
+                    return (
+                      <HoverTip
+                        key={`${item.to}-${item.label}`}
+                        content={item.label}
+                        disabled={!sidebarCollapsed}
+                        side="right"
+                      >
+                        <NavLink
+                          className={({ isActive }) => {
+                            const active = item.isActive
+                              ? item.isActive(location.pathname)
+                              : isActive;
+
+                            return active ? "nav-link active" : "nav-link";
+                          }}
+                          to={item.to}
+                          aria-label={
+                            sidebarCollapsed ? item.label : undefined
+                          }
+                        >
+                          <Icon name={item.icon} size={18} />
+                          <span>{item.label}</span>
+                        </NavLink>
+                      </HoverTip>
+                    );
+                  })}
+                </div>
+              ))}
+
+              {canUseSettings ? (
+                <div className="nav-section nav-section-settings">
+                  {!sidebarCollapsed ? (
+                    <p className="nav-section-label">Système</p>
+                  ) : (
+                    <span className="nav-section-divider" aria-hidden="true" />
+                  )}
+                  <HoverTip
+                    content="Paramètres"
+                    disabled={!sidebarCollapsed}
+                    side="right"
+                  >
+                    <button
+                      className={openSetting ? "nav-link active" : "nav-link"}
+                      type="button"
+                      aria-haspopup="dialog"
+                      aria-expanded={openSetting}
+                      aria-label={sidebarCollapsed ? "Paramètres" : undefined}
+                      onClick={() => setOpenSetting(true)}
+                    >
+                      <Icon name="settings" size={18} />
+                      <span>Paramètres</span>
+                    </button>
+                  </HoverTip>
+                </div>
+              ) : null}
+            </nav>
+          </div>
+
+          <div className="sidebar-footer">
+            <HoverTip
+              content={
+                sidebarCollapsed
+                  ? "Développer la navigation"
+                  : "Réduire la navigation"
+              }
+              side="right"
+            >
+              <button
+                className="nav-link sidebar-collapse-btn"
+                type="button"
+                aria-label={
+                  sidebarCollapsed
+                    ? "Développer la navigation"
+                    : "Réduire la navigation"
+                }
+                onClick={handleToggleSidebar}
+              >
+                <Icon
+                  name={sidebarCollapsed ? "arrowRight" : "arrowLeft"}
+                  size={18}
+                />
+                <span>Réduire</span>
+              </button>
+            </HoverTip>
+          </div>
         </aside>
 
         <div className="app-main">
@@ -508,7 +630,7 @@ export function AppLayout() {
               >
                 <Icon name={dark ? "sun" : "moon"} size={18} />
               </button>
-              <PermissionGate permissions={FEATURE_PERMISSION_REQUIREMENTS.chat}>
+              {/* <PermissionGate permissions={FEATURE_PERMISSION_REQUIREMENTS.chat}>
                 <a
                   className="icon-button gmail-link"
                   href="/app/mail"
@@ -519,7 +641,7 @@ export function AppLayout() {
                 >
                   <img src="/gmail-logo.svg" alt="" aria-hidden="true" />
                 </a>
-              </PermissionGate>
+              </PermissionGate> */}
               <a
                 className="icon-button nuum-link"
                 href="https://app.nuum-ci.com/authentification"
@@ -733,47 +855,22 @@ export function AppLayout() {
                       }}
                     >
                       <Icon name="edit" size={16} />
-                      Edit Profile
+                      Modifier le profil
                     </button>
-                    {/* <button
-                      className="account-menu-item"
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        toggleTheme();
-                        setOpenDropdown(null);
-                      }}
-                    >
-                      <Icon name="moon" size={16} />
-                      Toggle Theme
-                    </button> */}
-                    {/* <button
-                      className="account-menu-item"
-                      type="button"
-                      role="menuitem"
-                      onClick={() => setOpenDropdown(null)}
-                    >
-                      <Icon name="alert" size={16} />
-                      About
-                    </button> */}
-                    {/* <button
-                      className="account-menu-item"
-                      type="button"
-                      role="menuitem"
-                      onClick={() => setOpenDropdown(null)}
-                    >
-                      <Icon name="phoneOff" size={16} />
-                      Frappe Support
-                    </button> */}
-                    {/* <button
-                      className="account-menu-item"
-                      type="button"
-                      role="menuitem"
-                      onClick={() => setOpenDropdown(null)}
-                    >
-                      <Icon name="refresh" size={16} />
-                      Reset Desktop Layout
-                    </button> */}
+                    {canUseSettings ? (
+                      <button
+                        className="account-menu-item"
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setOpenDropdown(null);
+                          setOpenSetting(true);
+                        }}
+                      >
+                        <Icon name="settings" size={16} />
+                        Paramètres
+                      </button>
+                    ) : null}
                     <button
                       className="account-menu-item"
                       type="button"
@@ -781,17 +878,8 @@ export function AppLayout() {
                       onClick={handleLogout}
                     >
                       <Icon name="logOut" size={16} />
-                      Logout
+                      Déconnexion
                     </button>
-                    {/* <button
-                      className="account-menu-item"
-                      type="button"
-                      role="menuitem"
-                      onClick={() => setOpenDropdown(null)}
-                    >
-                      <Icon name="file" size={16} />
-                      Manage Billing
-                    </button> */}
                   </motion.div>
                 ) : null}
               </AnimatePresence>
@@ -812,6 +900,13 @@ export function AppLayout() {
         </div>
       </div>
 
+      {canUseChat ? (
+        <DiscussionsDock
+          newDiscussionsCount={totalUnreadMessages}
+          unreadByChannelId={unreadByChannelId}
+        />
+      ) : null}
+
       <AnimatePresence>
         {openSetting ? (
           // <ModalSetting
@@ -822,11 +917,11 @@ export function AppLayout() {
           // />
 
           <ModalSetting
-          userName={user.name}
-          userEmail={user.email}
-          workspaceName={workspaceName}
-          onClose={() => setOpenSetting(false)}
-/>
+            userName={user.name}
+            userEmail={user.email}
+            workspaceName={workspaceName}
+            onClose={() => setOpenSetting(false)}
+          />
         ) : null}
       </AnimatePresence>
     </>

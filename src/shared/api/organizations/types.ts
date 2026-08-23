@@ -8,6 +8,7 @@ export interface OrganizationResponse {
   timezone?: string;
   locale?: string;
   status?: string;
+  planId?: string | null;
   ownerUserId?: string | null;
   addressLine1?: string | null;
   addressLine2?: string | null;
@@ -42,6 +43,7 @@ export interface UpdateOrganizationRequest {
   currency?: string;
   industry?: string | null;
   companySize?: string | null;
+  planId?: string | null;
 }
 
 export interface ApiResponse<TData = unknown> {

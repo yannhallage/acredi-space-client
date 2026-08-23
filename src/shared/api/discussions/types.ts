@@ -76,3 +76,21 @@ export interface CreateGroupDiscussionRequest {
 export interface UpdateGroupMessageRequest {
   content: string;
 }
+
+export interface GroupMessagePageCursor {
+  before: string;
+  beforeId?: string;
+}
+
+export interface GroupMessagePageParams {
+  before?: string;
+  beforeId?: string;
+  limit?: number;
+}
+
+export interface GroupMessagePageResponse {
+  messages: GroupMessageResponse[];
+  hasMore: boolean;
+  nextBefore: string | null;
+  nextBeforeId: string | null;
+}

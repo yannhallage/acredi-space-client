@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 import {
+  useAddCalendarParticipants,
   useCalendarEvents,
   useCreateCalendarEvent,
   useDeleteCalendarEvent,
-  useUpdateCalendarEvent,
 } from "../../../shared/api/callendar";
 import type { CalendarEvent } from "../../../shared/api/callendar/types";
 import {
@@ -26,8 +26,8 @@ export function useCalendarPage() {
   const today = new Date();
   const eventsQuery = useCalendarEvents();
   const createEventMutation = useCreateCalendarEvent();
-  const updateEventMutation = useUpdateCalendarEvent();
   const deleteEventMutation = useDeleteCalendarEvent();
+  const addParticipantsMutation = useAddCalendarParticipants();
 
   const [calendarDate, setCalendarDate] = useState(today);
   const [view, setView] = useState<ViewMode>("week");
@@ -103,7 +103,7 @@ export function useCalendarPage() {
   }
 
   function openParticipantsModal(event: CalendarEvent) {
-    updateEventMutation.reset();
+    addParticipantsMutation.reset();
     setSelectedEvent(null);
     setParticipantEvent(event);
   }
@@ -147,20 +147,31 @@ export function useCalendarPage() {
     }
   }
 
-  async function handleUpdateParticipants(
+  async function handleAddParticipants(
     event: CalendarEvent,
     participantIds: string[],
   ) {
+    const existingIds = new Set(
+      event.participants.map((participant) => participant.id),
+    );
+    const toAdd = participantIds.filter((id) => !existingIds.has(id));
+
+    if (toAdd.length === 0) {
+      setParticipantEvent(null);
+      showToast("info", "Aucun nouveau participant a ajouter");
+      return;
+    }
+
     try {
-      await updateEventMutation.mutateAsync({
+      await addParticipantsMutation.mutateAsync({
         id: event.id,
         request: {
-          participantIds,
+          participantIds: toAdd,
         },
       });
 
       setParticipantEvent(null);
-      showToast("success", "Participants mis a jour");
+      showToast("success", "Participants ajoutes");
     } catch (error) {
       showToast("error", getErrorMessage(error));
     }
@@ -225,7 +236,7 @@ export function useCalendarPage() {
   }
 
   function closeParticipantsModal() {
-    updateEventMutation.reset();
+    addParticipantsMutation.reset();
     setParticipantEvent(null);
   }
 
@@ -239,6 +250,7 @@ export function useCalendarPage() {
   }
 
   return {
+    addParticipantsMutation,
     allEvents,
     calendarDate,
     calendarEvents,
@@ -254,7 +266,6 @@ export function useCalendarPage() {
     selectedDayEvents,
     selectedEvent,
     toast,
-    updateEventMutation,
     view,
     visibleDays,
     weekDays,
@@ -262,10 +273,10 @@ export function useCalendarPage() {
     goNext,
     goPrevious,
     goToday,
+    handleAddParticipants,
     handleCreateEvent,
     handleDeleteEvent,
     handleJoinMeeting,
-    handleUpdateParticipants,
     openCreateModal,
     openEventDetail,
     openParticipantsModal,

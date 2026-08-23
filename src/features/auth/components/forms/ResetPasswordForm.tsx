@@ -2,6 +2,10 @@ import { FormEvent, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useResetPasswordMutation } from '../../../../shared/api/auth/hooks';
 import { AcrediLockup, Icon } from '../../../../shared/ui';
+import { authFeedback, resolveResetPasswordFeedback, type AuthFeedback } from '../authFeedback';
+import { AuthCardBrand } from '../AuthCardBrand';
+import { AuthFeedbackBanner } from '../AuthFeedbackBanner';
+import { AuthSubmitButton } from '../AuthSubmitButton';
 import { PasswordInput } from '../PasswordInput';
 
 export function ResetPasswordForm() {
@@ -14,45 +18,63 @@ export function ResetPasswordForm() {
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [localError, setLocalError] = useState('');
+  const [feedback, setFeedback] = useState<AuthFeedback | null>(null);
 
   const resetPasswordMutation = useResetPasswordMutation();
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLocalError('');
+    setFeedback(null);
 
     if (!token) {
-      setLocalError('Le lien de reinitialisation est invalide.');
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Lien invalide',
+          'Ce lien de réinitialisation est incomplet. Demandez un nouveau lien pour continuer.'
+        )
+      );
       return;
     }
 
     if (newPassword.length < 8) {
-      setLocalError('Le mot de passe doit contenir au moins 8 caracteres.');
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Mot de passe trop court',
+          'Choisissez un mot de passe d’au moins 8 caractères pour sécuriser votre compte.'
+        )
+      );
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setLocalError('Les mots de passe ne correspondent pas.');
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Confirmation incorrecte',
+          'Les deux mots de passe ne correspondent pas. Vérifiez votre saisie, puis réessayez.'
+        )
+      );
       return;
     }
 
-    resetPasswordMutation.mutate(
-      {
+    try {
+      await resetPasswordMutation.mutateAsync({
         token,
         newPassword,
-      },
-      {
-        onSuccess: () => {
-          navigate('/login', {
-            replace: true,
-            state: {
-              message: 'Mot de passe reinitialise avec succes.',
-            },
-          });
+      });
+
+      navigate('/login', {
+        replace: true,
+        state: {
+          message: 'Mot de passe reinitialise avec succes.',
         },
-      }
-    );
+      });
+    } catch (error) {
+      console.error(error);
+      setFeedback(resolveResetPasswordFeedback(error));
+    }
   }
 
   const isSubmitting = resetPasswordMutation.isPending;
@@ -60,48 +82,44 @@ export function ResetPasswordForm() {
   if (!token) {
     return (
       <div className="login-card">
-        <div className="login-mobile-brand">
-          <AcrediLockup size={30} fontSize={22} />
-        </div>
-
-        <div className="auth-state-badge warning" aria-hidden="true">
-          <Icon name="alert" size={20} />
-        </div>
-
-        <div>
-          <p className="eyebrow">Lien invalide</p>
+        <div className="login-card-header">
+          <AcrediLockup size={34} fontSize={24} onLight />
           <h1>Demander un nouveau lien</h1>
           <p className="muted">
-            Le token de reinitialisation est absent ou incomplet. Lancez une
-            nouvelle demande pour securiser l'acces au compte.
+            Le lien de reinitialisation est absent ou incomplet. Lancez une nouvelle demande pour
+            securiser l'acces au compte.
           </p>
         </div>
 
-        <Link className="button primary button-wide" to="/forgot-password">
-          Demander un nouveau lien
+        <AuthFeedbackBanner
+          feedback={authFeedback(
+            'warning',
+            'Lien invalide',
+            'Ce lien de réinitialisation ne peut pas être utilisé. Demandez un nouveau lien pour continuer.'
+          )}
+        />
+
+        <Link className="button primary button-wide auth-submit-btn" to="/forgot-password">
+          Continuer
         </Link>
 
-        <Link className="auth-back-link" to="/login">
-          <Icon name="arrowLeft" size={15} />
-          Retour a la connexion
-        </Link>
+        <div className="login-card-footer">
+          <Link className="auth-back-link" to="/login">
+            <Icon name="arrowLeft" size={15} />
+            Retour a la connexion
+          </Link>
+        </div>
+
+        <AuthCardBrand />
       </div>
     );
   }
 
   return (
     <div className="login-card">
-      <div className="login-mobile-brand">
-        <AcrediLockup size={30} fontSize={22} />
-      </div>
-
-      <div className="auth-state-badge" aria-hidden="true">
-        <Icon name="shield" size={20} />
-      </div>
-
-      <div>
-        <p className="eyebrow">Securite</p>
-        <h1>Choisir un nouveau mot de passe</h1>
+      <div className="login-card-header">
+        <AcrediLockup size={34} fontSize={24} onLight />
+        <h1>Choisissez un nouveau mot de passe</h1>
         <p className="muted">
           Utilisez au moins 8 caracteres pour proteger votre espace Acredi Space.
         </p>
@@ -109,46 +127,54 @@ export function ResetPasswordForm() {
 
       <form className="login-form" onSubmit={handleSubmit}>
         <label>
-          <span>Nouveau mot de passe</span>
+          <span>
+            Nouveau mot de passe <em aria-hidden="true">*</em>
+          </span>
           <PasswordInput
-              placeholder="Minimum 8 caracteres"
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-              disabled={isSubmitting}
-              minLength={8}
-              required
-            />
+            placeholder="Minimum 8 caracteres"
+            value={newPassword}
+            onChange={(event) => {
+              setNewPassword(event.target.value);
+              if (feedback) setFeedback(null);
+            }}
+            autoComplete="new-password"
+            disabled={isSubmitting}
+            minLength={8}
+            required
+          />
         </label>
 
         <label>
-          <span>Confirmer le mot de passe</span>
+          <span>
+            Confirmer le mot de passe <em aria-hidden="true">*</em>
+          </span>
           <PasswordInput
-              placeholder="Confirmez le mot de passe"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              disabled={isSubmitting}
-              minLength={8}
-              required
-            />
+            placeholder="Confirmez le mot de passe"
+            value={confirmPassword}
+            onChange={(event) => {
+              setConfirmPassword(event.target.value);
+              if (feedback) setFeedback(null);
+            }}
+            autoComplete="new-password"
+            disabled={isSubmitting}
+            minLength={8}
+            required
+          />
         </label>
 
-        {localError && <p className="auth-error">{localError}</p>}
+        {feedback && <AuthFeedbackBanner feedback={feedback} />}
 
-        {resetPasswordMutation.isError && (
-          <p className="auth-error">
-            Le lien est invalide, expire ou deja utilise.
-          </p>
-        )}
-
-        <button className="button primary button-wide" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Reinitialisation...' : 'Reinitialiser le mot de passe'}
-        </button>
+        <AuthSubmitButton loading={isSubmitting}>Continuer</AuthSubmitButton>
       </form>
 
-      <Link className="auth-back-link" to="/login">
-        <Icon name="arrowLeft" size={15} />
-        Retour a la connexion
-      </Link>
+      <div className="login-card-footer">
+        <Link className="auth-back-link" to="/login">
+          <Icon name="arrowLeft" size={15} />
+          Retour a la connexion
+        </Link>
+      </div>
+
+      <AuthCardBrand />
     </div>
   );
 }

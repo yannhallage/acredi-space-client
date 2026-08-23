@@ -4,6 +4,10 @@ import { useChangeMyPasswordMutation } from '../../../../shared/api/users';
 import { resolveAuthenticatedRedirect } from '../../../../shared/auth/onboarding';
 import { useAuth } from '../../../../shared/context';
 import { AcrediLockup } from '../../../../shared/ui';
+import { authFeedback, resolvePasswordChangeFeedback, type AuthFeedback } from '../authFeedback';
+import { AuthCardBrand } from '../AuthCardBrand';
+import { AuthFeedbackBanner } from '../AuthFeedbackBanner';
+import { AuthSubmitButton } from '../AuthSubmitButton';
 import { PasswordInput } from '../PasswordInput';
 
 export function PasswordChangeForm() {
@@ -13,7 +17,7 @@ export function PasswordChangeForm() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<AuthFeedback | null>(null);
 
   if (!user) {
     return null;
@@ -21,20 +25,38 @@ export function PasswordChangeForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage(null);
+    setFeedback(null);
 
     if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-      setMessage({ type: 'error', text: 'Merci de remplir tous les champs.' });
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Champs requis',
+          'Renseignez le mot de passe actuel, le nouveau mot de passe et sa confirmation.'
+        )
+      );
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setMessage({ type: 'error', text: 'Les mots de passe ne correspondent pas.' });
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Confirmation incorrecte',
+          'Les deux mots de passe ne correspondent pas. Vérifiez votre saisie, puis réessayez.'
+        )
+      );
       return;
     }
 
     if (newPassword.length < 8) {
-      setMessage({ type: 'error', text: 'Le nouveau mot de passe doit contenir au moins 8 caracteres.' });
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Mot de passe trop court',
+          'Choisissez un mot de passe d’au moins 8 caractères pour sécuriser votre compte.'
+        )
+      );
       return;
     }
 
@@ -54,16 +76,20 @@ export function PasswordChangeForm() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setMessage({ type: 'success', text: 'Mot de passe mis a jour. Redirection en cours...' });
+      setFeedback(
+        authFeedback(
+          'success',
+          'Mot de passe mis à jour',
+          'Votre compte est sécurisé. Redirection en cours…'
+        )
+      );
 
       setTimeout(() => {
         navigate(resolveAuthenticatedRedirect(authenticatedUser, '/app/dashboard'), { replace: true });
       }, 800);
     } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error instanceof Error ? error.message : 'Le changement de mot de passe a echoue.',
-      });
+      console.error(error);
+      setFeedback(resolvePasswordChangeFeedback(error));
     }
   }
 
@@ -71,61 +97,75 @@ export function PasswordChangeForm() {
 
   return (
     <div className="login-card">
-      <div className="login-mobile-brand">
-        <AcrediLockup size={30} fontSize={22} />
-      </div>
-
-      <div className="text-[14px]">
-        <p className="eyebrow">Action requise</p>
-        <h1>Changer votre mot de passe</h1>
+      <div className="login-card-header">
+        <AcrediLockup size={34} fontSize={24} onLight />
+        <h1>Changez votre mot de passe pour continuer</h1>
         <p className="muted">
-          Avant d'entrer dans Acredi Space, terminez la verification de votre compte en choisissant un nouveau mot de passe.
+          Avant d'entrer dans Acredi Space, choisissez un nouveau mot de passe pour securiser votre
+          compte.
         </p>
       </div>
 
       <form className="login-form" onSubmit={handleSubmit}>
-        <label className="text-sm">
-          <span>Mot de passe actuel</span>
+        <label>
+          <span>
+            Mot de passe actuel <em aria-hidden="true">*</em>
+          </span>
           <PasswordInput
-              value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
-              disabled={isSubmitting}
-              required
-            />
+            value={currentPassword}
+            onChange={(event) => {
+              setCurrentPassword(event.target.value);
+              if (feedback) setFeedback(null);
+            }}
+            placeholder="Saisissez votre mot de passe actuel"
+            autoComplete="current-password"
+            disabled={isSubmitting}
+            required
+          />
         </label>
 
-        <label className="text-sm">
-          <span>Nouveau mot de passe</span>
+        <label>
+          <span>
+            Nouveau mot de passe <em aria-hidden="true">*</em>
+          </span>
           <PasswordInput
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-              disabled={isSubmitting}
-              minLength={8}
-              required
-            />
+            value={newPassword}
+            onChange={(event) => {
+              setNewPassword(event.target.value);
+              if (feedback) setFeedback(null);
+            }}
+            placeholder="Minimum 8 caracteres"
+            autoComplete="new-password"
+            disabled={isSubmitting}
+            minLength={8}
+            required
+          />
         </label>
 
-        <label className="text-sm">
-          <span>Confirmer le nouveau mot de passe</span>
+        <label>
+          <span>
+            Confirmer le mot de passe <em aria-hidden="true">*</em>
+          </span>
           <PasswordInput
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              disabled={isSubmitting}
-              minLength={8}
-              required
-            />
+            value={confirmPassword}
+            onChange={(event) => {
+              setConfirmPassword(event.target.value);
+              if (feedback) setFeedback(null);
+            }}
+            placeholder="Confirmez le nouveau mot de passe"
+            autoComplete="new-password"
+            disabled={isSubmitting}
+            minLength={8}
+            required
+          />
         </label>
 
-        {message ? (
-          <p className={message.type === 'error' ? 'auth-error text-red-500 text-sm' : 'text-green-600 text-sm'}>
-            {message.text}
-          </p>
-        ) : null}
+        {feedback && <AuthFeedbackBanner feedback={feedback} />}
 
-        <button className="button primary button-wide" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Validation...' : 'Valider'}
-        </button>
+        <AuthSubmitButton loading={isSubmitting}>Continuer</AuthSubmitButton>
       </form>
+
+      <AuthCardBrand />
     </div>
   );
 }

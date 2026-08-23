@@ -29,6 +29,7 @@ interface ChatThreadProps {
   messagesError: boolean;
   messagesErrorDetails: unknown;
   messagesFetching: boolean;
+  loadingOlder?: boolean;
   messageGroups: ReturnType<typeof groupMessagesByDay>;
   messageListRef: RefObject<HTMLDivElement | null>;
   getUserAvatarUrl: (userId: string) => string | null | undefined;
@@ -48,6 +49,7 @@ export function ChatThread({
   messagesError,
   messagesErrorDetails,
   messagesFetching,
+  loadingOlder = false,
   messageGroups,
   messageListRef,
   getUserAvatarUrl,
@@ -190,6 +192,9 @@ export function ChatThread({
       </header>
 
       <div className="message-list" ref={messageListRef}>
+        {loadingOlder ? (
+          <p className="chat-history-hint">Chargement de l'historique...</p>
+        ) : null}
         {messagesLoading ? (
           messageSkeletons.map((item, index) => (
             <article
@@ -256,7 +261,7 @@ export function ChatThread({
           />
         )}
 
-        {messagesFetching && !messagesLoading ? (
+        {messagesFetching && !messagesLoading && !loadingOlder ? (
           <p className="chat-refresh-hint">Actualisation...</p>
         ) : null}
       </div>

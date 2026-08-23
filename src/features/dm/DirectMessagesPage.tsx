@@ -119,6 +119,9 @@ export function DirectMessagesPage() {
     data: messages = [],
     isLoading: messagesLoading,
     isFetching: messagesFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     refetch: refetchMessages,
   } = useMessagesQuery(activeConversationId);
 
@@ -157,7 +160,7 @@ export function DirectMessagesPage() {
 
   const isRefreshingDiscussion =
     (channelsFetching && !channelsLoading) ||
-    (messagesFetching && !messagesLoading);
+    (messagesFetching && !messagesLoading && !isFetchingNextPage);
 
   if (channelsLoading) {
     return <DmPageSkeleton />;
@@ -186,6 +189,9 @@ export function DirectMessagesPage() {
         messages,
         loading: messagesLoading,
         refreshing: isRefreshingDiscussion,
+        hasMore: Boolean(hasNextPage),
+        loadingOlder: isFetchingNextPage,
+        onLoadOlder: () => fetchNextPage(),
         typingUsers,
         publishTyping,
         onRefresh: handleRefreshDiscussion,

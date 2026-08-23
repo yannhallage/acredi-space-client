@@ -12,6 +12,8 @@ import {
   FilesBreadcrumb,
   FilesViewToggle,
   FolderFilesPageSkeleton,
+  FolderFormModal,
+  FolderGrid,
   ShareModal,
 } from "./components";
 import { useFilesViewMode } from "./hooks/useFilesViewMode";
@@ -104,7 +106,11 @@ export function FolderFilesPage() {
             <h1>{page.currentFolder.name}</h1>
             <FilesBreadcrumb
               breadcrumbs={page.breadcrumbs}
-              countLabel={page.pluralizeFile(page.visibleFiles.length)}
+              countLabel={`${page.pluralizeFile(page.visibleFiles.length)}${
+                page.visibleFolders.length > 0
+                  ? ` • ${page.visibleFolders.length} dossier${page.visibleFolders.length > 1 ? "s" : ""}`
+                  : ""
+              }`}
               onNavigateFolder={(id) => page.navigate(`/app/files/${id}`)}
               onNavigateRoot={() => page.navigate("/app/files")}
             />
@@ -145,9 +151,27 @@ export function FolderFilesPage() {
             id="folder-file-search"
             value={page.searchTerm}
             onChange={(event) => page.setSearchTerm(event.target.value)}
-            placeholder="Rechercher un fichier"
+            placeholder="Rechercher dans ce dossier"
           />
         </label>
+
+        <FolderGrid
+          deletePending={page.deleteFolderMutation.isPending}
+          folders={page.visibleFolders}
+          getStats={(folder) => page.folderStatsById.get(folder.id)}
+          hideEmptyState
+          onCreate={page.openCreateModal}
+          onDelete={page.handleDeleteFolder}
+          onEdit={page.openEditModal}
+          onOpen={(folder) => page.navigate(`/app/files/${folder.id}`)}
+          onShare={page.handleShareFolder}
+          onToggleMenu={(folderId) =>
+            page.setOpenMenuFolderId((current) =>
+              current === folderId ? null : folderId,
+            )
+          }
+          openMenuFolderId={page.openMenuFolderId}
+        />
 
         {viewMode === "list" ? (
           <FileList
@@ -180,6 +204,12 @@ export function FolderFilesPage() {
             emptyDescription="Importez un fichier dans ce dossier."
             emptyTitle="Aucun fichier"
             files={page.visibleFiles}
+            getOwnerLabel={(file) =>
+              file.ownerId && user?.id === file.ownerId ? "Vous" : "—"
+            }
+            getOwnerUser={(file) =>
+              file.ownerId && user?.id === file.ownerId ? user : null
+            }
             onDelete={page.handleDeleteFile}
             onDownload={page.handleDownloadFile}
             onOpenPreview={page.handleOpenPreview}
@@ -247,11 +277,27 @@ export function FolderFilesPage() {
             ) : null}
           </>
         }
-        details={[{ label: "Chemin", value: `/Acredi Space/${page.currentPath}` }]}
         file={page.selectedFile}
+        files={page.visibleFiles}
         onClose={() => page.setSelectedFileId(null)}
+        onNavigate={page.handleOpenPreview}
+        path={`/Acredi Space/${page.currentPath}`}
         preview={page.preview}
         subtitle="Apercu fichier"
+      />
+
+      <FolderFormModal
+        currentFolder={page.currentFolder}
+        errorMessage={page.folderFormError}
+        folderName={page.folderName}
+        isOpen={page.isFolderModalOpen}
+        isSaving={page.isFolderSaving}
+        onChangeName={page.setFolderName}
+        onClose={page.closeFolderModal}
+        onSubmit={page.handleSaveFolder}
+        savingLabel={page.folderSavingLabel}
+        submitLabel={page.folderSubmitLabel}
+        title={page.folderModalTitle}
       />
 
       <ShareModal
@@ -267,6 +313,26 @@ export function FolderFilesPage() {
         onRetry={page.usersQuery.refetch}
         onSelect={(userEntry) => {
           void page.shareFileWithUser(userEntry);
+        }}
+        selectedUserId={page.sharingUserId}
+        users={page.usersQuery.data ?? []}
+      />
+
+      <ShareModal
+        variant="folder"
+        error={page.usersQuery.error}
+        fileCount={page.shareTargetFolderFiles.length}
+        filesLoading={false}
+        folder={page.shareTargetFolder}
+        isOpen={Boolean(page.shareTargetFolder)}
+        isSharing={Boolean(page.sharingUserId)}
+        level={page.shareLevel}
+        loading={page.usersQuery.loading}
+        onClose={page.closeFolderShareModal}
+        onLevelChange={page.setShareLevel}
+        onRetry={page.usersQuery.refetch}
+        onSelect={(userEntry) => {
+          void page.shareFolderWithUser(userEntry);
         }}
         selectedUserId={page.sharingUserId}
         users={page.usersQuery.data ?? []}

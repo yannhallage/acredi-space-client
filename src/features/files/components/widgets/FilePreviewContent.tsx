@@ -21,7 +21,17 @@ function PreviewSpinner({ label = "Chargement de l'apercu" }: { label?: string }
   );
 }
 
-function FileImageViewer({ alt, src }: { alt: string; src: string }) {
+function FileImageViewer({
+  alt,
+  onToggleZoom,
+  src,
+  zoom,
+}: {
+  alt: string;
+  onToggleZoom?: () => void;
+  src: string;
+  zoom: number;
+}) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const resolvedSrc = resolveAssetUrl(src) ?? src;
@@ -42,14 +52,18 @@ function FileImageViewer({ alt, src }: { alt: string; src: string }) {
   }
 
   return (
-    <div className="files-image-viewer">
+    <div className={zoom > 1 ? "files-image-viewer is-zoomed" : "files-image-viewer"}>
       {!loaded ? <PreviewSpinner /> : null}
       <img
         alt={alt}
         className="files-image-viewer-image"
         decoding="async"
         src={resolvedSrc}
-        style={{ opacity: loaded ? 1 : 0 }}
+        style={{
+          opacity: loaded ? 1 : 0,
+          transform: `scale(${zoom})`,
+        }}
+        onClick={onToggleZoom}
         onError={() => setFailed(true)}
         onLoad={() => setLoaded(true)}
       />
@@ -59,10 +73,14 @@ function FileImageViewer({ alt, src }: { alt: string; src: string }) {
 
 export function FilePreviewContent({
   file,
+  onToggleZoom,
   preview,
+  zoom = 1,
 }: {
   file: WorkspaceFile;
+  onToggleZoom?: () => void;
   preview: PreviewState;
+  zoom?: number;
 }) {
   const kind = getPreviewKind(file);
 
@@ -95,7 +113,14 @@ export function FilePreviewContent({
   }
 
   if (kind === "image") {
-    return <FileImageViewer alt={file.name} src={preview.url} />;
+    return (
+      <FileImageViewer
+        alt={file.name}
+        onToggleZoom={onToggleZoom}
+        src={preview.url}
+        zoom={zoom}
+      />
+    );
   }
 
   if (kind === "video") {

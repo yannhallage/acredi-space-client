@@ -130,4 +130,8 @@ export type UpdateCalendarEventRequest = {
   }>;
 };
 
+export type AddCalendarParticipantRequest = {
+  participantIds: string[];
+};
+
 export type { ApiResponse };

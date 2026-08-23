@@ -2,8 +2,8 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   getCompletedOnboardingExitPath,
   getOnboardingRedirectPath,
+  isAllowedOnboardingPath,
   isOnboardingPath,
-  isSignupSuccessPath,
 } from '../shared/auth/onboarding';
 import { useAuth } from '../shared/context';
 import { LoadingState } from '../shared/ui';
@@ -35,18 +35,18 @@ export function ProtectedRoute() {
     );
   }
 
-  const onboardingRedirectPath = getOnboardingRedirectPath(user?.onboardingStatus);
+  const onboardingHomePath = getOnboardingRedirectPath(user?.onboardingStatus);
 
-  if (
-    onboardingRedirectPath &&
-    !location.pathname.startsWith(onboardingRedirectPath) &&
-    !isSignupSuccessPath(location.pathname)
-  ) {
-    return <Navigate to={onboardingRedirectPath} replace />;
+  if (onboardingHomePath) {
+    if (!isAllowedOnboardingPath(user?.onboardingStatus, location.pathname)) {
+      return <Navigate to={onboardingHomePath} replace />;
+    }
+
+    return <Outlet />;
   }
 
-  // Après setup orga, ne pas renvoyer au dashboard : laisser /signup/success s'afficher.
-  if (!onboardingRedirectPath && isOnboardingPath(location.pathname)) {
+  // Onboarding terminé : ne pas rester sur une URL d'onboarding (sauf /signup/success).
+  if (isOnboardingPath(location.pathname)) {
     return <Navigate to={getCompletedOnboardingExitPath(location.pathname)} replace />;
   }
 

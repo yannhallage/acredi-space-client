@@ -21,6 +21,7 @@ dayjs.locale("fr");
 
 export function CalendarPage() {
   const {
+    addParticipantsMutation,
     allEvents,
     calendarDate,
     calendarEvents,
@@ -36,7 +37,6 @@ export function CalendarPage() {
     selectedDayEvents,
     selectedEvent,
     toast,
-    updateEventMutation,
     view,
     visibleDays,
     weekDays,
@@ -44,10 +44,10 @@ export function CalendarPage() {
     goNext,
     goPrevious,
     goToday,
+    handleAddParticipants,
     handleCreateEvent,
     handleDeleteEvent,
     handleJoinMeeting,
-    handleUpdateParticipants,
     openCreateModal,
     openEventDetail,
     openParticipantsModal,
@@ -149,11 +149,11 @@ export function CalendarPage() {
       {participantEvent ? (
         <CalendarParticipantsModal
           event={participantEvent}
-          error={updateEventMutation.error}
-          isSaving={updateEventMutation.isPending}
+          error={addParticipantsMutation.error}
+          isSaving={addParticipantsMutation.isPending}
           onClose={closeParticipantsModal}
           onSave={(participantIds) =>
-            handleUpdateParticipants(participantEvent, participantIds)
+            handleAddParticipants(participantEvent, participantIds)
           }
         />
       ) : null}

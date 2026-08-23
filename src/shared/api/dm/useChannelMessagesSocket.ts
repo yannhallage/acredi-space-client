@@ -10,7 +10,7 @@ import {
   websocketReconnectDelayMs,
   websocketUrl,
 } from "../websocket";
-import { chatKeys } from "./hooks";
+import { chatKeys, writeMessageToCaches } from "./messagesCache";
 import type { ChannelResponse, MessageResponse } from "./types";
 
 export type ChannelTypingUser = {
@@ -35,25 +35,13 @@ function readTypingEvent(message: IMessage) {
   return parseSocketJson<ChannelTypingEvent>(message.body);
 }
 
-function upsertMessage(
-  current: MessageResponse[] | undefined,
-  incoming: MessageResponse,
-) {
-  const existing = current ?? [];
-  const index = existing.findIndex((item) => item.id === incoming.id);
-
-  if (index === -1) {
-    return [...existing, incoming];
-  }
-
-  return existing.map((item, itemIndex) =>
-    itemIndex === index ? incoming : item,
-  );
-}
-
 function patchChannelPreview(
   channels: ChannelResponse[] | undefined,
   message: MessageResponse,
+  options?: {
+    activeChannelId?: string | null;
+    currentUserId?: string | null;
+  },
 ) {
   if (!channels?.length) {
     return channels;
@@ -64,12 +52,29 @@ function patchChannelPreview(
       return channel;
     }
 
+    const preview = message.deletedAt
+      ? "Message supprimé"
+      : message.content;
+    const alreadySeen =
+      channel.lastMessageAt === message.createdAt &&
+      channel.lastMessage === preview;
+    const isOwnMessage =
+      Boolean(options?.currentUserId) &&
+      message.senderId === options?.currentUserId;
+    const isActiveChannel = channel.id === options?.activeChannelId;
+    const shouldIncrementUnread =
+      !alreadySeen &&
+      !isOwnMessage &&
+      !isActiveChannel &&
+      !message.deletedAt;
+
     return {
       ...channel,
-      lastMessage: message.deletedAt
-        ? "Message supprimé"
-        : message.content,
+      lastMessage: preview,
       lastMessageAt: message.createdAt,
+      unreadCount: shouldIncrementUnread
+        ? (channel.unreadCount ?? 0) + 1
+        : channel.unreadCount ?? 0,
     };
   });
 }
@@ -171,14 +176,15 @@ export function useChannelMessagesSocket(
                 return;
               }
 
-              queryClient.setQueryData<MessageResponse[]>(
-                chatKeys.messages(payload.channelId),
-                (current) => upsertMessage(current, payload),
-              );
+              writeMessageToCaches(queryClient, payload);
 
               queryClient.setQueryData<ChannelResponse[]>(
                 chatKeys.channels(),
-                (current) => patchChannelPreview(current, payload),
+                (current) =>
+                  patchChannelPreview(current, payload, {
+                    activeChannelId: activeChannelIdRef.current,
+                    currentUserId,
+                  }),
               );
 
               if (

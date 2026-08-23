@@ -13,24 +13,27 @@ export function toCentsNumber(value: number | string | null | undefined) {
 
 export function formatMoneyFromCents(
   amountCents: number | string | null | undefined,
-  currency = "EUR"
+  currency = "XOF"
 ) {
   const amount = toCentsNumber(amountCents) / 100;
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
-    currency: currency || "EUR",
+    currency: currency || "XOF",
+    maximumFractionDigits: 0,
   }).format(amount);
 }
 
 export function formatBillingInterval(interval?: BillingInterval | string | null) {
-  if (interval === "YEARLY") {
+  const value = (interval ?? "").toUpperCase();
+  if (value === "YEARLY" || value === "ANNUAL") {
     return "/ an";
   }
   return "/ mois";
 }
 
 export function formatBillingCycle(interval?: BillingInterval | string | null) {
-  if (interval === "YEARLY") {
+  const value = (interval ?? "").toUpperCase();
+  if (value === "YEARLY" || value === "ANNUAL") {
     return "Annuel";
   }
   return "Mensuel";

@@ -1,5 +1,6 @@
 import type { MouseEvent } from "react";
 import {
+  addDays,
   formatDayName,
   formatDayNumber,
   getCalendarHours,
@@ -97,26 +98,31 @@ export function MeetingWeekView({
               key={dateKey}
               className="relative min-w-[132px] border-r border-[var(--border)] last:border-r-0"
             >
-              {hours.map((hour) => (
-                <button
-                  key={hour}
-                  onClick={() => {
-                    if (isPastDateTime(dateKey, hour)) {
-                      onPastDateWarning(
-                        "Impossible de créer une réunion à une date déjà passée.",
-                      );
-                      return;
-                    }
-                    onCreateAtSlot(dateKey, hour);
-                  }}
-                  className={`block h-[72px] w-full border-b border-[var(--border)] text-left ${
-                    isPastDateTime(dateKey, hour)
-                      ? "cursor-not-allowed bg-[color-mix(in_srgb,var(--bg)_72%,var(--surface))]"
-                      : "cursor-pointer hover:bg-[var(--surface-2)]"
-                  }`}
-                  type="button"
-                />
-              ))}
+              {hours.map((hour) => {
+                const slotDateKey =
+                  hour === "00:00" ? toDateKey(addDays(day, 1)) : dateKey;
+
+                return (
+                  <button
+                    key={hour}
+                    onClick={() => {
+                      if (isPastDateTime(slotDateKey, hour)) {
+                        onPastDateWarning(
+                          "Impossible de créer une réunion à une date déjà passée.",
+                        );
+                        return;
+                      }
+                      onCreateAtSlot(slotDateKey, hour);
+                    }}
+                    className={`block h-[72px] w-full border-b border-[var(--border)] text-left ${
+                      isPastDateTime(slotDateKey, hour)
+                        ? "cursor-not-allowed bg-[color-mix(in_srgb,var(--bg)_72%,var(--surface))]"
+                        : "cursor-pointer hover:bg-[var(--surface-2)]"
+                    }`}
+                    type="button"
+                  />
+                );
+              })}
 
               {isLoading
                 ? getLoadingMeetingBlocks(dayIndex, view).map((block, index) => (

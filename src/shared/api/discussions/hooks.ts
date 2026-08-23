@@ -1,21 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { chatKeys } from "../dm/hooks";
-import type { MessageResponse } from "../dm/types";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { chatKeys, writeMessageToCaches } from "../dm/messagesCache";
+import { discussionKeys, writeGroupMessageToCache } from "./messagesCache";
 import { discussionService } from "./service";
-import type { GroupMessageResponse, SendGroupMessageRequest } from "./types";
+import type {
+  GroupMessagePageCursor,
+  GroupMessageResponse,
+  SendGroupMessageRequest,
+} from "./types";
 
 interface UseDiscussionQueryOptions {
   enabled?: boolean;
 }
 
-export const discussionKeys = {
-  all: ["discussions"] as const,
-  mine: () => [...discussionKeys.all, "mine"] as const,
-  byTeam: (teamId: string) => [...discussionKeys.all, "team", teamId] as const,
-  detail: (id: string) => [...discussionKeys.all, "detail", id] as const,
-  messages: (discussionId: string) =>
-    [...discussionKeys.all, "messages", discussionId] as const,
-};
+export { discussionKeys } from "./messagesCache";
 
 export function useMyDiscussions(options: UseDiscussionQueryOptions = {}) {
   const { enabled = true } = options;
@@ -56,18 +53,47 @@ export function useDiscussion(
   });
 }
 
-export function useDiscussionMessages(
+export function useInfiniteDiscussionMessages(
   discussionId?: string,
   options: UseDiscussionQueryOptions = {}
 ) {
   const { enabled = true } = options;
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: discussionKeys.messages(discussionId ?? ""),
-    queryFn: () => discussionService.findMessages(discussionId!),
+    queryFn: ({ pageParam }) =>
+      discussionService.findMessages(discussionId!, pageParam),
     enabled: enabled && Boolean(discussionId),
+    initialPageParam: undefined as GroupMessagePageCursor | undefined,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.hasMore || !lastPage.nextBefore) {
+        return undefined;
+      }
+
+      return {
+        before: lastPage.nextBefore,
+        beforeId: lastPage.nextBeforeId ?? undefined,
+      };
+    },
     staleTime: 1000 * 5,
   });
+}
+
+export function useDiscussionMessages(
+  discussionId?: string,
+  options: UseDiscussionQueryOptions = {}
+) {
+  const query = useInfiniteDiscussionMessages(discussionId, options);
+
+  return {
+    ...query,
+    data: query.data
+      ? query.data.pages
+          .slice()
+          .reverse()
+          .flatMap((page) => page.messages ?? [])
+      : undefined,
+  };
 }
 
 export function useSendDiscussionMessage() {
@@ -82,20 +108,7 @@ export function useSendDiscussionMessage() {
       request: SendGroupMessageRequest;
     }) => discussionService.sendMessage(discussionId, request),
     onSuccess: (message) => {
-      queryClient.setQueryData<GroupMessageResponse[]>(
-        discussionKeys.messages(message.discussionId),
-        (oldMessages = []) => {
-          const alreadyExists = oldMessages.some(
-            (item) => item.id === message.id,
-          );
-
-          if (alreadyExists) {
-            return oldMessages;
-          }
-
-          return [...oldMessages, message];
-        },
-      );
+      writeGroupMessageToCache(queryClient, message);
       queryClient.invalidateQueries({ queryKey: discussionKeys.mine() });
     },
   });
@@ -113,11 +126,7 @@ export function useDeleteDiscussionMessage() {
       messageId: string;
     }) => discussionService.deleteMessage(discussionId, messageId),
     onSuccess: (message) => {
-      queryClient.setQueryData<GroupMessageResponse[]>(
-        discussionKeys.messages(message.discussionId),
-        (oldMessages = []) =>
-          oldMessages.map((item) => (item.id === message.id ? message : item)),
-      );
+      writeGroupMessageToCache(queryClient, message);
       queryClient.invalidateQueries({ queryKey: discussionKeys.mine() });
     },
   });
@@ -137,11 +146,7 @@ export function useUpdateDiscussionMessage() {
       content: string;
     }) => discussionService.updateMessage(discussionId, messageId, content),
     onSuccess: (message) => {
-      queryClient.setQueryData<GroupMessageResponse[]>(
-        discussionKeys.messages(message.discussionId),
-        (oldMessages = []) =>
-          oldMessages.map((item) => (item.id === message.id ? message : item)),
-      );
+      writeGroupMessageToCache(queryClient, message);
       queryClient.invalidateQueries({ queryKey: discussionKeys.mine() });
     },
   });
@@ -168,20 +173,7 @@ export function useShareDiscussionMessage() {
       }),
     onSuccess: (message) => {
       if ("channelId" in message && message.channelId) {
-        queryClient.setQueryData<MessageResponse[]>(
-          chatKeys.messages(message.channelId),
-          (oldMessages = []) => {
-            const alreadyExists = oldMessages.some(
-              (item) => item.id === message.id,
-            );
-
-            if (alreadyExists) {
-              return oldMessages;
-            }
-
-            return [...oldMessages, message];
-          },
-        );
+        writeMessageToCaches(queryClient, message);
 
         queryClient.invalidateQueries({
           queryKey: chatKeys.channels(),
@@ -190,20 +182,7 @@ export function useShareDiscussionMessage() {
       }
 
       if ("discussionId" in message && message.discussionId) {
-        queryClient.setQueryData<GroupMessageResponse[]>(
-          discussionKeys.messages(message.discussionId),
-          (oldMessages = []) => {
-            const alreadyExists = oldMessages.some(
-              (item) => item.id === message.id,
-            );
-
-            if (alreadyExists) {
-              return oldMessages;
-            }
-
-            return [...oldMessages, message];
-          },
-        );
+        writeGroupMessageToCache(queryClient, message as GroupMessageResponse);
         queryClient.invalidateQueries({ queryKey: discussionKeys.mine() });
       }
     },

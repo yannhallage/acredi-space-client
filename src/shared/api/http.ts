@@ -1,8 +1,7 @@
 import { clearAuthSession } from "./auth/session";
 
 // const PRODUCTION_API_BASE_URL = "https://api-acredispace.acredigroup.com/api";
-const PRODUCTION_API_BASE_URL = "https://acredi-space.onrender.com/api";
-// const PRODUCTION_API_BASE_URL = "https://srv.acredispace.acredigroup.com/api";
+const PRODUCTION_API_BASE_URL = "https://srv.acredispace.acredigroup.com/api";
 const DEVELOPMENT_API_BASE_URL = "http://localhost:8080/api";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -224,11 +223,23 @@ function shouldForceLogout(status: number) {
   return status === 401 || status === 403;
 }
 
+function shouldRedirectToBilling(status: number) {
+  return status === 402;
+}
+
+const BILLING_PLANS_PATH = "/settings/plans";
+
 function forceFrontendLogout() {
   clearAuthSession();
 
   if (window.location.pathname !== "/login") {
     window.location.replace("/login");
+  }
+}
+
+function redirectToBillingPlans() {
+  if (window.location.pathname !== BILLING_PLANS_PATH) {
+    window.location.replace(BILLING_PLANS_PATH);
   }
 }
 
@@ -272,6 +283,10 @@ function getErrorMessage(status: number, payload: unknown) {
 
   if (status === 403) {
     return "Vous n'avez pas les droits necessaires pour cette action.";
+  }
+
+  if (status === 402) {
+    return "Un abonnement actif est requis pour continuer.";
   }
 
   return "Une erreur est survenue pendant la requete.";
@@ -339,6 +354,8 @@ async function request<T>(path: string, options: HttpRequestOptions = {}) {
   if (!response.ok) {
     if (auth && shouldForceLogout(response.status)) {
       forceFrontendLogout();
+    } else if (auth && shouldRedirectToBilling(response.status)) {
+      redirectToBillingPlans();
     }
 
     throw new HttpError(
@@ -391,6 +408,8 @@ async function requestRaw(path: string, options: HttpRequestOptions = {}) {
 
     if (auth && shouldForceLogout(response.status)) {
       forceFrontendLogout();
+    } else if (auth && shouldRedirectToBilling(response.status)) {
+      redirectToBillingPlans();
     }
 
     throw new HttpError(

@@ -59,21 +59,6 @@ function formatReminder(reminder: CalendarEvent["reminders"][number]) {
   return delay.charAt(0).toUpperCase() + delay.slice(1);
 }
 
-function getGuestStatusLabel(
-  status: CalendarEvent["participants"][number]["status"],
-) {
-  switch (status) {
-    case "ACCEPTED":
-      return "Accepte";
-    case "DECLINED":
-      return "Refuse";
-    case "TENTATIVE":
-      return "Provisoire";
-    default:
-      return "Invite";
-  }
-}
-
 function getParticipantName(
   participant: CalendarEvent["participants"][number],
 ) {
@@ -259,24 +244,24 @@ export function CalendarEventDetailModal({
                       {event.participants.length} participant
                       {event.participants.length > 1 ? "s" : ""}
                     </p>
-                    <div className="calendar-event-popover-guests">
-                      {event.participants.map((participant) => (
-                        <div
-                          className="calendar-event-popover-guest"
+                    <div
+                      className="calendar-participant-avatars"
+                      title={event.participants
+                        .map((participant) => getParticipantName(participant))
+                        .join(", ")}
+                    >
+                      {event.participants.slice(0, 6).map((participant) => (
+                        <Avatar
                           key={participant.id}
-                        >
-                          <Avatar
-                            name={getParticipantName(participant)}
-                            size={28}
-                          />
-                          <span>
-                            <strong>{getParticipantName(participant)}</strong>
-                            <small>
-                              {getGuestStatusLabel(participant.status)}
-                            </small>
-                          </span>
-                        </div>
+                          name={getParticipantName(participant)}
+                          size={28}
+                        />
                       ))}
+                      {event.participants.length > 6 ? (
+                        <span className="calendar-participant-avatars-more">
+                          +{event.participants.length - 6}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>

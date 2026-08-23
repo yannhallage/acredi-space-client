@@ -3,6 +3,7 @@ import { PERMISSIONS, PermissionGate } from "../../../../shared/permissions";
 import { Icon } from "../../../../shared/ui";
 
 import { FilesEmptyIllustration } from "./FilesEmptyIllustration";
+import { FilesActionsDropdown } from "./FilesActionsDropdown";
 
 export function FolderList({
   deletePending,
@@ -78,79 +79,74 @@ export function FolderList({
           </span>
 
           <div className="files-file-list-actions" role="cell">
-            <button
-              className="files-file-menu-button"
-              type="button"
-              aria-label={`Actions ${folder.name}`}
-              aria-haspopup="menu"
-              aria-expanded={openMenuFolderId === folder.id}
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleMenu(folder.id);
-              }}
+            <FilesActionsDropdown
+              icon="moreH"
+              isOpen={openMenuFolderId === folder.id}
+              label={`Actions ${folder.name}`}
+              onToggle={() => onToggleMenu(folder.id)}
+              triggerClassName="files-file-menu-button"
             >
-              <Icon name="moreH" size={14} />
-            </button>
-
-            {openMenuFolderId === folder.id ? (
-              <div
-                className="files-file-dropdown"
-                role="menu"
-                onClick={(event) => event.stopPropagation()}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => onOpen(folder)}
               >
-                <PermissionGate
-                  permissions={[
-                    PERMISSIONS.UPDATE_FOLDERS,
-                    PERMISSIONS.MANAGE_FOLDERS,
-                  ]}
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => onEdit(folder)}
-                  >
-                    <Icon name="edit" size={13} />
-                    Modifier
-                  </button>
-                </PermissionGate>
+                <Icon name="folder" size={14} />
+                Ouvrir
+              </button>
 
-                <PermissionGate
-                  permissions={[
-                    PERMISSIONS.SHARE_FILES,
-                    PERMISSIONS.MANAGE_FOLDERS,
-                  ]}
+              <PermissionGate
+                permissions={[
+                  PERMISSIONS.UPDATE_FOLDERS,
+                  PERMISSIONS.MANAGE_FOLDERS,
+                ]}
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => onEdit(folder)}
                 >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => onShare(folder)}
-                  >
-                    <Icon name="users" size={13} />
-                    Partager
-                  </button>
-                </PermissionGate>
+                  <Icon name="edit" size={14} />
+                  Modifier
+                </button>
+              </PermissionGate>
 
-                <PermissionGate
-                  permissions={[
-                    PERMISSIONS.DELETE_FOLDERS,
-                    PERMISSIONS.MANAGE_FOLDERS,
-                  ]}
+              <PermissionGate
+                permissions={[
+                  PERMISSIONS.SHARE_FILES,
+                  PERMISSIONS.MANAGE_FOLDERS,
+                ]}
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => onShare(folder)}
                 >
-                  <button
-                    className="danger"
-                    type="button"
-                    role="menuitem"
-                    disabled={deletePending}
-                    onClick={() => {
-                      void onDelete(folder);
-                    }}
-                  >
-                    <Icon name="trash" size={13} />
-                    Supprimer
-                  </button>
-                </PermissionGate>
-              </div>
-            ) : null}
+                  <Icon name="users" size={14} />
+                  Partager
+                </button>
+              </PermissionGate>
+
+              <PermissionGate
+                permissions={[
+                  PERMISSIONS.DELETE_FOLDERS,
+                  PERMISSIONS.MANAGE_FOLDERS,
+                ]}
+              >
+                <button
+                  className="danger"
+                  type="button"
+                  role="menuitem"
+                  disabled={deletePending}
+                  onClick={() => {
+                    void onDelete(folder);
+                  }}
+                >
+                  <Icon name="trash" size={14} />
+                  Supprimer
+                </button>
+              </PermissionGate>
+            </FilesActionsDropdown>
           </div>
         </article>
       ))}

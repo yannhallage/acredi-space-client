@@ -6,5 +6,8 @@ export default defineConfig({
   plugins: [react()],
   define: {
     global: 'window'
-  }
+  },
+  optimizeDeps: {
+    include: ['react-spinners'],
+  },
 })

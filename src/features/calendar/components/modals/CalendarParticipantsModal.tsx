@@ -6,6 +6,8 @@ import type { User } from "../../../../shared/types";
 import { Avatar, Icon } from "../../../../shared/ui";
 import { normalizeSearch } from "../../utils";
 
+const VISIBLE_AVATARS = 6;
+
 type CalendarParticipantsModalProps = {
   error: Error | null;
   event: CalendarEvent;
@@ -74,7 +76,29 @@ export function CalendarParticipantsModal({
       .filter((user): user is User => Boolean(user));
   }, [event.participants, selectedIds, users]);
 
+  const existingIds = useMemo(
+    () => new Set(event.participants.map((participant) => participant.id)),
+    [event.participants],
+  );
+
+  const existingUsers = useMemo(
+    () => selectedUsers.filter((user) => existingIds.has(user.id)),
+    [existingIds, selectedUsers],
+  );
+
+  const newUsers = useMemo(
+    () => selectedUsers.filter((user) => !existingIds.has(user.id)),
+    [existingIds, selectedUsers],
+  );
+
+  const hiddenExistingCount = Math.max(
+    0,
+    existingUsers.length - VISIBLE_AVATARS,
+  );
+
   function toggleParticipant(userId: string) {
+    if (existingIds.has(userId)) return;
+
     setSelectedIds((current) =>
       current.includes(userId)
         ? current.filter((id) => id !== userId)
@@ -131,8 +155,6 @@ export function CalendarParticipantsModal({
 
           <form className="calendar-event-form" onSubmit={handleSubmit}>
             <div className="calendar-field">
-              <span>Participants</span>
-
               <div className="calendar-participant-search">
                 <Icon name="search" size={15} />
                 <input
@@ -143,9 +165,36 @@ export function CalendarParticipantsModal({
                 />
               </div>
 
-              {selectedUsers.length > 0 ? (
+              {existingUsers.length > 0 ? (
+                <div className="calendar-participant-summary">
+                  <div
+                    className="calendar-participant-avatars"
+                    title={`${existingUsers.length} participant${existingUsers.length > 1 ? "s" : ""} deja invites`}
+                  >
+                    {existingUsers.slice(0, VISIBLE_AVATARS).map((user) => (
+                      <Avatar
+                        key={user.id}
+                        name={user.name}
+                        size={28}
+                        presence={user.presence}
+                      />
+                    ))}
+                    {hiddenExistingCount > 0 ? (
+                      <span className="calendar-participant-avatars-more">
+                        +{hiddenExistingCount}
+                      </span>
+                    ) : null}
+                  </div>
+                  <small>
+                    {existingUsers.length} deja invite
+                    {existingUsers.length > 1 ? "s" : ""}
+                  </small>
+                </div>
+              ) : null}
+
+              {newUsers.length > 0 ? (
                 <div className="calendar-selected-participants">
-                  {selectedUsers.map((user) => (
+                  {newUsers.map((user) => (
                     <button
                       key={user.id}
                       type="button"
@@ -155,7 +204,7 @@ export function CalendarParticipantsModal({
                     >
                       <Avatar
                         name={user.name}
-                        size={24}
+                        size={22}
                         presence={user.presence}
                       />
                       <span>{user.name}</span>
@@ -173,12 +222,13 @@ export function CalendarParticipantsModal({
                 ) : filteredUsers.length > 0 ? (
                   filteredUsers.map((user) => {
                     const selected = selectedIds.includes(user.id);
+                    const alreadyInvited = existingIds.has(user.id);
 
                     return (
                       <button
                         key={user.id}
                         type="button"
-                        disabled={isSaving}
+                        disabled={isSaving || alreadyInvited}
                         className={
                           selected
                             ? "calendar-participant selected"
@@ -192,12 +242,15 @@ export function CalendarParticipantsModal({
                           presence={user.presence}
                         />
 
-                        <span>
+                        <span className="calendar-participant-meta">
                           <strong>{user.name}</strong>
                           <small>{user.email}</small>
                         </span>
 
-                        <Icon name={selected ? "check" : "plus"} size={15} />
+                        <Icon
+                          name={alreadyInvited || selected ? "check" : "plus"}
+                          size={15}
+                        />
                       </button>
                     );
                   })
@@ -226,9 +279,13 @@ export function CalendarParticipantsModal({
               <button
                 className="button primary notes-submit"
                 type="submit"
-                disabled={isSaving}
+                disabled={isSaving || newUsers.length === 0}
               >
-                {isSaving ? "Enregistrement..." : "Enregistrer"}
+                {isSaving
+                  ? "Ajout..."
+                  : newUsers.length > 0
+                    ? `Ajouter (${newUsers.length})`
+                    : "Ajouter"}
               </button>
             </footer>
           </form>

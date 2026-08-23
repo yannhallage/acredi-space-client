@@ -24,6 +24,7 @@ import { useUsersQuery } from "../../../shared/api/users";
 import type { User } from "../../../shared/types";
 
 import {
+  buildFolderStatsMap,
   buildFolderTrail,
   getFolderBranchIds,
   pluralizeFolder,
@@ -121,6 +122,11 @@ export function useFilesPage() {
 
     return files.filter((file) => file.folderId && branchIds.has(file.folderId));
   }, [files, folders, shareTargetFolder]);
+
+  const folderStatsById = useMemo(
+    () => buildFolderStatsMap(files, folders),
+    [files, folders],
+  );
 
   const isFolderSaving =
     createFolderMutation.isPending || updateFolderMutation.isPending;
@@ -385,6 +391,7 @@ export function useFilesPage() {
     folderModalTitle,
     folderName,
     folderSavingLabel,
+    folderStatsById,
     folderSubmitLabel,
     handleDeleteFolder,
     handleSaveFolder,

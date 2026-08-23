@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -12,15 +12,13 @@ import {
   type FilePermissionLevel,
   type WorkspaceFile,
 } from "../../../shared/api/files";
-import { useFolders, type Folder } from "../../../shared/api/folders";
+import { useFolders, useCreateFolder, useUpdateFolder, useDeleteFolder, type Folder } from "../../../shared/api/folders";
 import { useUsersQuery } from "../../../shared/api/users";
-import { resolveAssetUrl } from "../../../shared/api/http";
 import type { User } from "../../../shared/types";
 import { downloadFileFromUrl } from "../../../shared/utils/downloadFile";
 
-import type { PreviewState } from "../filePreview";
-import { cacheFilePreviewUrl } from "../filePreviewUrlCache";
-import { buildFolderTrail, pluralizeFile } from "../utils";
+import { buildFolderStatsMap, buildFolderTrail, getFolderBranchIds, pluralizeFile } from "../utils";
+import { useFilePreviewLoader } from "./useFilePreviewLoader";
 
 const emptyFolders: Folder[] = [];
 const emptyFiles: WorkspaceFile[] = [];
@@ -35,16 +33,20 @@ export function useFolderFilesPage(folderId: string | undefined) {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [openMenuFileId, setOpenMenuFileId] = useState<string | null>(null);
-  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [openMenuFolderId, setOpenMenuFolderId] = useState<string | null>(null);
   const [shareTargetFile, setShareTargetFile] = useState<WorkspaceFile | null>(null);
+  const [shareTargetFolder, setShareTargetFolder] = useState<Folder | null>(null);
   const [shareLevel, setShareLevel] = useState<FilePermissionLevel>("READ");
   const [sharingUserId, setSharingUserId] = useState<string | null>(null);
-  const [preview, setPreview] = useState<PreviewState>({
-    error: null,
-    fileId: null,
-    loading: false,
-    url: null,
-  });
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+  const [folderName, setFolderName] = useState("");
+  const {
+    openPreview,
+    preview,
+    selectedFileId,
+    setSelectedFileId,
+  } = useFilePreviewLoader();
   const [toast, setToast] = useState<ToastState>({
     show: false,
     intent: "success",
@@ -68,11 +70,15 @@ export function useFolderFilesPage(folderId: string | undefined) {
     isPending: isFilesPending,
   } = useFiles();
   const uploadFileMutation = useUploadFile();
-  const previewFileUrlMutation = useDownloadFileUrl();
   const downloadFileUrlMutation = useDownloadFileUrl();
   const shareFileMutation = useShareFile();
   const deleteFileMutation = useDeleteFile();
-  const usersQuery = useUsersQuery({ enabled: Boolean(shareTargetFile) });
+  const createFolderMutation = useCreateFolder();
+  const updateFolderMutation = useUpdateFolder();
+  const deleteFolderMutation = useDeleteFolder();
+  const usersQuery = useUsersQuery({
+    enabled: Boolean(shareTargetFile || shareTargetFolder),
+  });
 
   const folders = foldersData ?? emptyFolders;
   const files = filesData ?? emptyFiles;
@@ -103,6 +109,29 @@ export function useFolderFilesPage(folderId: string | undefined) {
       return isInFolder && matchesSearch;
     });
   }, [files, folderId, searchTerm]);
+  const visibleFolders = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    return folders.filter((folder) => {
+      const isChild = folder.parentId === folderId;
+      const matchesSearch = !query || folder.name.toLowerCase().includes(query);
+
+      return isChild && matchesSearch;
+    });
+  }, [folderId, folders, searchTerm]);
+  const folderStatsById = useMemo(
+    () => buildFolderStatsMap(files, folders),
+    [files, folders],
+  );
+  const shareTargetFolderFiles = useMemo(() => {
+    if (!shareTargetFolder) {
+      return emptyFiles;
+    }
+
+    const branchIds = getFolderBranchIds(shareTargetFolder.id, folders);
+
+    return files.filter((file) => file.folderId && branchIds.has(file.folderId));
+  }, [files, folders, shareTargetFolder]);
   const selectedFile = selectedFileId
     ? (files.find((file) => file.id === selectedFileId) ?? null)
     : null;
@@ -136,12 +165,13 @@ export function useFolderFilesPage(folderId: string | undefined) {
   }, [filesError, foldersError, isFilesError, isFoldersError, showToast]);
 
   useEffect(() => {
-    if (!openMenuFileId) {
+    if (!openMenuFileId && !openMenuFolderId) {
       return undefined;
     }
 
     function closeMenu() {
       setOpenMenuFileId(null);
+      setOpenMenuFolderId(null);
     }
 
     function closeMenuOnEscape(event: KeyboardEvent) {
@@ -157,7 +187,7 @@ export function useFolderFilesPage(folderId: string | undefined) {
       window.removeEventListener("click", closeMenu);
       window.removeEventListener("keydown", closeMenuOnEscape);
     };
-  }, [openMenuFileId]);
+  }, [openMenuFileId, openMenuFolderId]);
 
   useEffect(() => {
     if (!selectedFileId) {
@@ -216,49 +246,13 @@ export function useFolderFilesPage(folderId: string | undefined) {
     }
   }
 
-  async function handleOpenPreview(file: WorkspaceFile) {
-    setOpenMenuFileId(null);
-    setSelectedFileId(file.id);
-    setPreview({
-      error: null,
-      fileId: file.id,
-      loading: true,
-      url: null,
-    });
-
-    try {
-      const url = await previewFileUrlMutation.mutateAsync(file.id);
-      const resolvedUrl = await cacheFilePreviewUrl(
-        file.id,
-        resolveAssetUrl(url) ?? url,
-      );
-
-      setPreview((current) =>
-        current.fileId === file.id
-          ? {
-              error: null,
-              fileId: file.id,
-              loading: false,
-              url: resolvedUrl,
-            }
-          : current,
-      );
-    } catch (caughtError) {
-      setPreview((current) =>
-        current.fileId === file.id
-          ? {
-              error:
-                caughtError instanceof Error
-                  ? caughtError.message
-                  : "Impossible de charger l'apercu.",
-              fileId: file.id,
-              loading: false,
-              url: null,
-            }
-          : current,
-      );
-    }
-  }
+  const handleOpenPreview = useCallback(
+    async (file: WorkspaceFile) => {
+      setOpenMenuFileId(null);
+      await openPreview(file);
+    },
+    [openPreview],
+  );
 
   async function handleDownloadFile(file: WorkspaceFile) {
     setOpenMenuFileId(null);
@@ -285,6 +279,7 @@ export function useFolderFilesPage(folderId: string | undefined) {
 
   function handleShareFile(file: WorkspaceFile) {
     setOpenMenuFileId(null);
+    setShareTargetFolder(null);
     setShareLevel("READ");
     setSharingUserId(null);
     setShareTargetFile(file);
@@ -356,40 +351,237 @@ export function useFolderFilesPage(folderId: string | undefined) {
     }
   }
 
+  const isFolderSaving =
+    createFolderMutation.isPending || updateFolderMutation.isPending;
+  const isFolderModalOpen = createModalOpen || Boolean(editingFolder);
+  const folderModalTitle = editingFolder
+    ? "Modifier le dossier"
+    : "Creer un dossier";
+  const folderSubmitLabel = editingFolder ? "Modifier" : "Creer";
+  const folderSavingLabel = editingFolder ? "Modification..." : "Creation...";
+  const folderFormError =
+    createFolderMutation.isError || updateFolderMutation.isError
+      ? createFolderMutation.error instanceof Error
+        ? createFolderMutation.error.message
+        : updateFolderMutation.error instanceof Error
+          ? updateFolderMutation.error.message
+          : editingFolder
+            ? "Impossible de modifier le dossier."
+            : "Impossible de creer le dossier."
+      : null;
+
+  function openCreateModal() {
+    setEditingFolder(null);
+    setFolderName("");
+    createFolderMutation.reset();
+    updateFolderMutation.reset();
+    setCreateModalOpen(true);
+  }
+
+  function openEditModal(folder: Folder) {
+    setOpenMenuFolderId(null);
+    setCreateModalOpen(false);
+    setEditingFolder(folder);
+    setFolderName(folder.name);
+    createFolderMutation.reset();
+    updateFolderMutation.reset();
+  }
+
+  function closeFolderModal() {
+    if (isFolderSaving) {
+      return;
+    }
+
+    setCreateModalOpen(false);
+    setEditingFolder(null);
+    setFolderName("");
+    createFolderMutation.reset();
+    updateFolderMutation.reset();
+  }
+
+  function handleShareFolder(folder: Folder) {
+    setOpenMenuFolderId(null);
+    setShareTargetFile(null);
+    setShareLevel("READ");
+    setSharingUserId(null);
+    setShareTargetFolder(folder);
+  }
+
+  function closeFolderShareModal() {
+    if (sharingUserId) {
+      return;
+    }
+
+    setShareTargetFolder(null);
+    setShareLevel("READ");
+    setSharingUserId(null);
+  }
+
+  async function shareFolderWithUser(user: User) {
+    if (!shareTargetFolder || sharingUserId) {
+      return;
+    }
+
+    if (shareTargetFolderFiles.length === 0) {
+      showToast(
+        "warning",
+        `Aucun fichier a partager dans "${shareTargetFolder.name}".`,
+        5000,
+      );
+      return;
+    }
+
+    setSharingUserId(user.id);
+
+    try {
+      await Promise.all(
+        shareTargetFolderFiles.map((file) =>
+          shareFileMutation.mutateAsync({
+            id: file.id,
+            request: {
+              level: shareLevel,
+              userId: user.id,
+            },
+          }),
+        ),
+      );
+
+      showToast(
+        "success",
+        `${shareTargetFolderFiles.length} fichier${shareTargetFolderFiles.length > 1 ? "s" : ""} partage${shareTargetFolderFiles.length > 1 ? "s" : ""} avec ${user.name}.`,
+      );
+      setShareTargetFolder(null);
+      setShareLevel("READ");
+    } catch (caughtError) {
+      showToast(
+        "error",
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Impossible de partager ce dossier.",
+        5000,
+      );
+    } finally {
+      setSharingUserId(null);
+    }
+  }
+
+  async function handleDeleteFolder(folder: Folder) {
+    setOpenMenuFolderId(null);
+
+    if (!window.confirm(`Supprimer le dossier "${folder.name}" ?`)) {
+      return;
+    }
+
+    try {
+      await deleteFolderMutation.mutateAsync(folder.id);
+      showToast("success", "Dossier supprime avec succes.");
+    } catch (caughtError) {
+      showToast(
+        "error",
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Impossible de supprimer le dossier.",
+        5000,
+      );
+    }
+  }
+
+  async function handleSaveFolder(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const name = folderName.trim();
+
+    if (!name) {
+      return;
+    }
+
+    try {
+      if (editingFolder) {
+        await updateFolderMutation.mutateAsync({
+          id: editingFolder.id,
+          request: { name },
+        });
+        showToast("success", "Dossier modifie avec succes.");
+      } else {
+        await createFolderMutation.mutateAsync({
+          name,
+          parentId: folderId ?? null,
+          teamId: currentFolder?.teamId ?? null,
+        });
+        showToast("success", "Dossier cree avec succes.");
+      }
+
+      closeFolderModal();
+    } catch (caughtError) {
+      showToast(
+        "error",
+        caughtError instanceof Error
+          ? caughtError.message
+          : editingFolder
+            ? "Impossible de modifier le dossier."
+            : "Impossible de creer le dossier.",
+        5000,
+      );
+    }
+  }
+
   return {
     breadcrumbs,
     closeFileShareModal,
+    closeFolderModal,
+    closeFolderShareModal,
     currentFolder,
     currentPath,
     deleteFileMutation,
+    deleteFolderMutation,
     downloadFileUrlMutation,
     filesError,
+    folderFormError,
+    folderModalTitle,
+    folderName,
+    folderSavingLabel,
+    folderStatsById,
+    folderSubmitLabel,
     foldersError,
     handleDeleteFile,
+    handleDeleteFolder,
     handleDownloadFile,
     handleOpenPreview,
+    handleSaveFolder,
     handleShareFile,
+    handleShareFolder,
     handleUploadFile,
     isFilesError,
+    isFolderModalOpen,
+    isFolderSaving,
     isFoldersError,
     isInitialLoading,
     navigate,
+    openCreateModal,
+    openEditModal,
     openMenuFileId,
+    openMenuFolderId,
     pluralizeFile,
     preview,
     searchTerm,
     selectedFile,
+    setFolderName,
     setOpenMenuFileId,
+    setOpenMenuFolderId,
     setSearchTerm,
     setSelectedFileId,
     setShareLevel,
     shareFileWithUser,
+    shareFolderWithUser,
     shareLevel,
     shareTargetFile,
+    shareTargetFolder,
+    shareTargetFolderFiles,
     sharingUserId,
     toast,
     uploadFileMutation,
     usersQuery,
     visibleFiles,
+    visibleFolders,
   };
 }

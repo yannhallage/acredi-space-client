@@ -1,10 +1,18 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProfilesQuery } from '../../../../shared/api/profiles';
+import { useCreateProfileMutation, useProfilesQuery } from '../../../../shared/api/profiles';
 import { useUpdateProfileMutation, useUploadAvatarMutation } from '../../../../shared/api/users';
 import { useAuth } from '../../../../shared/context';
 import { useTheme } from '../../../../shared/theme';
 import { AcrediLockup, Avatar, Icon, type IconName } from '../../../../shared/ui';
+import {
+  authFeedback,
+  resolveProfileCompletionFeedback,
+  type AuthFeedback,
+} from '../authFeedback';
+import { AuthCardBrand } from '../AuthCardBrand';
+import { AuthFeedbackBanner } from '../AuthFeedbackBanner';
+import { AuthSubmitButton } from '../AuthSubmitButton';
 
 type ThemePreference = 'LIGHT' | 'DARK';
 type PhoneKind = 'mobile' | 'work' | 'whatsapp';
@@ -68,10 +76,16 @@ function profileToString(profile: unknown) {
   return String(profile);
 }
 
-function getErrorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : 'Impossible de mettre a jour le profil.';
+function findProfileByLabel<T extends { id: string; name: string }>(profiles: T[], label: string) {
+  const cleanLabel = label.trim().toLowerCase();
+
+  if (!cleanLabel) {
+    return undefined;
+  }
+
+  return profiles.find(
+    (item) => item.id.toLowerCase() === cleanLabel || item.name.trim().toLowerCase() === cleanLabel
+  );
 }
 
 export function ProfileCompletionForm() {
@@ -79,6 +93,7 @@ export function ProfileCompletionForm() {
   const { dark, setDark } = useTheme();
   const navigate = useNavigate();
   const profilesQuery = useProfilesQuery({ enabled: Boolean(user) });
+  const createProfileMutation = useCreateProfileMutation();
   const updateProfileMutation = useUpdateProfileMutation();
   const uploadAvatarMutation = useUploadAvatarMutation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -95,7 +110,7 @@ export function ProfileCompletionForm() {
   const [avatarFileName, setAvatarFileName] = useState('');
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<AuthFeedback | null>(null);
   const profiles = useMemo(() => profilesQuery.data ?? [], [profilesQuery.data]);
 
   useEffect(() => {
@@ -141,9 +156,7 @@ export function ProfileCompletionForm() {
       return;
     }
 
-    const matchingProfile = profiles.find(
-      (item) => item.id === profileLabel || item.name === profileLabel
-    );
+    const matchingProfile = findProfileByLabel(profiles, profileLabel);
 
     if (matchingProfile) {
       setProfileId(matchingProfile.id);
@@ -154,17 +167,14 @@ export function ProfileCompletionForm() {
     return null;
   }
 
-  const selectedProfile = profiles.find((item) => item.id === profileId);
+  const selectedProfile = findProfileByLabel(profiles, profileId || profileLabel);
   const profilePlaceholder = profilesQuery.loading
-    ? 'Chargement des profils...'
-    : profilesQuery.error
-      ? 'Profils indisponibles'
-      : profiles.length
-        ? 'Choisir un profil'
-        : 'Aucun profil disponible';
+    ? 'Chargement des fonctions...'
+    : 'Votre fonction, ex. Développeur';
   const displayName = [firstName, lastName].map((value) => value.trim()).filter(Boolean).join(' ') || user.name;
   const currentAvatarSrc = avatarPreviewUrl ?? avatarUrl;
-  const isSubmitting = updateProfileMutation.isPending || uploadAvatarMutation.isPending;
+  const isSubmitting =
+    updateProfileMutation.isPending || uploadAvatarMutation.isPending || createProfileMutation.isPending;
 
   function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -173,16 +183,28 @@ export function ProfileCompletionForm() {
       return;
     }
 
-    setMessage(null);
+    setFeedback(null);
 
     if (!file.type.startsWith('image/')) {
-      setMessage({ type: 'error', text: 'Merci de choisir un fichier image valide.' });
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Fichier non pris en charge',
+          'Choisissez une image valide (JPG, PNG ou WebP) pour votre photo de profil.'
+        )
+      );
       event.target.value = '';
       return;
     }
 
     if (file.size > MAX_AVATAR_SIZE) {
-      setMessage({ type: 'error', text: 'La photo doit faire moins de 5 Mo.' });
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Image trop volumineuse',
+          'La photo de profil doit faire moins de 5 Mo.'
+        )
+      );
       event.target.value = '';
       return;
     }
@@ -205,21 +227,26 @@ export function ProfileCompletionForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage(null);
+    setFeedback(null);
 
     const cleanFirstName = firstName.trim();
     const cleanLastName = lastName.trim();
     const cleanPhoneNumber = phoneNumber.trim();
 
-    if (!avatarFile && !avatarUrl) {
-      setMessage({ type: 'error', text: "Merci d'ajouter une photo de profil." });
+    const cleanProfileLabel = profileLabel.trim();
+
+    if (!cleanFirstName || !cleanLastName || !cleanPhoneNumber || !cleanProfileLabel) {
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Informations incomplètes',
+          'Renseignez votre prénom, nom, téléphone et fonction pour continuer.'
+        )
+      );
       return;
     }
 
-    if (!cleanFirstName || !cleanLastName || !cleanPhoneNumber || !profileId) {
-      setMessage({ type: 'error', text: 'Merci de renseigner votre prenom, nom, telephone et votre fonction.' });
-      return;
-    }
+    const matchedProfile = findProfileByLabel(profiles, profileId || cleanProfileLabel);
 
     try {
       let nextAvatarUrl = avatarUrl;
@@ -235,16 +262,23 @@ export function ProfileCompletionForm() {
         }
       }
 
+      let nextProfileId = matchedProfile?.id;
+      let selectedProfileName = matchedProfile?.name ?? selectedProfile?.name ?? cleanProfileLabel;
+
+      if (!nextProfileId) {
+        const createdProfile = await createProfileMutation.mutateAsync({ name: cleanProfileLabel });
+        nextProfileId = createdProfile.id;
+        selectedProfileName = createdProfile.name;
+      }
+
       const updatedUser = await updateProfileMutation.mutateAsync({
         appThemePreference: theme,
         avatarUrl: nextAvatarUrl,
         firstName: cleanFirstName,
         lastName: cleanLastName,
         phoneNumber: cleanPhoneNumber,
-        profileId,
+        profileId: nextProfileId,
       });
-
-      const selectedProfileName = selectedProfile?.name ?? profileLabel;
       const savedAvatarUrl = updatedUser.avatarUrl ?? uploadedUserAvatarUrl ?? nextAvatarUrl ?? null;
 
       setDark(theme === 'DARK');
@@ -253,18 +287,27 @@ export function ProfileCompletionForm() {
         name: `${cleanFirstName} ${cleanLastName}`,
         onboardingStatus: 'COMPLETED',
         phoneNumber: cleanPhoneNumber,
-        profile: selectedProfileName
-          ? { id: profileId, name: selectedProfileName }
-          : updatedUser.profile,
+        profile: nextProfileId
+          ? { id: nextProfileId, name: selectedProfileName }
+          : selectedProfileName
+            ? { name: selectedProfileName }
+            : updatedUser.profile,
         appThemePreference: theme,
         avatarUrl: savedAvatarUrl,
       });
     } catch (error) {
-      setMessage({ type: 'error', text: getErrorMessage(error) });
+      console.error(error);
+      setFeedback(resolveProfileCompletionFeedback(error));
       return;
     }
 
-    setMessage({ type: 'success', text: 'Profil complete avec succes. Redirection...' });
+    setFeedback(
+      authFeedback(
+        'success',
+        'Profil complété',
+        'Vos informations ont été enregistrées. Redirection en cours…'
+      )
+    );
 
     setTimeout(() => {
       navigate('/app/dashboard', { replace: true });
@@ -273,21 +316,21 @@ export function ProfileCompletionForm() {
 
   return (
     <div className="login-card profile-completion-card">
-      <div className="login-mobile-brand">
-        <AcrediLockup size={30} fontSize={22} />
-      </div>
-
-      <div className="profile-completion-heading">
-        <p className="eyebrow">Completion du profil</p>
-        <h1>Completez votre espace</h1>
-        <p className="muted">
-          Finalisez vos informations pour personnaliser votre espace de travail Acredi Space.
-        </p>
+      <div className="login-card-header">
+        <AcrediLockup size={34} fontSize={24} onLight />
+        <div className="profile-completion-heading">
+          <h1>Completez votre profil pour continuer</h1>
+          <p className="muted">
+            Finalisez vos informations pour personnaliser votre espace de travail Acredi Space.
+          </p>
+        </div>
       </div>
 
       <form className="login-form profile-completion-form" onSubmit={handleSubmit}>
         <div className="profile-completion-row profile-photo-row">
-          <span className="profile-completion-label">Photo de profil</span>
+          <span className="profile-completion-label">
+            Photo de profil <small>(optionnel)</small>
+          </span>
           <div className="profile-photo-control">
             <Avatar name={displayName} size={58} src={currentAvatarSrc} />
             <div className="profile-photo-actions">
@@ -324,7 +367,9 @@ export function ProfileCompletionForm() {
         </div>
 
         <label className="profile-completion-row">
-          <span className="profile-completion-label">Nom complet</span>
+          <span className="profile-completion-label">
+            Nom complet <em aria-hidden="true">*</em>
+          </span>
           <span className="profile-completion-name-grid">
             <span className="profile-input-wrap">
               <input
@@ -350,14 +395,16 @@ export function ProfileCompletionForm() {
         </label>
 
         <label className="profile-completion-row">
-          <span className="profile-completion-label">Email</span>
+          <span className="profile-completion-label">E-mail</span>
           <span className="profile-input-wrap profile-input-readonly">
             <input type="email" value={user.email} readOnly aria-readonly="true" />
           </span>
         </label>
 
         <label className="profile-completion-row">
-          <span className="profile-completion-label">Telephone</span>
+          <span className="profile-completion-label">
+            Telephone <em aria-hidden="true">*</em>
+          </span>
           <span className="profile-phone-control">
             <input
               type="tel"
@@ -384,23 +431,33 @@ export function ProfileCompletionForm() {
         </label>
 
         <label className="profile-completion-row">
-          <span className="profile-completion-label">Fonction / Profil</span>
+          <span className="profile-completion-label">
+            Fonction / Profil <em aria-hidden="true">*</em>
+          </span>
           <span className="profile-input-wrap">
-            <select
-              value={profileId}
-              onChange={(event) => setProfileId(event.target.value)}
-              disabled={profilesQuery.loading || !profiles.length || isSubmitting}
+            <input
+              type="text"
+              value={profileLabel}
+              onChange={(event) => {
+                const nextLabel = event.target.value;
+                const matchingProfile = findProfileByLabel(profiles, nextLabel);
+
+                setProfileLabel(nextLabel);
+                setProfileId(matchingProfile?.id ?? '');
+              }}
+              list="profile-completion-functions"
+              placeholder={profilePlaceholder}
+              disabled={isSubmitting}
+              autoComplete="organization-title"
               required
-            >
-              <option value="" disabled>
-                {profilePlaceholder}
-              </option>
-              {profiles.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+            />
+            {profiles.length > 0 && (
+              <datalist id="profile-completion-functions">
+                {profiles.map((item) => (
+                  <option key={item.id} value={item.name} />
+                ))}
+              </datalist>
+            )}
           </span>
         </label>
 
@@ -427,26 +484,12 @@ export function ProfileCompletionForm() {
           </div>
         </div>
 
-        {profilesQuery.error && (
-          <p className="auth-error text-red-500 text-sm">
-            Impossible de charger les profils. Verifiez que le backend repond sur /api/profiles.
-          </p>
-        )}
+        {feedback && <AuthFeedbackBanner feedback={feedback} />}
 
-        {message && (
-          <p className={message.type === 'error' ? 'auth-error text-red-500 text-sm' : 'text-green-600 text-sm'}>
-            {message.text}
-          </p>
-        )}
-
-        <button className="button primary button-wide" type="submit" disabled={isSubmitting}>
-          {uploadAvatarMutation.isPending
-            ? 'Upload de la photo...'
-            : updateProfileMutation.isPending
-              ? 'Enregistrement...'
-              : 'Enregistrer et continuer'}
-        </button>
+        <AuthSubmitButton loading={isSubmitting}>Continuer</AuthSubmitButton>
       </form>
+
+      <AuthCardBrand />
     </div>
   );
 }

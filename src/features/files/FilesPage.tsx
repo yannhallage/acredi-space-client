@@ -67,21 +67,23 @@ export function FilesPage() {
           </div>
           <div className="files-manager-actions">
             <FilesViewToggle viewMode={viewMode} onChange={setViewMode} />
-            <PermissionGate
-              permissions={[
-                PERMISSIONS.CREATE_FOLDER,
-                PERMISSIONS.MANAGE_FOLDERS,
-              ]}
-            >
-              <button
-                className="button primary notes-create-button"
-                type="button"
-                onClick={page.openCreateModal}
+            {viewMode === "list" ? (
+              <PermissionGate
+                permissions={[
+                  PERMISSIONS.CREATE_FOLDER,
+                  PERMISSIONS.MANAGE_FOLDERS,
+                ]}
               >
-                <Icon name="plus" size={13} />
-                Nouveau dossier
-              </button>
-            </PermissionGate>
+                <button
+                  className="button primary notes-create-button"
+                  type="button"
+                  onClick={page.openCreateModal}
+                >
+                  <Icon name="plus" size={13} />
+                  Nouveau dossier
+                </button>
+              </PermissionGate>
+            ) : null}
           </div>
         </header>
 
@@ -114,6 +116,8 @@ export function FilesPage() {
           <FolderGrid
             deletePending={page.deleteFolderMutation.isPending}
             folders={page.visibleFolders}
+            getStats={(folder) => page.folderStatsById.get(folder.id)}
+            onCreate={page.openCreateModal}
             onDelete={page.handleDeleteFolder}
             onEdit={page.openEditModal}
             onOpen={(folder) => page.navigate(`/app/files/${folder.id}`)}

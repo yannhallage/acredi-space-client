@@ -9,8 +9,17 @@ import {
 } from '../../shared/api/auth';
 import { resolveAuthenticatedRedirect } from '../../shared/auth/onboarding';
 import { useAuth } from '../../shared/context';
-import { AcrediLockup, Icon } from '../../shared/ui';
-import { PasswordInput } from '../auth/components/PasswordInput';
+import { AcrediLockup } from '../../shared/ui';
+import {
+  AuthCardBrand,
+  AuthFeedbackBanner,
+  AuthSubmitButton,
+  PasswordInput,
+  authFeedback,
+  resolveOtpFeedback,
+  resolveSignupStartFeedback,
+  type AuthFeedback,
+} from '../auth/components';
 
 type SignupStep = 'account' | 'otp';
 
@@ -26,16 +35,31 @@ export function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
-  const [message, setMessage] = useState('');
+  const [feedback, setFeedback] = useState<AuthFeedback | null>(null);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
   if (isAuthenticated) {
     return <Navigate to={resolveAuthenticatedRedirect(user)} replace />;
   }
 
+  function clearFeedback() {
+    if (feedback) setFeedback(null);
+  }
+
   async function handleAccountSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage('');
+    setFeedback(null);
+
+    if (password.length < 8) {
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Mot de passe trop court',
+          'Choisissez un mot de passe d’au moins 8 caractères pour sécuriser votre compte.'
+        )
+      );
+      return;
+    }
 
     try {
       const response = await startMutation.mutateAsync({
@@ -49,7 +73,8 @@ export function SignupPage() {
       setStep('otp');
       setOtp(Array(6).fill(''));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Inscription echouee');
+      console.error(error);
+      setFeedback(resolveSignupStartFeedback(error));
     }
   }
 
@@ -58,7 +83,7 @@ export function SignupPage() {
     const next = [...otp];
     next[index] = value;
     setOtp(next);
-    setMessage('');
+    clearFeedback();
     if (value && index < 5) {
       inputsRef.current[index + 1]?.focus();
     }
@@ -66,17 +91,29 @@ export function SignupPage() {
 
   async function handleOtpSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage('');
+    setFeedback(null);
 
     const code = otp.join('');
     if (code.length !== 6) {
-      setMessage('Veuillez saisir les 6 chiffres du code.');
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Code incomplet',
+          'Saisissez les 6 chiffres du code reçu par e-mail pour continuer.'
+        )
+      );
       return;
     }
 
     const session = getOtpSession();
     if (!session?.challengeId) {
-      setMessage('Session OTP expiree. Recommencez l’inscription.');
+      setFeedback(
+        authFeedback(
+          'warning',
+          'Session expirée',
+          'Votre session de vérification n’est plus valide. Recommencez l’inscription pour recevoir un nouveau code.'
+        )
+      );
       setStep('account');
       return;
     }
@@ -90,11 +127,12 @@ export function SignupPage() {
       const authenticatedUser = completeAuthSession(response.data, {
         persistTrustedDevice: false,
       });
-      navigate(resolveAuthenticatedRedirect(authenticatedUser, '/signup/organization'), {
+      navigate(resolveAuthenticatedRedirect(authenticatedUser, '/signup/plans'), {
         replace: true,
       });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Code invalide ou expire');
+      console.error(error);
+      setFeedback(resolveOtpFeedback(error));
     }
   }
 
@@ -102,15 +140,11 @@ export function SignupPage() {
 
   return (
     <div className="login-card">
-      <div className="login-mobile-brand">
-        <AcrediLockup size={30} fontSize={22} />
-      </div>
-
       {step === 'account' ? (
         <>
-          <div className="text-[14px]">
-            <p className="eyebrow">Etape 1 / 4</p>
-            <h1>Creez votre compte</h1>
+          <div className="login-card-header">
+            <AcrediLockup size={34} fontSize={24} onLight />
+            <h1>Creez votre compte pour continuer</h1>
             <p className="muted">
               Renseignez votre identite pour demarrer l’espace de votre organisation.
             </p>
@@ -118,61 +152,91 @@ export function SignupPage() {
 
           <form className="login-form" onSubmit={handleAccountSubmit}>
             <div className="signup-name-row">
-              <label className="text-sm">
-                <span>Prenom</span>
+              <label>
+                <span>
+                  Prenom <em aria-hidden="true">*</em>
+                </span>
                 <span className="input-wrap">
-                  <Icon name="user" size={16} />
                   <input
                     value={firstName}
-                    onChange={(event) => setFirstName(event.target.value)}
+                    onChange={(event) => {
+                      setFirstName(event.target.value);
+                      clearFeedback();
+                    }}
+                    placeholder="Votre prenom"
+                    autoComplete="given-name"
+                    disabled={isSubmitting}
                     required
                   />
                 </span>
               </label>
-              <label className="text-sm">
-                <span>Nom</span>
+              <label>
+                <span>
+                  Nom <em aria-hidden="true">*</em>
+                </span>
                 <span className="input-wrap">
-                  <Icon name="user" size={16} />
                   <input
                     value={lastName}
-                    onChange={(event) => setLastName(event.target.value)}
+                    onChange={(event) => {
+                      setLastName(event.target.value);
+                      clearFeedback();
+                    }}
+                    placeholder="Votre nom"
+                    autoComplete="family-name"
+                    disabled={isSubmitting}
                     required
                   />
                 </span>
               </label>
             </div>
-            <label className="text-sm">
-              <span>Email professionnel</span>
+            <label>
+              <span>
+                E-mail professionnel <em aria-hidden="true">*</em>
+              </span>
               <span className="input-wrap">
-                <Icon name="mail" size={16} />
                 <input
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    clearFeedback();
+                  }}
                   type="email"
+                  placeholder="Saisissez votre adresse e-mail"
+                  autoComplete="email"
+                  disabled={isSubmitting}
                   required
                 />
               </span>
             </label>
-            <label className="text-sm">
-              <span>Mot de passe</span>
+            <label>
+              <span>
+                Mot de passe <em aria-hidden="true">*</em>
+              </span>
               <PasswordInput
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  clearFeedback();
+                }}
+                placeholder="Minimum 8 caracteres"
+                autoComplete="new-password"
                 minLength={8}
+                disabled={isSubmitting}
                 required
               />
             </label>
-            {message && <p className="auth-error text-red-500 text-sm">{message}</p>}
-            <button className="button primary button-wide" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Envoi...' : 'Continuer'}
-            </button>
+            {feedback && <AuthFeedbackBanner feedback={feedback} />}
+            <AuthSubmitButton loading={isSubmitting}>Continuer</AuthSubmitButton>
+            <p className="login-footnote">
+              Deja un compte ? <Link to="/login">Se connecter</Link>
+            </p>
           </form>
         </>
       ) : (
         <>
-          <div className="text-[14px]">
-            <p className="eyebrow">Etape 2 / 4</p>
-            <h1>Verifiez votre email</h1>
+          <div className="login-card-header">
+            <AcrediLockup size={34} fontSize={24} onLight />
+            <h1>Entrez le code OTP pour continuer</h1>
             <p className="muted">
               Un code a 6 chiffres a ete envoye a <strong>{email}</strong>.
             </p>
@@ -201,31 +265,34 @@ export function SignupPage() {
                 />
               ))}
             </div>
-            {message && <p className="auth-error text-red-500 text-sm">{message}</p>}
-            <button
-              className="button primary button-wide"
-              type="submit"
-              disabled={isSubmitting || otp.some((digit) => !digit)}
+            {feedback && <AuthFeedbackBanner feedback={feedback} />}
+            <AuthSubmitButton
+              loading={isSubmitting}
+              disabled={otp.some((digit) => !digit)}
             >
-              {isSubmitting ? 'Verification...' : 'Verifier le code'}
-            </button>
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => {
-                setStep('account');
-                setMessage('');
-              }}
-            >
-              Modifier mes informations
-            </button>
+              Verifier le code
+            </AuthSubmitButton>
+            <div className="login-row">
+              <span className="muted">Informations incorrectes ?</span>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setStep('account');
+                  setFeedback(null);
+                }}
+              >
+                Modifier mes informations
+              </button>
+            </div>
+            <p className="login-footnote">
+              Pour votre securite, ce code expire apres quelques minutes.
+            </p>
           </form>
         </>
       )}
 
-      <p className="login-footnote">
-        Deja un compte ? <Link to="/login">Se connecter</Link>
-      </p>
+      <AuthCardBrand />
     </div>
   );
 }

@@ -30,8 +30,17 @@ import {
   type LocalMessage,
 } from "../utils/dmMessageFormat";
 
-const INLINE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
-const INLINE_IMAGE_EXTENSIONS = new Set(["gif", "jpeg", "jpg", "png", "webp"]);
+const INLINE_IMAGE_MAX_BYTES = 25 * 1024 * 1024;
+const INLINE_IMAGE_EXTENSIONS = new Set([
+  "gif",
+  "jpeg",
+  "jpg",
+  "png",
+  "webp",
+  "bmp",
+  "svg",
+  "avif",
+]);
 
 function DateSeparator({ label }: { label: string }) {
   return (
@@ -43,29 +52,88 @@ function DateSeparator({ label }: { label: string }) {
   );
 }
 
+function MessageStatusTicks({
+  failed,
+  pending,
+}: {
+  failed?: boolean;
+  pending?: boolean;
+}) {
+  if (failed) {
+    return (
+      <span className="dm-msg-ticks is-failed" aria-label="Echec d'envoi" title="Echec d'envoi">
+        <Icon name="alert" size={12} strokeWidth={2} />
+      </span>
+    );
+  }
+
+  if (pending) {
+    return (
+      <span className="dm-msg-ticks is-pending" aria-label="Envoi en cours" title="Envoi...">
+        <Icon name="clock" size={12} strokeWidth={2} />
+      </span>
+    );
+  }
+
+  return (
+    <span className="dm-msg-ticks is-sent" aria-label="Envoye" title="Envoye">
+      <svg
+        aria-hidden="true"
+        className="dm-msg-ticks-svg"
+        viewBox="0 0 16 11"
+        width="16"
+        height="11"
+        fill="none"
+      >
+        <path
+          d="M11.07 1.05 5.2 8.3 1.9 5.1"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M14.8 1.05 8.93 8.3 7.4 6.85"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  );
+}
+
 function getAttachmentImageExtension(attachment: LocalAttachment) {
   const nameExtension = attachment.name.includes(".")
     ? attachment.name.split(".").pop()?.toLowerCase()
     : undefined;
   const contentType = attachment.contentType?.toLowerCase().split(";")[0] ?? "";
   const mimeExtension = contentType.startsWith("image/")
-    ? contentType.slice("image/".length)
+    ? contentType.slice("image/".length).replace("svg+xml", "svg")
     : undefined;
 
   return nameExtension || mimeExtension || "";
 }
 
 function canPreviewAttachmentImage(attachment: LocalAttachment) {
+  if (!attachment.downloadUrl) {
+    return false;
+  }
+
   if (
-    attachment.pending ||
-    !attachment.downloadUrl ||
+    Number.isFinite(attachment.sizeBytes) &&
     attachment.sizeBytes > INLINE_IMAGE_MAX_BYTES
   ) {
     return false;
   }
 
-  const extension = getAttachmentImageExtension(attachment);
+  const contentType = attachment.contentType?.toLowerCase().split(";")[0] ?? "";
+  if (contentType.startsWith("image/")) {
+    return true;
+  }
 
+  const extension = getAttachmentImageExtension(attachment);
   return INLINE_IMAGE_EXTENSIONS.has(extension);
 }
 
@@ -186,7 +254,22 @@ function MessageImagePreviewDialog({
     setPreviewFailed(false);
     setImageLoaded(false);
 
-    loadAssetUrl(attachment.downloadUrl)
+    const downloadUrl = attachment.downloadUrl;
+
+    if (!downloadUrl) {
+      setPreviewFailed(true);
+      return;
+    }
+
+    if (
+      downloadUrl.startsWith("blob:") ||
+      downloadUrl.startsWith("data:")
+    ) {
+      setPreview({ url: downloadUrl });
+      return;
+    }
+
+    loadAssetUrl(downloadUrl)
       .then((asset) => {
         if (!active) {
           asset?.revoke?.();
@@ -337,7 +420,22 @@ function MessageAttachmentImageItem({
     setPreviewFailed(false);
     setImageLoaded(false);
 
-    loadAssetUrl(attachment.downloadUrl)
+    const downloadUrl = attachment.downloadUrl;
+
+    if (!downloadUrl) {
+      setPreviewFailed(true);
+      return;
+    }
+
+    if (
+      downloadUrl.startsWith("blob:") ||
+      downloadUrl.startsWith("data:")
+    ) {
+      setPreview({ url: downloadUrl });
+      return;
+    }
+
+    loadAssetUrl(downloadUrl)
       .then((asset) => {
         if (!active) {
           asset?.revoke?.();
@@ -371,14 +469,16 @@ function MessageAttachmentImageItem({
   return (
     <>
       <div
-        className={`dm-image-attachment ${imageLoaded ? "loaded" : ""}`}
+        className={`dm-image-attachment ${imageLoaded ? "loaded" : ""}${
+          attachment.pending ? " is-pending" : ""
+        }`}
         title={attachment.name}
       >
         <button
           className="dm-image-attachment-preview"
           type="button"
           aria-label={`Voir ${attachment.name}`}
-          disabled={!preview}
+          disabled={!preview || attachment.pending}
           onClick={() => onPreview(attachment)}
         >
           {!imageLoaded ? (
@@ -396,19 +496,21 @@ function MessageAttachmentImageItem({
           ) : null}
         </button>
 
-        <button
-          className="dm-image-attachment-download"
-          type="button"
-          aria-label={`Telecharger ${attachment.name}`}
-          disabled={downloading}
-          onClick={() => {
-            void downloadAttachment();
-          }}
-        >
-          <Icon name="download" size={14} />
-        </button>
+        {!attachment.pending ? (
+          <button
+            className="dm-image-attachment-download"
+            type="button"
+            aria-label={`Telecharger ${attachment.name}`}
+            disabled={downloading}
+            onClick={() => {
+              void downloadAttachment();
+            }}
+          >
+            <Icon name="download" size={14} />
+          </button>
+        ) : null}
 
-        {downloading ? (
+        {attachment.pending ? null : downloading ? (
           <span className="dm-image-attachment-status">
             Telechargement...
           </span>
@@ -474,6 +576,8 @@ function DirectMessageRow({
   senderLabel,
   presence,
   avatarSrc,
+  showAvatar,
+  isFirstInGroup,
   menuOpen,
   menuAnchor,
   onPreviewImage,
@@ -486,6 +590,8 @@ function DirectMessageRow({
   senderLabel: string;
   presence?: Presence;
   avatarSrc?: string | null;
+  showAvatar: boolean;
+  isFirstInGroup: boolean;
   menuOpen: boolean;
   menuAnchor: MessageMenuAnchor | null;
   onPreviewImage: (attachment: LocalAttachment) => void;
@@ -495,18 +601,12 @@ function DirectMessageRow({
 }) {
   const time = formatTime(message.createdAt);
   const isDeleted = Boolean(message.deletedAt);
-  const status = message.failed
-    ? "Echec d'envoi"
-    : message.pending
-      ? "Envoi..."
-      : message.editedAt
-        ? "Modifié"
-        : "Envoye";
   const attachments = message.attachments ?? [];
   const hasContent = Boolean(message.content?.trim());
+  const hasImages = attachments.some(canPreviewAttachmentImage);
+  const mediaOnly = hasImages && !hasContent && !isDeleted;
   const canAct = !isDeleted && !message.pending && !message.failed;
   const isShared = message.kind === "SHARED";
-  const forwardedFrom = message.forwardedFrom;
 
   function handleBubbleContextMenu(event: MouseEvent<HTMLDivElement>) {
     if (!canAct) return;
@@ -526,25 +626,43 @@ function DirectMessageRow({
   }
 
   return (
-    <article className={`dm-message-row ${isMine ? "mine" : ""}`}>
+    <article
+      className={[
+        "dm-message-row",
+        isMine ? "mine" : "",
+        isFirstInGroup ? "is-first" : "is-grouped",
+        showAvatar ? "has-avatar" : "no-avatar",
+        mediaOnly ? "is-media-only" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {!isMine ? (
-        <Avatar
-          name={senderLabel}
-          presence={presence}
-          size={34}
-          src={avatarSrc}
-        />
+        showAvatar ? (
+          <Avatar
+            name={senderLabel}
+            presence={presence}
+            size={32}
+            src={avatarSrc}
+          />
+        ) : (
+          <span className="dm-message-avatar-spacer" aria-hidden="true" />
+        )
       ) : null}
 
       <div className="dm-message-content">
-        <div className="dm-message-meta">
-          <strong>{isMine ? "Vous" : senderLabel}</strong>
-          {time ? <time>{time}</time> : null}
-        </div>
-
         <div className="message-actions-shell">
           <div
-            className={`dm-message-bubble${menuOpen ? " is-menu-open" : ""}${isDeleted ? " is-deleted" : ""}`}
+            className={[
+              "dm-message-bubble",
+              menuOpen ? "is-menu-open" : "",
+              isDeleted ? "is-deleted" : "",
+              mediaOnly ? "is-media" : "",
+              message.failed ? "is-failed" : "",
+              message.pending ? "is-pending" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
             onContextMenu={handleBubbleContextMenu}
           >
             {isDeleted ? (
@@ -557,22 +675,10 @@ function DirectMessageRow({
                       <Icon name="share" size={12} />
                       Message partagé
                     </span>
-                    {/* {forwardedFrom ? (
-                      <div className="dm-message-shared-quote">
-                        <strong>
-                          {forwardedFrom.deletedAt
-                            ? "Message original indisponible"
-                            : forwardedFrom.senderName}
-                        </strong>
-                        {!forwardedFrom.deletedAt && forwardedFrom.content ? (
-                          <p>{forwardedFrom.content}</p>
-                        ) : null}
-                      </div>
-                    ) : null} */}
                   </div>
                 ) : null}
                 {hasContent ? (
-                  <p>
+                  <p className="dm-message-text">
                     <LinkifiedText
                       linkClassName="dm-message-link"
                       text={message.content}
@@ -584,7 +690,7 @@ function DirectMessageRow({
                   onPreviewImage={onPreviewImage}
                 />
                 {!hasContent && !attachments.length ? (
-                  <p>
+                  <p className="dm-message-text">
                     <LinkifiedText
                       linkClassName="dm-message-link"
                       text={message.content}
@@ -593,6 +699,19 @@ function DirectMessageRow({
                 ) : null}
               </>
             )}
+
+            <div className="dm-message-meta-inline">
+              {message.editedAt && !isDeleted ? (
+                <span className="dm-message-edited">modifié</span>
+              ) : null}
+              {time ? <time dateTime={message.createdAt}>{time}</time> : null}
+              {isMine ? (
+                <MessageStatusTicks
+                  failed={message.failed}
+                  pending={message.pending}
+                />
+              ) : null}
+            </div>
           </div>
 
           <MessageActionsMenu
@@ -604,19 +723,7 @@ function DirectMessageRow({
             onAction={onAction}
           />
         </div>
-
-        <div className="dm-message-footer">
-          {isMine ? (
-            <span className={message.failed ? "failed" : ""}>{status}</span>
-          ) : (
-            <span>Recu</span>
-          )}
-        </div>
       </div>
-
-      {isMine ? (
-        <Avatar name={senderLabel} size={34} src={avatarSrc} />
-      ) : null}
     </article>
   );
 }
@@ -635,6 +742,7 @@ interface ConversationMessageListProps {
   currentUserName?: string;
   currentUserAvatarUrl?: string | null;
   isTyping?: boolean;
+  loadingOlder?: boolean;
   onEditMessage: (message: LocalMessage) => void;
   onDeleteMessage: (messageId: string) => void;
 }
@@ -649,6 +757,7 @@ export function ConversationMessageList({
   currentUserName,
   currentUserAvatarUrl,
   isTyping = false,
+  loadingOlder = false,
   onEditMessage,
   onDeleteMessage,
 }: ConversationMessageListProps) {
@@ -747,6 +856,9 @@ export function ConversationMessageList({
   return (
     <>
       <main ref={messageListRef} className="dm-thread-body">
+        {loadingOlder ? (
+          <div className="dm-thread-older-loader">Chargement de l'historique...</div>
+        ) : null}
         {messageGroups.length === 0 ? (
           <div className="dm-thread-empty">
             <div>
@@ -762,8 +874,17 @@ export function ConversationMessageList({
             <div className="dm-message-group" key={group.dateKey}>
               <DateSeparator label={group.label} />
 
-              {group.items.map((message) => {
+              {group.items.map((message, index) => {
                 const isMine = currentUserId === message.senderId;
+                const previous = group.items[index - 1];
+                const next = group.items[index + 1];
+                const previousMine =
+                  previous != null && currentUserId === previous.senderId;
+                const nextMine =
+                  next != null && currentUserId === next.senderId;
+                const isFirstInGroup =
+                  !previous || previousMine !== isMine;
+                const isLastInGroup = !next || nextMine !== isMine;
                 const senderLabel = isMine
                   ? currentUserName || message.senderName || "Vous"
                   : message.senderName || title;
@@ -776,6 +897,8 @@ export function ConversationMessageList({
                     senderLabel={senderLabel}
                     presence={presence}
                     avatarSrc={isMine ? currentUserAvatarUrl : avatarUrl}
+                    showAvatar={!isMine && isLastInGroup}
+                    isFirstInGroup={isFirstInGroup}
                     menuOpen={openMenuMessageId === message.id}
                     menuAnchor={
                       openMenuMessageId === message.id ? menuAnchor : null
@@ -799,11 +922,11 @@ export function ConversationMessageList({
 
         {isTyping ? (
           <article
-            className="dm-message-row dm-typing-indicator"
+            className="dm-message-row dm-typing-indicator is-first has-avatar"
             aria-live="polite"
             aria-label="En train d'ecrire"
           >
-            <Avatar name={title} presence={presence} size={34} src={avatarUrl} />
+            <Avatar name={title} presence={presence} size={32} src={avatarUrl} />
             <div className="dm-message-content">
               <div className="dm-message-bubble dm-typing-bubble">
                 <span className="typing-row-dots">

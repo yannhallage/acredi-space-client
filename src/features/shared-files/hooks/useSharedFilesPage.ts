@@ -6,12 +6,10 @@ import {
   type WorkspaceFile,
 } from "../../../shared/api/files";
 import { useUsersQuery } from "../../../shared/api/users";
-import { resolveAssetUrl } from "../../../shared/api/http";
 import { useAuth } from "../../../shared/context";
 import type { User } from "../../../shared/types";
 import { downloadFileFromUrl } from "../../../shared/utils/downloadFile";
-import type { PreviewState } from "../../files/filePreview";
-import { cacheFilePreviewUrl } from "../../files/filePreviewUrlCache";
+import { useFilePreviewLoader } from "../../files/hooks/useFilePreviewLoader";
 import { useFilesViewMode } from "../../files/hooks/useFilesViewMode";
 import { pluralizeFile } from "../../files/utils";
 
@@ -28,13 +26,12 @@ export function useSharedFilesPage() {
   const { setViewMode, viewMode } = useFilesViewMode();
   const [searchTerm, setSearchTerm] = useState("");
   const [openMenuFileId, setOpenMenuFileId] = useState<string | null>(null);
-  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
-  const [preview, setPreview] = useState<PreviewState>({
-    error: null,
-    fileId: null,
-    loading: false,
-    url: null,
-  });
+  const {
+    openPreview,
+    preview,
+    selectedFileId,
+    setSelectedFileId,
+  } = useFilePreviewLoader();
   const [toast, setToast] = useState<ToastState>({
     show: false,
     intent: "success",
@@ -50,7 +47,6 @@ export function useSharedFilesPage() {
     isPending: isSharedFilesPending,
   } = useSharedFiles();
   const usersQuery = useUsersQuery();
-  const previewSharedFileUrlMutation = useDownloadFileUrl();
   const downloadSharedFileUrlMutation = useDownloadFileUrl();
 
   const sharedFiles = sharedFilesData ?? emptyFiles;
@@ -143,7 +139,8 @@ export function useSharedFilesPage() {
 
       if (
         target?.closest(".files-file-menu-button") ||
-        target?.closest(".files-file-dropdown")
+        target?.closest(".files-file-dropdown") ||
+        target?.closest(".files-actions-menu")
       ) {
         return;
       }
@@ -199,49 +196,13 @@ export function useSharedFilesPage() {
     );
   }, [isSharedFilesError, sharedFilesError, showToast]);
 
-  async function handleOpenPreview(file: WorkspaceFile) {
-    setOpenMenuFileId(null);
-    setSelectedFileId(file.id);
-    setPreview({
-      error: null,
-      fileId: file.id,
-      loading: true,
-      url: null,
-    });
-
-    try {
-      const url = await previewSharedFileUrlMutation.mutateAsync(file.id);
-      const resolvedUrl = await cacheFilePreviewUrl(
-        file.id,
-        resolveAssetUrl(url) ?? url,
-      );
-
-      setPreview((current) =>
-        current.fileId === file.id
-          ? {
-              error: null,
-              fileId: file.id,
-              loading: false,
-              url: resolvedUrl,
-            }
-          : current,
-      );
-    } catch (caughtError) {
-      setPreview((current) =>
-        current.fileId === file.id
-          ? {
-              error:
-                caughtError instanceof Error
-                  ? caughtError.message
-                  : "Impossible de charger l'apercu.",
-              fileId: file.id,
-              loading: false,
-              url: null,
-            }
-          : current,
-      );
-    }
-  }
+  const handleOpenPreview = useCallback(
+    async (file: WorkspaceFile) => {
+      setOpenMenuFileId(null);
+      await openPreview(file);
+    },
+    [openPreview],
+  );
 
   async function handleDownload(file: WorkspaceFile) {
     setOpenMenuFileId(null);
