@@ -875,6 +875,16 @@ a {
   font-size: 12px;
 }
 
+.login-footnote a {
+  color: var(--auth-accent, var(--accent));
+  font-weight: 600;
+}
+
+.login-footnote a:hover {
+  color: var(--auth-accent-hover, var(--accent));
+  text-decoration: underline;
+}
+
 .profile-completion-card {
   --profile-label-column: 142px;
   --profile-row-gap: 14px;
@@ -12112,6 +12122,14 @@ a {
   color: var(--auth-muted);
 }
 
+.auth-layout .login-footnote a {
+  color: var(--auth-accent);
+}
+
+.auth-layout .login-footnote a:hover {
+  color: var(--auth-accent-hover);
+}
+
 .auth-layout .password-toggle {
   color: var(--auth-muted);
 }
@@ -14758,7 +14776,7 @@ a {
 
 .signup-success-card {
   width: min(480px, 100%);
-  padding: 36px 28px;
+  padding: 28px 28px 36px;
   border: 1px solid var(--auth-border);
   border-radius: 16px;
   background: var(--auth-card);
@@ -14768,6 +14786,15 @@ a {
   justify-items: center;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   color: var(--auth-text);
+}
+
+.signup-success-avatars {
+  width: min(320px, 92%);
+  height: auto;
+  display: block;
+  margin-bottom: 4px;
+  pointer-events: none;
+  user-select: none;
 }
 
 .signup-success-card .muted {

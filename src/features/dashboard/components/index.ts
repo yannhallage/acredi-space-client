@@ -20,5 +20,6 @@ export {
   TeamActivityWidget,
 } from "./widgets/TeamWidgets";
 export { OnlineUsersWidget, UsersWidget } from "./widgets/UsersWidget";
+export { WelcomeWidget } from "./widgets/WelcomeWidget";
 export { WidgetCard } from "./widgets/WidgetCard";
 export { WIDGET_COMPONENTS } from "./widgets/widgetRegistry";

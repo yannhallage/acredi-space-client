@@ -1,6 +1,7 @@
 import {
   DashboardSkeleton,
   PanelState,
+  WelcomeWidget,
   WidgetCard,
   WIDGET_COMPONENTS,
 } from "./components";
@@ -35,20 +36,7 @@ export function DashboardPage() {
 
   return (
     <div className="min-w-0 space-y-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
-            Dashboard {page.role ? page.role.toLowerCase() : ""}
-          </p>
-          <h1 className="mt-1 text-[18px] font-semibold tracking-normal text-[var(--text)]">
-            Bonjour {page.user?.name?.split(" ")[0] ?? "Utilisateur"}.
-          </h1>
-          <p className="mt-1.5 text-[12px] text-[var(--muted)]">
-            {page.permittedWidgets.length} carte{page.permittedWidgets.length > 1 ? "s" : ""} disponible
-            {page.permittedWidgets.length > 1 ? "s" : ""} selon vos permissions.
-          </p>
-        </div>
-      </header>
+      <WelcomeWidget />
 
       {page.permittedWidgets.length ? (
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-4 lg:grid-cols-2">

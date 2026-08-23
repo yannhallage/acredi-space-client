@@ -187,12 +187,12 @@ export function AppLayout() {
           isActive: (pathname) =>
             pathname.startsWith("/app/dm") || pathname.startsWith("/app/chat"),
         },
-        {
-          to: "/app/mail",
-          icon: "mail",
-          label: "Mail",
-          permissions: FEATURE_PERMISSION_REQUIREMENTS.chat,
-        },
+        // {
+        //   to: "/app/mail",
+        //   icon: "mail",
+        //   label: "Mail",
+        //   permissions: FEATURE_PERMISSION_REQUIREMENTS.chat,
+        // },
         {
           to: "/app/meeting",
           icon: "video",
@@ -238,13 +238,13 @@ export function AppLayout() {
           label: "Notes",
           permissions: FEATURE_PERMISSION_REQUIREMENTS.notes,
         },
-        {
-          to: "/app/polls",
-          icon: "poll",
-          label: "Sondages",
-          permissions: FEATURE_PERMISSION_REQUIREMENTS.polls,
-          isActive: (pathname) => pathname.startsWith("/app/polls"),
-        },
+        // {
+        //   to: "/app/polls",
+        //   icon: "poll",
+        //   label: "Sondages",
+        //   permissions: FEATURE_PERMISSION_REQUIREMENTS.polls,
+        //   isActive: (pathname) => pathname.startsWith("/app/polls"),
+        // },
       ],
     },
   ];
@@ -630,7 +630,7 @@ export function AppLayout() {
               >
                 <Icon name={dark ? "sun" : "moon"} size={18} />
               </button>
-              <PermissionGate permissions={FEATURE_PERMISSION_REQUIREMENTS.chat}>
+              {/* <PermissionGate permissions={FEATURE_PERMISSION_REQUIREMENTS.chat}>
                 <a
                   className="icon-button gmail-link"
                   href="/app/mail"
@@ -641,7 +641,7 @@ export function AppLayout() {
                 >
                   <img src="/gmail-logo.svg" alt="" aria-hidden="true" />
                 </a>
-              </PermissionGate>
+              </PermissionGate> */}
               <a
                 className="icon-button nuum-link"
                 href="https://app.nuum-ci.com/authentification"

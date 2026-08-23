@@ -58,6 +58,12 @@ export function SignupSuccessPage() {
   return (
     <div className="signup-success-page">
       <div className="signup-success-card">
+        <img
+          src="/success-org/success-avatar.png"
+          alt=""
+          className="signup-success-avatars"
+          draggable={false}
+        />
         <AcrediLockup size={36} fontSize={24} />
         <p className="eyebrow">Compte cree</p>
         <h1>Felicitations !</h1>
