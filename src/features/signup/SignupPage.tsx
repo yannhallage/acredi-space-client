@@ -10,7 +10,7 @@ import {
 import { resolveAuthenticatedRedirect } from '../../shared/auth/onboarding';
 import { useAuth } from '../../shared/context';
 import { AcrediLockup, Icon } from '../../shared/ui';
-import { PasswordInput } from '../auth/components/PasswordInput';
+import { AuthSubmitButton, PasswordInput } from '../auth/components';
 
 type SignupStep = 'account' | 'otp';
 
@@ -90,7 +90,7 @@ export function SignupPage() {
       const authenticatedUser = completeAuthSession(response.data, {
         persistTrustedDevice: false,
       });
-      navigate(resolveAuthenticatedRedirect(authenticatedUser, '/signup/organization'), {
+      navigate(resolveAuthenticatedRedirect(authenticatedUser, '/signup/plans'), {
         replace: true,
       });
     } catch (error) {
@@ -109,7 +109,7 @@ export function SignupPage() {
       {step === 'account' ? (
         <>
           <div className="text-[14px]">
-            <p className="eyebrow">Etape 1 / 4</p>
+            <p className="eyebrow">Etape 1 / 5</p>
             <h1>Creez votre compte</h1>
             <p className="muted">
               Renseignez votre identite pour demarrer l’espace de votre organisation.
@@ -163,15 +163,13 @@ export function SignupPage() {
               />
             </label>
             {message && <p className="auth-error text-red-500 text-sm">{message}</p>}
-            <button className="button primary button-wide" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Envoi...' : 'Continuer'}
-            </button>
+            <AuthSubmitButton loading={isSubmitting}>Continuer</AuthSubmitButton>
           </form>
         </>
       ) : (
         <>
           <div className="text-[14px]">
-            <p className="eyebrow">Etape 2 / 4</p>
+            <p className="eyebrow">Etape 2 / 5</p>
             <h1>Verifiez votre email</h1>
             <p className="muted">
               Un code a 6 chiffres a ete envoye a <strong>{email}</strong>.
@@ -202,13 +200,12 @@ export function SignupPage() {
               ))}
             </div>
             {message && <p className="auth-error text-red-500 text-sm">{message}</p>}
-            <button
-              className="button primary button-wide"
-              type="submit"
-              disabled={isSubmitting || otp.some((digit) => !digit)}
+            <AuthSubmitButton
+              loading={isSubmitting}
+              disabled={otp.some((digit) => !digit)}
             >
-              {isSubmitting ? 'Verification...' : 'Verifier le code'}
-            </button>
+              Verifier le code
+            </AuthSubmitButton>
             <button
               type="button"
               className="link-button"

@@ -1,14 +1,17 @@
 import confetti from 'canvas-confetti';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { getDefaultAllowedAppPath, usePermissions } from '../../shared/permissions';
 import { useAuth } from '../../shared/context';
 import { AcrediLockup } from '../../shared/ui';
+import { AuthSubmitButton } from '../auth/components';
 
 export function SignupSuccessPage() {
   const { isAuthenticated, user } = useAuth();
   const { permissionCodes } = usePermissions();
   const navigate = useNavigate();
+  const [leaving, setLeaving] = useState(false);
+  const homePath = getDefaultAllowedAppPath(permissionCodes) ?? '/app/dashboard';
 
   useEffect(() => {
     const end = Date.now() + 1800;
@@ -34,15 +37,23 @@ export function SignupSuccessPage() {
     frame();
   }, []);
 
+  function handleGoHome() {
+    if (leaving) {
+      return;
+    }
+    setLeaving(true);
+    window.setTimeout(() => {
+      navigate(homePath);
+    }, 200);
+  }
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
   if (user?.onboardingStatus === 'ORGANIZATION_SETUP_REQUIRED') {
-    return <Navigate to="/signup/organization" replace />;
+    return <Navigate to="/signup/plans" replace />;
   }
-
-  const homePath = getDefaultAllowedAppPath(permissionCodes) ?? '/app/dashboard';
 
   return (
     <div className="signup-success-page">
@@ -54,9 +65,9 @@ export function SignupSuccessPage() {
           Votre compte et votre organisation sont prets. Vous pouvez maintenant inviter votre
           equipe et commencer a collaborer.
         </p>
-        <button className="button primary button-wide" type="button" onClick={() => navigate(homePath)}>
+        <AuthSubmitButton type="button" loading={leaving} onClick={handleGoHome}>
           Aller a l’accueil
-        </button>
+        </AuthSubmitButton>
       </div>
     </div>
   );

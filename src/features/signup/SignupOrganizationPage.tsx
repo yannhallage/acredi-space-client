@@ -4,8 +4,10 @@ import {
   useSignupCompleteOrganizationMutation,
   type CompanySize,
 } from '../../shared/api/auth';
+import { clearSignupPlanId, getSignupPlanId, signupPlansPath } from '../../shared/auth/signupPlan';
 import { useAuth } from '../../shared/context';
 import { AcrediLockup, Icon } from '../../shared/ui';
+import { AuthSubmitButton } from '../auth/components';
 
 function companySizeFromHeadcount(value: string): CompanySize | null {
   const count = Number.parseInt(value, 10);
@@ -42,7 +44,7 @@ export function SignupOrganizationPage() {
   const navigate = useNavigate();
   const completeMutation = useSignupCompleteOrganizationMutation();
 
-  const [orgStep, setOrgStep] = useState<3 | 4>(3);
+  const [orgStep, setOrgStep] = useState<4 | 5>(4);
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
@@ -50,10 +52,10 @@ export function SignupOrganizationPage() {
   const [headcount, setHeadcount] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [billingEmail, setBillingEmail] = useState(user?.email ?? '');
-  const [timezone, setTimezone] = useState('Europe/Paris');
+  const [timezone, setTimezone] = useState('Africa/Abidjan');
   const [locale, setLocale] = useState('fr-FR');
-  const [currency, setCurrency] = useState('EUR');
-  const [country, setCountry] = useState('FR');
+  const [currency, setCurrency] = useState('XOF');
+  const [country, setCountry] = useState('CI');
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
   const [city, setCity] = useState('');
@@ -64,7 +66,8 @@ export function SignupOrganizationPage() {
 
   const companySize = useMemo(() => companySizeFromHeadcount(headcount), [headcount]);
   const currentStep = orgStep;
-  const stepLabel = `Etape ${currentStep} / 4`;
+  const stepLabel = `Etape ${currentStep} / 5`;
+  const planId = getSignupPlanId();
 
   if (!isAuthenticated) {
     return <Navigate to="/signup" replace />;
@@ -77,6 +80,10 @@ export function SignupOrganizationPage() {
     return <Navigate to="/app/dashboard" replace />;
   }
 
+  if (!planId) {
+    return <Navigate to={signupPlansPath} replace />;
+  }
+
   function handleNameChange(value: string) {
     setName(value);
     if (!slugTouched) {
@@ -84,7 +91,7 @@ export function SignupOrganizationPage() {
     }
   }
 
-  function handleStep3Continue(event: FormEvent) {
+  function handleStep4Continue(event: FormEvent) {
     event.preventDefault();
     setMessage('');
     if (!name.trim() || !slug.trim()) {
@@ -95,7 +102,7 @@ export function SignupOrganizationPage() {
       setMessage('Indiquez le nombre de personnes avec lesquelles vous travaillerez.');
       return;
     }
-    setOrgStep(4);
+    setOrgStep(5);
   }
 
   async function handleComplete(event: FormEvent) {
@@ -104,12 +111,19 @@ export function SignupOrganizationPage() {
 
     if (!companySize) {
       setMessage('Indiquez le nombre de personnes avec lesquelles vous travaillerez.');
-      setOrgStep(3);
+      setOrgStep(4);
+      return;
+    }
+
+    const selectedPlanId = getSignupPlanId();
+    if (!selectedPlanId) {
+      navigate(signupPlansPath, { replace: true });
       return;
     }
 
     try {
       const response = await completeMutation.mutateAsync({
+        planId: selectedPlanId,
         name: name.trim(),
         slug: slug.trim().toLowerCase(),
         industry: industry.trim() || undefined,
@@ -128,30 +142,50 @@ export function SignupOrganizationPage() {
         vatNumber: vatNumber.trim() || undefined,
       });
       completeAuthSession(response.data, { persistTrustedDevice: false });
+      clearSignupPlanId();
       navigate('/signup/success', { replace: true });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Impossible de creer l’organisation');
     }
   }
 
+  function handleBack() {
+    setMessage('');
+    if (orgStep === 5) {
+      setOrgStep(4);
+      return;
+    }
+    navigate(signupPlansPath);
+  }
+
   return (
     <div className="signup-org-page">
-      <div className="signup-org-panel">
+      <div className="signup-org-stack">
+        <button
+          type="button"
+          className="signup-org-back"
+          aria-label="Retour"
+          onClick={handleBack}
+        >
+          <Icon name="arrowLeft" size={22} />
+        </button>
+
+        <div className="signup-org-panel">
         <section className="signup-org-form">
           <header className="signup-org-header">
             <AcrediLockup size={36} fontSize={24} />
             <div className="signup-org-steps">
               <p className="eyebrow">{stepLabel}</p>
               <div className="signup-org-stepper" aria-hidden="true">
-                {[1, 2, 3, 4].map((step) => (
+                {[1, 2, 3, 4, 5].map((step) => (
                   <span key={step} className={step <= currentStep ? 'done' : ''} />
                 ))}
               </div>
             </div>
           </header>
 
-          {orgStep === 3 ? (
-            <form onSubmit={handleStep3Continue}>
+          {orgStep === 4 ? (
+            <form onSubmit={handleStep4Continue}>
               <h1>Parlez-nous de votre organisation</h1>
               <p className="muted">
                 Ces informations personnalisent votre espace Acredi Space.
@@ -216,9 +250,9 @@ export function SignupOrganizationPage() {
               </label>
 
               {message && <p className="auth-error text-red-500 text-sm">{message}</p>}
-              <button className="button primary button-wide" type="submit">
-                Continuer
-              </button>
+              <div className="signup-org-actions">
+                <AuthSubmitButton>Continuer</AuthSubmitButton>
+              </div>
             </form>
           ) : (
             <form onSubmit={handleComplete}>
@@ -347,23 +381,9 @@ export function SignupOrganizationPage() {
               {message && <p className="auth-error text-red-500 text-sm">{message}</p>}
 
               <div className="signup-org-actions">
-                <button
-                  type="button"
-                  className="button ghost"
-                  onClick={() => {
-                    setMessage('');
-                    setOrgStep(3);
-                  }}
-                >
-                  Retour
-                </button>
-                <button
-                  className="button primary"
-                  type="submit"
-                  disabled={completeMutation.isPending}
-                >
-                  {completeMutation.isPending ? 'Creation...' : 'Terminer'}
-                </button>
+                <AuthSubmitButton loading={completeMutation.isPending}>
+                  Terminer
+                </AuthSubmitButton>
               </div>
             </form>
           )}
@@ -391,6 +411,7 @@ export function SignupOrganizationPage() {
             Rejoignez les equipes qui centralisent fichiers, discussions et reunions sur Acredi Space.
           </p>
         </aside>
+        </div>
       </div>
     </div>
   );

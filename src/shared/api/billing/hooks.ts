@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { billingService } from "./service";
 import type {
+  BillingAccessResponse,
   CreateSubscriptionRequest,
   InvoiceResponse,
   PlanResponse,
@@ -172,6 +173,65 @@ export function useBillingInvoicesQuery(enabled = true) {
       .then((invoices) => {
         if (active) {
           setData(invoices);
+          setError(null);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(toError(err));
+          setLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [enabled]);
+
+  return { data, error, loading, refetch };
+}
+
+export function useBillingAccessQuery(enabled = true) {
+  const [data, setData] = useState<BillingAccessResponse | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [loading, setLoading] = useState(enabled);
+
+  const refetch = useCallback(async () => {
+    if (!enabled) {
+      setData(null);
+      setLoading(false);
+      return null;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const access = await billingService.findAccess();
+      setData(access);
+      setLoading(false);
+      return access;
+    } catch (err) {
+      const normalized = toError(err);
+      setError(normalized);
+      setLoading(false);
+      throw normalized;
+    }
+  }, [enabled]);
+
+  useEffect(() => {
+    let active = true;
+    if (!enabled) {
+      setData(null);
+      setLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+    setLoading(true);
+    billingService
+      .findAccess()
+      .then((access) => {
+        if (active) {
+          setData(access);
           setError(null);
           setLoading(false);
         }

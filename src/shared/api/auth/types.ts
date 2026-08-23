@@ -79,6 +79,7 @@ export interface SignupStartRequest {
 export type CompanySize = "MICRO" | "SMALL" | "MEDIUM" | "LARGE" | "ENTERPRISE";
 
 export interface CompleteOrganizationRequest {
+  planId: string;
   name: string;
   slug: string;
   industry?: string;

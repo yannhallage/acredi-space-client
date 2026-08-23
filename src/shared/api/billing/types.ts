@@ -1,3 +1,18 @@
+export type BillingAccessReason =
+  | "TRIAL"
+  | "SUBSCRIPTION"
+  | "SUSPENDED"
+  | "PAST_DUE"
+  | "CANCELED"
+  | "TRIAL_EXPIRED"
+  | "NO_SUBSCRIPTION";
+
+export interface BillingAccessResponse {
+  allowed: boolean;
+  reason: BillingAccessReason;
+  trialEndsAt?: string | null;
+}
+
 export type BillingInterval = "MONTHLY" | "YEARLY";
 
 export interface PlanResponse {

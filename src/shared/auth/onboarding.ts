@@ -1,16 +1,24 @@
 import type { User } from '../types';
+import { signupOrganizationPath, signupPlansPath } from './signupPlan';
 
 const defaultAuthenticatedPath = '/app/dashboard';
 const onboardingPathPrefix = '/onboarding/';
-const signupOrganizationPath = '/signup/organization';
 const signupSuccessPath = '/signup/success';
 
 const onboardingRedirects: Record<string, string> = {
-  ORGANIZATION_SETUP_REQUIRED: signupOrganizationPath,
+  ORGANIZATION_SETUP_REQUIRED: signupPlansPath,
   PASSWORD_CHANGE_REQUIRED: '/onboarding/password-change',
   PASSWORD_REQUIRED_CHANGE: '/onboarding/password-change',
   PROFILE_COMPLETION_REQUIRED: '/onboarding/profile-completion',
 };
+
+export function isOrganizationSetupPath(path?: string | null) {
+  if (!path) {
+    return false;
+  }
+
+  return path.startsWith(signupPlansPath) || path.startsWith(signupOrganizationPath);
+}
 
 export function getOnboardingRedirectPath(status?: string | null) {
   const normalizedStatus = status?.trim().toUpperCase();
@@ -18,12 +26,34 @@ export function getOnboardingRedirectPath(status?: string | null) {
   return normalizedStatus ? onboardingRedirects[normalizedStatus] ?? null : null;
 }
 
+export function isAllowedOnboardingPath(status?: string | null, path?: string | null) {
+  if (!path) {
+    return false;
+  }
+
+  const homePath = getOnboardingRedirectPath(status);
+  if (!homePath) {
+    return false;
+  }
+
+  if (path.startsWith(homePath)) {
+    return true;
+  }
+
+  const normalizedStatus = status?.trim().toUpperCase();
+  if (normalizedStatus === 'ORGANIZATION_SETUP_REQUIRED') {
+    return isOrganizationSetupPath(path) || isSignupSuccessPath(path);
+  }
+
+  return false;
+}
+
 export function isOnboardingPath(path?: string | null) {
   if (!path) {
     return false;
   }
 
-  return path.startsWith(onboardingPathPrefix) || path.startsWith(signupOrganizationPath);
+  return path.startsWith(onboardingPathPrefix) || isOrganizationSetupPath(path);
 }
 
 export function isSignupSuccessPath(path?: string | null) {
@@ -32,7 +62,7 @@ export function isSignupSuccessPath(path?: string | null) {
 
 /** Where to send a user who finished onboarding while still on an onboarding URL. */
 export function getCompletedOnboardingExitPath(path?: string | null) {
-  if (path?.startsWith(signupOrganizationPath) || isSignupSuccessPath(path)) {
+  if (isOrganizationSetupPath(path) || isSignupSuccessPath(path)) {
     return signupSuccessPath;
   }
 

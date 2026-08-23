@@ -2,6 +2,7 @@ import { http } from "../http";
 import { billingEndpoints } from "./endpoints";
 import type {
   ApiResponse,
+  BillingAccessResponse,
   CreateSubscriptionRequest,
   InvoiceResponse,
   PlanResponse,
@@ -13,6 +14,13 @@ function unwrapApiResponse<TData>(response: ApiResponse<TData>) {
 }
 
 export const billingService = {
+  async findAccess(): Promise<BillingAccessResponse> {
+    const response = await http.get<ApiResponse<BillingAccessResponse>>(
+      billingEndpoints.access
+    );
+    return unwrapApiResponse(response);
+  },
+
   async findPlans(): Promise<PlanResponse[]> {
     const response = await http.get<ApiResponse<PlanResponse[]>>(
       billingEndpoints.plans

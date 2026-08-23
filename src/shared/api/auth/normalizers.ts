@@ -177,7 +177,8 @@ function buildAvatarUrl(payload: AuthUserPayload) {
 }
 
 export function normalizeAuthUser(value: unknown): User {
-  const payload = isRecord(value) ? (value as AuthUserPayload) : {};
+  const source = isRecord(value) ? value : {};
+  const payload = source as AuthUserPayload;
   const email = readString(payload.email) ?? "";
   const id = readId(payload.id) ?? readId(payload.userId) ?? readId(payload.uuid) ?? email;
   const name = buildName(payload);
@@ -197,6 +198,10 @@ export function normalizeAuthUser(value: unknown): User {
     phoneNumber: readString(payload.phoneNumber),
     appThemePreference: readString(payload.appThemePreference),
     profile: buildProfile(payload),
+    organizationId:
+      readId(payload.organizationId) ??
+      (isRecord(source.organization) ? readId(source.organization.id) : undefined) ??
+      null,
     adminRole: buildAdminRole(payload),
   };
 }
