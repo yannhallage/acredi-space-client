@@ -5,7 +5,12 @@ import { setSignupPlanId, signupOrganizationPath } from '../../shared/auth/signu
 import { resolvePlanCatalog, sortPlansByCatalog } from '../../shared/billing/planCatalog';
 import { useAuth } from '../../shared/context';
 import { AcrediLockup } from '../../shared/ui';
-import { AuthSubmitButton } from '../auth/components';
+import {
+  AuthFeedbackBanner,
+  AuthSubmitButton,
+  authFeedback,
+  resolveSignupPlansFeedback,
+} from '../auth/components';
 import { PlanOfferDetails } from '../settings/components/PlanOfferDetails';
 import '../settings/plans-page.css';
 
@@ -71,7 +76,19 @@ export function SignupPlansPage() {
           </p>
         </div>
 
-        {plansQuery.error ? <p className="auth-error">{plansQuery.error.message}</p> : null}
+        {plansQuery.error ? (
+          <AuthFeedbackBanner feedback={resolveSignupPlansFeedback(plansQuery.error)} />
+        ) : null}
+
+        {!plansQuery.loading && !plansQuery.error && plans.length === 0 ? (
+          <AuthFeedbackBanner
+            feedback={authFeedback(
+              'warning',
+              'Aucun plan disponible',
+              'Aucune offre n’est proposée pour le moment. Réessayez dans un moment, ou contactez le support Acredi.'
+            )}
+          />
+        ) : null}
 
         <section
           className="plans-grid"

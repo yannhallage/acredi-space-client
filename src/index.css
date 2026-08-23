@@ -14524,6 +14524,20 @@ a {
   gap: 14px;
 }
 
+.signup-org-form .login-form h1,
+.signup-org-form .login-form .muted {
+  text-align: left;
+}
+
+.signup-org-form .auth-feedback,
+.signup-plans-inner > .auth-feedback {
+  text-align: left;
+}
+
+.signup-plans-inner > .auth-feedback {
+  max-width: 560px;
+}
+
 .signup-org-form input[type='number'] {
   appearance: textfield;
   -moz-appearance: textfield;
@@ -14618,8 +14632,107 @@ a {
   margin-top: 2px;
 }
 
-.signup-org-aside-footnote {
+.signup-org-integrations {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
   margin-top: auto;
+  padding: 4px 0 2px;
+}
+
+.signup-org-integrations-stack {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  padding-left: 4px;
+}
+
+.signup-org-integrations-tile {
+  width: 52px;
+  height: 52px;
+  margin-left: -14px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 10px 24px rgba(23, 43, 77, 0.14),
+    0 0 0 3px rgba(255, 255, 255, 0.7);
+  transition: transform 0.2s ease, z-index 0.2s ease;
+}
+
+.signup-org-integrations-tile:first-child {
+  margin-left: 0;
+}
+
+.signup-org-integrations-tile.light {
+  background: #ffffff;
+}
+
+.signup-org-integrations-tile.dark {
+  background: #111111;
+}
+
+.signup-org-integrations-tile:nth-child(1) {
+  transform: rotate(-9deg);
+  z-index: 1;
+}
+
+.signup-org-integrations-tile:nth-child(2) {
+  transform: rotate(7deg) translateY(4px);
+  z-index: 2;
+}
+
+.signup-org-integrations-tile:nth-child(3) {
+  transform: rotate(-4deg) translateY(-3px);
+  z-index: 3;
+}
+
+.signup-org-integrations-tile:nth-child(4) {
+  transform: rotate(8deg) translateY(5px);
+  z-index: 4;
+}
+
+.signup-org-integrations-tile:nth-child(5) {
+  transform: rotate(-6deg);
+  z-index: 5;
+}
+
+.signup-org-integrations-tile:hover {
+  transform: rotate(0deg) translateY(-8px) scale(1.08);
+  z-index: 8;
+}
+
+.signup-org-integrations-tile img {
+  display: block;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.signup-org-integrations-tile.circle {
+  border-radius: 50%;
+  background: transparent;
+}
+
+.signup-org-integrations-tile.circle img,
+.signup-org-integrations-tile.fill img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.signup-org-integrations-caption {
+  margin: 0;
+  max-width: 28ch;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--auth-muted);
+}
+
+.signup-org-aside-footnote {
+  margin: 0;
   font-size: 13px;
   color: var(--auth-muted);
 }

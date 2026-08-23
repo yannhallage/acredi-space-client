@@ -177,3 +177,120 @@ export function resolveProfileCompletionFeedback(error: unknown): AuthFeedback {
     )
   );
 }
+
+function errorLooksLike(error: unknown, ...needles: string[]) {
+  const parts = [
+    error instanceof Error ? error.message : '',
+    error instanceof HttpError && typeof error.payload?.message === 'string' ? error.payload.message : '',
+    error instanceof HttpError && typeof error.payload?.error === 'string' ? error.payload.error : '',
+  ]
+    .join(' ')
+    .toLowerCase();
+
+  return needles.some((needle) => parts.includes(needle.toLowerCase()));
+}
+
+export function resolveSignupStartFeedback(error: unknown): AuthFeedback {
+  if (errorLooksLike(error, 'email already used')) {
+    return authFeedback(
+      'warning',
+      'E-mail déjà utilisé',
+      'Un compte existe déjà avec cette adresse. Connectez-vous, ou utilisez un autre e-mail.'
+    );
+  }
+
+  if (errorLooksLike(error, 'unable to send signup otp')) {
+    return authFeedback(
+      'error',
+      'Envoi du code impossible',
+      'Nous n’avons pas pu envoyer le code de vérification. Vérifiez l’e-mail, puis réessayez.'
+    );
+  }
+
+  if (error instanceof HttpError && (error.status === 400 || error.status === 422)) {
+    return authFeedback(
+      'warning',
+      'Informations invalides',
+      'Vérifiez votre nom, votre e-mail et un mot de passe d’au moins 8 caractères, puis réessayez.'
+    );
+  }
+
+  return resolveNetworkFeedback(
+    error,
+    authFeedback(
+      'error',
+      'Inscription impossible',
+      'Une erreur inattendue est survenue. Si le problème persiste, contactez le support Acredi.'
+    )
+  );
+}
+
+export function resolveSignupOrganizationFeedback(error: unknown): AuthFeedback {
+  if (errorLooksLike(error, 'organization name already exists')) {
+    return authFeedback(
+      'warning',
+      'Nom déjà pris',
+      'Cette organisation existe déjà. Choisissez un autre nom pour continuer.'
+    );
+  }
+
+  if (errorLooksLike(error, 'organization slug already exists')) {
+    return authFeedback(
+      'warning',
+      'Identifiant déjà pris',
+      'Cet identifiant d’organisation est déjà utilisé. Modifiez le slug, puis réessayez.'
+    );
+  }
+
+  if (errorLooksLike(error, 'selected plan is not available', 'plan not found')) {
+    return authFeedback(
+      'warning',
+      'Offre indisponible',
+      'Le plan sélectionné n’est plus proposé. Retournez aux abonnements pour en choisir un autre.'
+    );
+  }
+
+  if (errorLooksLike(error, 'iso 3166')) {
+    return authFeedback(
+      'warning',
+      'Code pays invalide',
+      'Indiquez un code pays ISO à 2 lettres, par exemple CI ou FR.'
+    );
+  }
+
+  if (errorLooksLike(error, 'already belongs to an organization')) {
+    return authFeedback(
+      'warning',
+      'Organisation déjà créée',
+      'Ce compte est déjà rattaché à une organisation. Reconnectez-vous pour continuer.'
+    );
+  }
+
+  if (error instanceof HttpError && (error.status === 400 || error.status === 422)) {
+    return authFeedback(
+      'warning',
+      'Informations incomplètes',
+      'Certaines données de l’organisation sont invalides. Vérifiez le formulaire, puis réessayez.'
+    );
+  }
+
+  return resolveNetworkFeedback(
+    error,
+    authFeedback(
+      'error',
+      'Création impossible',
+      'Nous n’avons pas pu créer l’organisation. Réessayez dans un moment.'
+    )
+  );
+}
+
+export function resolveSignupPlansFeedback(error: unknown): AuthFeedback {
+  return resolveNetworkFeedback(
+    error,
+    authFeedback(
+      'error',
+      'Offres indisponibles',
+      'Nous n’avons pas pu charger les abonnements. Vérifiez votre connexion, puis réessayez.'
+    )
+  );
+}

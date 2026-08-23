@@ -10,6 +10,9 @@ export {
   resolvePasswordChangeFeedback,
   resolveProfileCompletionFeedback,
   resolveResetPasswordFeedback,
+  resolveSignupOrganizationFeedback,
+  resolveSignupPlansFeedback,
+  resolveSignupStartFeedback,
   type AuthFeedback,
 } from './authFeedback';
 export { PasswordInput } from './PasswordInput';
