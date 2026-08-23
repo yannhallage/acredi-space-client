@@ -172,8 +172,8 @@ on:
 
 env:
   # Docker Hub
-  IMAGE_NAME_DH: ${{ vars.DOCKERHUB_USERNAME }}/acredispace-front
-  #   IMAGE_NAME: ${{ vars.DOCKERHUB_USERNAME }}/acredispace-prod-front
+  # IMAGE_NAME_DH: ${{ vars.DOCKERHUB_USERNAME }}/acredispace-front
+    IMAGE_NAME: ${{ vars.DOCKERHUB_USERNAME }}/acredispace-prod-front
 
 jobs:
   build-and-push:
