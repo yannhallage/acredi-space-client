@@ -17,5 +17,9 @@ export function SidebarCurrentPlan() {
     return null;
   }
 
-  return <span className="sidebar-plan-name">{planName}</span>;
+  return (
+    <span className="sidebar-plan-name" aria-label={`Plan ${planName}`}>
+      {planName}
+    </span>
+  );
 }

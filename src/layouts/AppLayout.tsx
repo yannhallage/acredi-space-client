@@ -496,7 +496,7 @@ export function AppLayout() {
               ) : (
                 <>
                   <div className="sidebar-brand-lockup">
-                    <AcrediLockup size={38} fontSize={22} />
+                    <AcrediLockup size={42} fontSize={24} />
                     <SidebarCurrentPlan />
                   </div>
                   <span className="sidebar-workspace">{workspaceName}</span>

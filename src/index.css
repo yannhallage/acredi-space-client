@@ -2393,7 +2393,7 @@ a {
 .sidebar-brand-lockup {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -2404,12 +2404,19 @@ a {
 }
 
 .sidebar-plan-name {
-  min-width: 0;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  max-width: 92px;
+  height: 20px;
+  padding: 0 7px;
   overflow: hidden;
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.08em;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--muted) 14%, var(--surface-2));
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   line-height: 1;
   text-transform: uppercase;
   text-overflow: ellipsis;
@@ -2417,10 +2424,8 @@ a {
 }
 
 .sidebar-plan-name-skeleton {
-  display: block;
-  width: 52px;
-  height: 10px;
-  border-radius: 999px;
+  width: 36px;
+  pointer-events: none;
   background:
     linear-gradient(
       90deg,
