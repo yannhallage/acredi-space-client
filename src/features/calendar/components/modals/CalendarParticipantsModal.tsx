@@ -155,8 +155,6 @@ export function CalendarParticipantsModal({
 
           <form className="calendar-event-form" onSubmit={handleSubmit}>
             <div className="calendar-field">
-              <span>Participants</span>
-
               <div className="calendar-participant-search">
                 <Icon name="search" size={15} />
                 <input
@@ -244,7 +242,7 @@ export function CalendarParticipantsModal({
                           presence={user.presence}
                         />
 
-                        <span>
+                        <span className="calendar-participant-meta">
                           <strong>{user.name}</strong>
                           <small>{user.email}</small>
                         </span>

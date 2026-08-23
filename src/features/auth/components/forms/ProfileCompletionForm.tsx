@@ -1,6 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProfilesQuery } from '../../../../shared/api/profiles';
+import { useCreateProfileMutation, useProfilesQuery } from '../../../../shared/api/profiles';
 import { useUpdateProfileMutation, useUploadAvatarMutation } from '../../../../shared/api/users';
 import { useAuth } from '../../../../shared/context';
 import { useTheme } from '../../../../shared/theme';
@@ -76,11 +76,24 @@ function profileToString(profile: unknown) {
   return String(profile);
 }
 
+function findProfileByLabel<T extends { id: string; name: string }>(profiles: T[], label: string) {
+  const cleanLabel = label.trim().toLowerCase();
+
+  if (!cleanLabel) {
+    return undefined;
+  }
+
+  return profiles.find(
+    (item) => item.id.toLowerCase() === cleanLabel || item.name.trim().toLowerCase() === cleanLabel
+  );
+}
+
 export function ProfileCompletionForm() {
   const { user, updateUser } = useAuth();
   const { dark, setDark } = useTheme();
   const navigate = useNavigate();
   const profilesQuery = useProfilesQuery({ enabled: Boolean(user) });
+  const createProfileMutation = useCreateProfileMutation();
   const updateProfileMutation = useUpdateProfileMutation();
   const uploadAvatarMutation = useUploadAvatarMutation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -143,9 +156,7 @@ export function ProfileCompletionForm() {
       return;
     }
 
-    const matchingProfile = profiles.find(
-      (item) => item.id === profileLabel || item.name === profileLabel
-    );
+    const matchingProfile = findProfileByLabel(profiles, profileLabel);
 
     if (matchingProfile) {
       setProfileId(matchingProfile.id);
@@ -156,17 +167,14 @@ export function ProfileCompletionForm() {
     return null;
   }
 
-  const selectedProfile = profiles.find((item) => item.id === profileId);
+  const selectedProfile = findProfileByLabel(profiles, profileId || profileLabel);
   const profilePlaceholder = profilesQuery.loading
-    ? 'Chargement des profils...'
-    : profilesQuery.error
-      ? 'Profils indisponibles'
-      : profiles.length
-        ? 'Choisir un profil'
-        : 'Aucun profil disponible';
+    ? 'Chargement des fonctions...'
+    : 'Votre fonction, ex. Développeur';
   const displayName = [firstName, lastName].map((value) => value.trim()).filter(Boolean).join(' ') || user.name;
   const currentAvatarSrc = avatarPreviewUrl ?? avatarUrl;
-  const isSubmitting = updateProfileMutation.isPending || uploadAvatarMutation.isPending;
+  const isSubmitting =
+    updateProfileMutation.isPending || uploadAvatarMutation.isPending || createProfileMutation.isPending;
 
   function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -225,27 +233,20 @@ export function ProfileCompletionForm() {
     const cleanLastName = lastName.trim();
     const cleanPhoneNumber = phoneNumber.trim();
 
-    if (!avatarFile && !avatarUrl) {
+    const cleanProfileLabel = profileLabel.trim();
+
+    if (!cleanFirstName || !cleanLastName || !cleanPhoneNumber || !cleanProfileLabel) {
       setFeedback(
         authFeedback(
           'warning',
-          'Photo de profil requise',
-          'Ajoutez une photo de profil avant de finaliser votre espace.'
+          'Informations incomplètes',
+          'Renseignez votre prénom, nom, téléphone et fonction pour continuer.'
         )
       );
       return;
     }
 
-    if (!cleanFirstName || !cleanLastName || !cleanPhoneNumber || !profileId) {
-      setFeedback(
-        authFeedback(
-          'warning',
-          'Informations incomplètes',
-          'Renseignez votre prénom, nom, téléphone et votre fonction pour continuer.'
-        )
-      );
-      return;
-    }
+    const matchedProfile = findProfileByLabel(profiles, profileId || cleanProfileLabel);
 
     try {
       let nextAvatarUrl = avatarUrl;
@@ -261,16 +262,23 @@ export function ProfileCompletionForm() {
         }
       }
 
+      let nextProfileId = matchedProfile?.id;
+      let selectedProfileName = matchedProfile?.name ?? selectedProfile?.name ?? cleanProfileLabel;
+
+      if (!nextProfileId) {
+        const createdProfile = await createProfileMutation.mutateAsync({ name: cleanProfileLabel });
+        nextProfileId = createdProfile.id;
+        selectedProfileName = createdProfile.name;
+      }
+
       const updatedUser = await updateProfileMutation.mutateAsync({
         appThemePreference: theme,
         avatarUrl: nextAvatarUrl,
         firstName: cleanFirstName,
         lastName: cleanLastName,
         phoneNumber: cleanPhoneNumber,
-        profileId,
+        profileId: nextProfileId,
       });
-
-      const selectedProfileName = selectedProfile?.name ?? profileLabel;
       const savedAvatarUrl = updatedUser.avatarUrl ?? uploadedUserAvatarUrl ?? nextAvatarUrl ?? null;
 
       setDark(theme === 'DARK');
@@ -279,9 +287,11 @@ export function ProfileCompletionForm() {
         name: `${cleanFirstName} ${cleanLastName}`,
         onboardingStatus: 'COMPLETED',
         phoneNumber: cleanPhoneNumber,
-        profile: selectedProfileName
-          ? { id: profileId, name: selectedProfileName }
-          : updatedUser.profile,
+        profile: nextProfileId
+          ? { id: nextProfileId, name: selectedProfileName }
+          : selectedProfileName
+            ? { name: selectedProfileName }
+            : updatedUser.profile,
         appThemePreference: theme,
         avatarUrl: savedAvatarUrl,
       });
@@ -318,7 +328,9 @@ export function ProfileCompletionForm() {
 
       <form className="login-form profile-completion-form" onSubmit={handleSubmit}>
         <div className="profile-completion-row profile-photo-row">
-          <span className="profile-completion-label">Photo de profil</span>
+          <span className="profile-completion-label">
+            Photo de profil <small>(optionnel)</small>
+          </span>
           <div className="profile-photo-control">
             <Avatar name={displayName} size={58} src={currentAvatarSrc} />
             <div className="profile-photo-actions">
@@ -423,21 +435,29 @@ export function ProfileCompletionForm() {
             Fonction / Profil <em aria-hidden="true">*</em>
           </span>
           <span className="profile-input-wrap">
-            <select
-              value={profileId}
-              onChange={(event) => setProfileId(event.target.value)}
-              disabled={profilesQuery.loading || !profiles.length || isSubmitting}
+            <input
+              type="text"
+              value={profileLabel}
+              onChange={(event) => {
+                const nextLabel = event.target.value;
+                const matchingProfile = findProfileByLabel(profiles, nextLabel);
+
+                setProfileLabel(nextLabel);
+                setProfileId(matchingProfile?.id ?? '');
+              }}
+              list="profile-completion-functions"
+              placeholder={profilePlaceholder}
+              disabled={isSubmitting}
+              autoComplete="organization-title"
               required
-            >
-              <option value="" disabled>
-                {profilePlaceholder}
-              </option>
-              {profiles.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+            />
+            {profiles.length > 0 && (
+              <datalist id="profile-completion-functions">
+                {profiles.map((item) => (
+                  <option key={item.id} value={item.name} />
+                ))}
+              </datalist>
+            )}
           </span>
         </label>
 
@@ -463,16 +483,6 @@ export function ProfileCompletionForm() {
             ))}
           </div>
         </div>
-
-        {profilesQuery.error && (
-          <AuthFeedbackBanner
-            feedback={authFeedback(
-              'error',
-              'Profils indisponibles',
-              'Impossible de charger la liste des fonctions. Vérifiez la connexion au serveur, puis réessayez.'
-            )}
-          />
-        )}
 
         {feedback && <AuthFeedbackBanner feedback={feedback} />}
 

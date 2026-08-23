@@ -12181,6 +12181,12 @@ a {
   font-style: normal;
 }
 
+.auth-layout .profile-completion-label small {
+  color: var(--auth-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
 .auth-layout .profile-input-wrap,
 .auth-layout .profile-phone-control,
 .auth-layout .theme-preference-grid {
@@ -13361,13 +13367,125 @@ a {
   color: var(--muted);
 }
 
-.calendar-participants-modal {
-  width: min(560px, 100%);
+.note-modal.calendar-participants-modal {
+  width: min(520px, 100%);
+  height: auto;
   min-height: 0;
+  max-height: min(680px, calc(100dvh - 48px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+  padding: 22px 22px 18px;
+}
+
+.calendar-participants-modal header {
+  flex-shrink: 0;
+}
+
+.calendar-participants-modal .calendar-event-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 14px;
+  overflow: hidden;
+}
+
+.calendar-participants-modal .calendar-field {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.calendar-participants-modal .calendar-participant-search,
+.calendar-participants-modal .calendar-participant-summary,
+.calendar-participants-modal .calendar-selected-participants,
+.calendar-participants-modal .calendar-form-error {
+  flex-shrink: 0;
 }
 
 .calendar-participants-modal .calendar-participant-list {
-  max-height: 280px;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(320px, 46vh);
+  gap: 8px;
+  overflow: auto;
+}
+
+.calendar-participants-modal .calendar-participant {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 16px;
+  align-items: center;
+  justify-content: stretch;
+  column-gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+}
+
+.calendar-participants-modal .calendar-participant:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.calendar-participants-modal .calendar-participant.selected {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--border));
+  background: var(--accent-soft);
+}
+
+.calendar-participants-modal .calendar-participant:disabled {
+  cursor: default;
+}
+
+.calendar-participants-modal .calendar-participant > .avatar {
+  width: 32px;
+  height: 32px;
+}
+
+.calendar-participants-modal .calendar-participant-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.calendar-participants-modal .calendar-participant-meta strong,
+.calendar-participants-modal .calendar-participant-meta small {
+  width: 100%;
+  text-align: left;
+}
+
+.calendar-participants-modal .calendar-participant > svg {
+  justify-self: end;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  color: var(--muted);
+  background: none;
+}
+
+.calendar-participants-modal .calendar-participant.selected > svg,
+.calendar-participants-modal .calendar-participant:disabled > svg {
+  color: var(--accent);
+}
+
+.calendar-participants-modal .calendar-event-modal-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 0;
+  padding-top: 12px;
+  background: var(--surface);
 }
 
 .calendar-form-error {
