@@ -14381,54 +14381,18 @@ a {
 
 .signup-org-page {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 28px 16px 40px;
+  padding: 20px 16px;
   background:
     radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 16%, transparent), transparent 42%),
     linear-gradient(180deg, var(--bg), var(--surface-2));
 }
 
-.signup-org-progress {
-  position: absolute;
-  top: 20px;
-  left: 24px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--text);
-}
-
-.signup-org-progress p {
-  margin: 0;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.signup-org-progress strong {
-  font-size: 13px;
-}
-
-.signup-org-progress-bar {
-  margin-top: 6px;
-  width: 140px;
-  height: 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--border) 80%, transparent);
-  overflow: hidden;
-}
-
-.signup-org-progress-bar span {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  border-radius: inherit;
-  transition: width 220ms ease;
-}
-
 .signup-org-panel {
   width: min(1040px, 100%);
-  min-height: 640px;
+  max-height: calc(100dvh - 40px);
   display: grid;
   grid-template-columns: 1.05fr 0.95fr;
   border: 1px solid var(--border);
@@ -14439,8 +14403,47 @@ a {
 }
 
 .signup-org-form {
-  padding: 36px 32px;
+  padding: 28px 32px 32px;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.signup-org-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.signup-org-steps {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.signup-org-steps .eyebrow {
+  margin: 0;
+  font-size: 11px;
+}
+
+.signup-org-stepper {
+  display: flex;
+  gap: 6px;
+  width: 112px;
+}
+
+.signup-org-stepper span {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.signup-org-stepper span.done {
+  background: var(--accent);
 }
 
 .signup-org-form h1 {
@@ -14454,33 +14457,21 @@ a {
   gap: 14px;
 }
 
-.signup-org-question {
-  margin: 8px 0 0;
-  font-size: 15px;
-  font-weight: 650;
+.signup-org-form input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
 }
 
-.signup-size-options {
-  display: grid;
-  gap: 8px;
+.signup-org-form input[type='number']::-webkit-outer-spin-button,
+.signup-org-form input[type='number']::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
 }
 
-.signup-size-option {
-  text-align: left;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 14px;
-  cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease;
-}
-
-.signup-size-option:hover,
-.signup-size-option.active {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+.signup-org-headcount-suffix {
+  flex: none;
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .signup-plain-input {
@@ -14501,29 +14492,29 @@ a {
 }
 
 .signup-org-aside {
-  padding: 36px 28px;
+  padding: 28px 28px 32px;
   background: color-mix(in srgb, var(--surface-2) 88%, var(--accent) 6%);
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  min-height: 0;
+  overflow: auto;
 }
 
 .signup-org-aside-art {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 8px;
+  overflow: hidden;
+  flex: 0 1 auto;
 }
 
-.signup-org-aside-art span {
-  aspect-ratio: 1;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
-}
-
-.signup-org-aside-art span:nth-child(3n) {
-  background: color-mix(in srgb, #22c55e 22%, var(--surface));
+.signup-org-aside-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(240px, 28vh);
+  object-fit: contain;
+  object-position: center;
+  user-select: none;
 }
 
 .signup-org-aside h2 {
@@ -14592,7 +14583,7 @@ a {
 @media (max-width: 900px) {
   .signup-org-panel {
     grid-template-columns: 1fr;
-    min-height: auto;
+    max-height: none;
   }
 
   .signup-org-aside {
@@ -14600,10 +14591,8 @@ a {
     border-top: 1px solid var(--border);
   }
 
-  .signup-org-progress {
-    position: static;
-    margin-bottom: 16px;
-    width: min(1040px, 100%);
+  .signup-org-aside-image {
+    max-height: 200px;
   }
 
   .signup-name-row {

@@ -7,13 +7,17 @@ import {
 import { useAuth } from '../../shared/context';
 import { AcrediLockup, Icon } from '../../shared/ui';
 
-const COMPANY_SIZE_OPTIONS: Array<{ value: CompanySize; label: string }> = [
-  { value: 'MICRO', label: 'Seulement moi (1)' },
-  { value: 'SMALL', label: '2 – 7' },
-  { value: 'MEDIUM', label: '8 – 15' },
-  { value: 'LARGE', label: '16 – 24' },
-  { value: 'ENTERPRISE', label: '25+' },
-];
+function companySizeFromHeadcount(value: string): CompanySize | null {
+  const count = Number.parseInt(value, 10);
+  if (!Number.isInteger(count) || count < 1) {
+    return null;
+  }
+  if (count <= 1) return 'MICRO';
+  if (count <= 7) return 'SMALL';
+  if (count <= 15) return 'MEDIUM';
+  if (count <= 24) return 'LARGE';
+  return 'ENTERPRISE';
+}
 
 const BENEFITS = [
   'Espace organisation partage',
@@ -43,7 +47,7 @@ export function SignupOrganizationPage() {
   const [slug, setSlug] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
   const [industry, setIndustry] = useState('');
-  const [companySize, setCompanySize] = useState<CompanySize | null>(null);
+  const [headcount, setHeadcount] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [billingEmail, setBillingEmail] = useState(user?.email ?? '');
   const [timezone, setTimezone] = useState('Europe/Paris');
@@ -58,7 +62,9 @@ export function SignupOrganizationPage() {
   const [vatNumber, setVatNumber] = useState('');
   const [message, setMessage] = useState('');
 
-  const progressLabel = useMemo(() => (orgStep === 3 ? '3 / 4' : '4 / 4'), [orgStep]);
+  const companySize = useMemo(() => companySizeFromHeadcount(headcount), [headcount]);
+  const currentStep = orgStep;
+  const stepLabel = `Etape ${currentStep} / 4`;
 
   if (!isAuthenticated) {
     return <Navigate to="/signup" replace />;
@@ -86,7 +92,7 @@ export function SignupOrganizationPage() {
       return;
     }
     if (!companySize) {
-      setMessage('Selectionnez la taille de votre organisation.');
+      setMessage('Indiquez le nombre de personnes avec lesquelles vous travaillerez.');
       return;
     }
     setOrgStep(4);
@@ -97,7 +103,7 @@ export function SignupOrganizationPage() {
     setMessage('');
 
     if (!companySize) {
-      setMessage('Selectionnez la taille de votre organisation.');
+      setMessage('Indiquez le nombre de personnes avec lesquelles vous travaillerez.');
       setOrgStep(3);
       return;
     }
@@ -130,19 +136,20 @@ export function SignupOrganizationPage() {
 
   return (
     <div className="signup-org-page">
-      <div className="signup-org-progress">
-        <AcrediLockup size={28} fontSize={18} />
-        <div>
-          <p>Finalisez votre setup</p>
-          <strong>{progressLabel} achevees</strong>
-          <div className="signup-org-progress-bar">
-            <span style={{ width: orgStep === 3 ? '75%' : '100%' }} />
-          </div>
-        </div>
-      </div>
-
       <div className="signup-org-panel">
         <section className="signup-org-form">
+          <header className="signup-org-header">
+            <AcrediLockup size={36} fontSize={24} />
+            <div className="signup-org-steps">
+              <p className="eyebrow">{stepLabel}</p>
+              <div className="signup-org-stepper" aria-hidden="true">
+                {[1, 2, 3, 4].map((step) => (
+                  <span key={step} className={step <= currentStep ? 'done' : ''} />
+                ))}
+              </div>
+            </div>
+          </header>
+
           {orgStep === 3 ? (
             <form onSubmit={handleStep3Continue}>
               <h1>Parlez-nous de votre organisation</h1>
@@ -189,21 +196,24 @@ export function SignupOrganizationPage() {
                 </span>
               </label>
 
-              <p className="signup-org-question">
-                Avec combien de personnes travaillerez-vous ?
-              </p>
-              <div className="signup-size-options">
-                {COMPANY_SIZE_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`signup-size-option${companySize === option.value ? ' active' : ''}`}
-                    onClick={() => setCompanySize(option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              <label className="text-sm">
+                <span>Avec combien de personnes travaillerez-vous ?</span>
+                <span className="input-wrap">
+                  <Icon name="users" size={16} />
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={10000}
+                    step={1}
+                    placeholder="Ex. 8"
+                    value={headcount}
+                    onChange={(event) => setHeadcount(event.target.value)}
+                    required
+                  />
+                  <span className="signup-org-headcount-suffix">personnes</span>
+                </span>
+              </label>
 
               {message && <p className="auth-error text-red-500 text-sm">{message}</p>}
               <button className="button primary button-wide" type="submit">
@@ -360,10 +370,13 @@ export function SignupOrganizationPage() {
         </section>
 
         <aside className="signup-org-aside">
-          <div className="signup-org-aside-art" aria-hidden="true">
-            {Array.from({ length: 12 }).map((_, index) => (
-              <span key={index} />
-            ))}
+          <div className="signup-org-aside-art">
+            <img
+              src="/signuporganization/signuporganization.png"
+              alt="Équipe collaborant autour d’une table"
+              className="signup-org-aside-image"
+              draggable={false}
+            />
           </div>
           <h2>La collaboration d’equipe, simplifiee</h2>
           <ul className="signup-org-benefits">
