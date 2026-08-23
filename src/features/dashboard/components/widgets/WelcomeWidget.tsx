@@ -44,12 +44,12 @@ export function WelcomeWidget() {
             <OrganizationName loading={showOrganizationSkeleton} name={organizationName} />{" "}
             t'attendent ici.
           </p>
-          <button
+          {/* <button
             className="mt-6 inline-flex h-10 w-fit items-center rounded-lg bg-[var(--accent)] px-4 text-[13px] font-medium text-white transition hover:opacity-90"
             type="button"
           >
             Voir mon espace
-          </button>
+          </button> */}
         </div>
 
         <div className="relative h-[180px] w-full shrink-0 sm:h-[210px] lg:h-auto lg:min-h-[240px] lg:w-[46%]">
