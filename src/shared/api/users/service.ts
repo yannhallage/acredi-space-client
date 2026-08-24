@@ -1,4 +1,4 @@
-import { http, resolveApiUrl } from "../http";
+import { http } from "../http";
 import { userEndpoints } from "./endpoints";
 import { normalizeAvatarUpdate, normalizeUser, normalizeUsers } from "./normalizers";
 import type {
@@ -22,35 +22,6 @@ function unwrapMaybeApiResponse<TData>(response: ApiResponse<TData> | TData) {
   }
 
   return response as TData;
-}
-
-async function parseAvatarResponse(response: Response) {
-  if (response.status === 204) {
-    return null;
-  }
-
-  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-
-  if (contentType.includes("application/json")) {
-    const payload = (await response.json()) as unknown;
-    const avatarUpdate = normalizeAvatarUpdate(unwrapMaybeApiResponse(payload));
-
-    return avatarUpdate.avatarUrl ?? null;
-  }
-
-  if (contentType.startsWith("image/") || contentType.includes("octet-stream")) {
-    return resolveApiUrl(userEndpoints.uploadAvatar);
-  }
-
-  const text = (await response.text()).trim();
-
-  if (!text) {
-    return null;
-  }
-
-  const avatarUpdate = normalizeAvatarUpdate(text);
-
-  return avatarUpdate.avatarUrl ?? null;
 }
 
 export const userService = {
@@ -133,16 +104,6 @@ export const userService = {
     return unwrapApiResponse(response);
   },
 
-  async myAvatarUrl() {
-    const response = await http.raw(userEndpoints.uploadAvatar, {
-      headers: {
-        Accept: "image/*, application/json, text/plain, */*",
-      },
-    });
-
-    return parseAvatarResponse(response);
-  },
-
   async update(id: string, request: UpdateUserRequest) {
     const response = await http.put<ApiResponse<UserResponse>>(
       userEndpoints.update(id),
@@ -173,12 +134,6 @@ export const userService = {
 
     if (uploadedAvatar.avatarUrl) {
       return uploadedAvatar;
-    }
-
-    const dedicatedAvatarUrl = await userService.myAvatarUrl().catch(() => null);
-
-    if (dedicatedAvatarUrl) {
-      return { avatarUrl: dedicatedAvatarUrl };
     }
 
     const updatedUser = await userService.me();

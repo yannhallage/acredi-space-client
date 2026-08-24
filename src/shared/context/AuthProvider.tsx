@@ -82,9 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPermissions(getStoredPermissions());
       void userService
         .me()
-        .then(async (freshUser) => {
-          const avatarUrl = await userService.myAvatarUrl().catch(() => null);
-
+        .then((freshUser) => {
           if (!active) {
             return;
           }
@@ -93,7 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const updatedUser = {
               ...(current ?? storedUser),
               ...freshUser,
-              avatarUrl: avatarUrl ?? freshUser.avatarUrl,
             };
             persistUser(updatedUser);
 
