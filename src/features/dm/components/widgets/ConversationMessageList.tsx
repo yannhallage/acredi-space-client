@@ -14,6 +14,7 @@ import { useShareMessageMutation } from "../../../../shared/api/dm/hooks";
 import { discussionService } from "../../../../shared/api/discussions/service";
 import { useMyTeamsQuery } from "../../../../shared/api/teams";
 import { useUsersQuery } from "../../../../shared/api/users";
+import { getFriendlyErrorMessage } from "../../../../shared/feedback";
 import type { Presence } from "../../../../shared/types";
 import {
   downloadFileById,
@@ -844,9 +845,7 @@ export function ConversationMessageList({
       setMessageToShare(null);
     } catch (error) {
       setShareError(
-        error instanceof Error
-          ? error.message
-          : "Impossible de partager ce message.",
+        getFriendlyErrorMessage(error, "Impossible de partager ce message."),
       );
     } finally {
       setSharingTargetId(null);

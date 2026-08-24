@@ -128,7 +128,12 @@ export function TeamDetailsModal({
               <div className="team-user-empty">
                 <Icon name="alert" size={18} />
                 <strong>Membres indisponibles</strong>
-                <span>{membersQuery.error.message}</span>
+                <span>
+                  {getErrorMessage(
+                    membersQuery.error,
+                    "Nous n’avons pas pu charger les membres de cette équipe.",
+                  )}
+                </span>
               </div>
             ) : null}
 
@@ -146,7 +151,7 @@ export function TeamDetailsModal({
                   <tr>
                     <th>Utilisateur</th>
                     <th>Role</th>
-                    {canManageMembers ? <th aria-label="Actions" /> : null}
+                    {canManageMembers ? <th>Action</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -164,17 +169,20 @@ export function TeamDetailsModal({
                               size={28}
                               src={member.user?.avatarUrl}
                             />
-                            <strong>{displayName}</strong>
+                            <span className="team-details-user-meta">
+                              <strong>{displayName}</strong>
+                              {isOwner ? (
+                                <span className="team-details-owner-badge">
+                                  Propriétaire
+                                </span>
+                              ) : null}
+                            </span>
                           </div>
                         </td>
                         <td>{roleLabels[member.roleName]}</td>
                         {canManageMembers ? (
                           <td className="team-details-actions-cell">
-                            {isOwner ? (
-                              <span className="team-details-owner-badge">
-                                Proprietaire
-                              </span>
-                            ) : (
+                            {isOwner ? null : (
                               <button
                                 className="icon-button bordered danger"
                                 type="button"

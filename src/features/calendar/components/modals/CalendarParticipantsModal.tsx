@@ -2,8 +2,12 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { CalendarEvent } from "../../../../shared/api/callendar/types";
 import { useUsersQuery } from "../../../../shared/api/users";
+import {
+  feedback,
+  resolveActionFeedback,
+} from "../../../../shared/feedback";
 import type { User } from "../../../../shared/types";
-import { Avatar, Icon } from "../../../../shared/ui";
+import { Avatar, FeedbackBanner, Icon } from "../../../../shared/ui";
 import { normalizeSearch } from "../../utils";
 
 const VISIBLE_AVATARS = 6;
@@ -262,7 +266,16 @@ export function CalendarParticipantsModal({
               </div>
 
               {error ? (
-                <p className="calendar-form-error">{error.message}</p>
+                <FeedbackBanner
+                  feedback={resolveActionFeedback(
+                    error,
+                    feedback(
+                      "error",
+                      "Invitation impossible",
+                      "Nous n’avons pas pu enregistrer les participants. Réessayez dans un moment.",
+                    ),
+                  )}
+                />
               ) : null}
             </div>
 

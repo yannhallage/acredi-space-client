@@ -10,6 +10,7 @@ import {
 } from "../../shared/api/polls";
 import { useTeams } from "../teams/hooks";
 import { Icon } from "../../shared/ui";
+import { getFriendlyErrorMessage } from "../../shared/feedback";
 import Toast from "../../components/app/Toast/Toast";
 import { PollQuestionBuilder } from "./components/widgets/PollQuestionBuilder";
 import { usePollCreateForm } from "./hooks/usePollCreateForm";
@@ -78,7 +79,7 @@ export function PollCreatePage() {
       navigate(`/app/polls/${savedId}`);
     } catch (error) {
       showToast(
-        error instanceof Error ? error.message : "Impossible d'enregistrer.",
+        getFriendlyErrorMessage(error, "Impossible d'enregistrer."),
         "error"
       );
     } finally {

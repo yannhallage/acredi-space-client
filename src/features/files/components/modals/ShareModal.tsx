@@ -5,6 +5,7 @@ import { ClipLoader } from "react-spinners";
 import type { FilePermissionLevel, WorkspaceFile } from "../../../../shared/api/files";
 import type { Folder } from "../../../../shared/api/folders";
 import { useAuth } from "../../../../shared/context";
+import { getFriendlyErrorMessage } from "../../../../shared/feedback";
 import type { User } from "../../../../shared/types";
 import { Avatar, Icon } from "../../../../shared/ui";
 
@@ -223,7 +224,12 @@ export function ShareModal(props: ShareModalProps) {
                     <div className="dm-new-conversation-empty">
                       <Icon name="alert" size={18} />
                       <strong>Chargement impossible</strong>
-                      <span>{error.message}</span>
+                      <span>
+                        {getFriendlyErrorMessage(
+                          error,
+                          "Nous n’avons pas pu charger les utilisateurs.",
+                        )}
+                      </span>
                       <button
                         className="button ghost mini"
                         type="button"

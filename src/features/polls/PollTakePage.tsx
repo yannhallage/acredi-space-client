@@ -13,6 +13,7 @@ import {
   type SubmitPollResponseRequest,
 } from "../../shared/api/polls";
 import { Icon } from "../../shared/ui";
+import { getFriendlyErrorMessage } from "../../shared/feedback";
 import { PollDonutKpi } from "./components";
 import { PollTakeQuestion } from "./components/widgets/PollTakeQuestion";
 import "./poll-take.css";
@@ -179,7 +180,7 @@ export function PollTakePage() {
       showToast("Réponse enregistrée.", "success");
     } catch (error) {
       showToast(
-        error instanceof Error ? error.message : "Envoi impossible.",
+        getFriendlyErrorMessage(error, "Envoi impossible."),
         "error"
       );
     }

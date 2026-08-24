@@ -1,6 +1,7 @@
 export { Avatar } from './Avatar';
 export { AcrediLockup, AcrediMark } from './Brand';
 export { Card } from './Card';
+export { FeedbackBanner } from './FeedbackBanner';
 export { FileIcon } from './FileIcon';
 export { HoverTip } from './HoverTip';
 export { Icon, type IconName } from './Icon';

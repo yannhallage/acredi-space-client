@@ -1,11 +1,12 @@
 import { AnimatePresence } from "framer-motion";
 
 import Toast from "../../components/app/Toast/Toast";
+import { AccessDeniedState, FeedbackBanner, Icon } from "../../shared/ui";
 import {
   PermissionGate,
   TEAM_CREATE_PERMISSIONS,
 } from "../../shared/permissions";
-import { AccessDeniedState, Icon } from "../../shared/ui";
+import { feedback, resolveActionFeedback } from "../../shared/feedback";
 import { TEAM_SKELETON_KEYS } from "./constants";
 import {
   AddExistingTeamMemberModal,
@@ -62,19 +63,27 @@ export function TeamsPage() {
       </section>
 
       {controller.teamsQuery.isError ? (
-        <div className="team-error-banner">
-          Erreur lors du chargement des equipes:{" "}
-          {controller.teamsQuery.error.message}
-          <button
-            className="button ghost"
-            type="button"
-            onClick={() => {
-              controller.teamsQuery.refetch().catch(() => undefined);
-            }}
-          >
-            Reessayer
-          </button>
-        </div>
+        <FeedbackBanner
+          feedback={resolveActionFeedback(
+            controller.teamsQuery.error,
+            feedback(
+              "error",
+              "Équipes indisponibles",
+              "Nous n’avons pas pu charger les équipes. Vérifiez votre connexion, puis réessayez.",
+            ),
+          )}
+          action={
+            <button
+              className="button ghost"
+              type="button"
+              onClick={() => {
+                controller.teamsQuery.refetch().catch(() => undefined);
+              }}
+            >
+              Réessayer
+            </button>
+          }
+        />
       ) : null}
 
       <section className="teams-grid" aria-label="Teams">
@@ -128,9 +137,12 @@ export function TeamsPage() {
 
       <EditTeamDrawer
         error={controller.editTeamError}
+        isAddingMember={controller.isAddingMember}
         isOpen={Boolean(controller.editTargetTeam)}
         isUpdating={controller.isUpdatingTeam}
+        isUserPickerOpen={controller.isUserPickerOpen}
         onClose={controller.closeEditTeamModal}
+        onOpenUserPicker={() => controller.setIsUserPickerOpen(true)}
         onSubmit={controller.handleUpdateTeam}
         team={controller.editTargetTeam}
       />
@@ -141,7 +153,7 @@ export function TeamsPage() {
         loading={controller.usersQuery.loading}
         onClose={() => controller.setIsUserPickerOpen(false)}
         onRetry={controller.usersQuery.refetch}
-        onSelect={controller.addDraftMember}
+        onSelect={controller.handleSelectPickerUser}
         selectedUserIds={controller.selectedUserIds}
         users={controller.usersQuery.data ?? []}
       />

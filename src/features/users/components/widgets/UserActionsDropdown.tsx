@@ -6,6 +6,7 @@ import {
   useDeactivateUserMutation,
 } from "../../../../shared/api/users";
 import type { User } from "../../../../shared/types";
+import { getFriendlyErrorMessage } from "../../../../shared/feedback";
 import { Icon } from "../../../../shared/ui";
 
 export function UserActionsDropdown({
@@ -92,10 +93,10 @@ export function UserActionsDropdown({
     } catch (error) {
       onToast({
         intent: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Impossible de modifier le statut de l'utilisateur",
+        message: getFriendlyErrorMessage(
+          error,
+          "Impossible de modifier le statut de l'utilisateur",
+        ),
       });
     }
   }

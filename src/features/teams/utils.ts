@@ -1,4 +1,5 @@
 import type { User } from "../../shared/types";
+import { getFriendlyErrorMessage } from "../../shared/feedback";
 
 export function userPresenceLabel(user: Pick<User, "enabled" | "presence">) {
   return user.enabled === false || user.presence === "offline"
@@ -17,21 +18,5 @@ export function getErrorMessage(
   error: unknown,
   fallback = "Une erreur est survenue.",
 ) {
-  if (error && typeof error === "object") {
-    const maybeError = error as {
-      message?: unknown;
-      response?: { data?: { message?: unknown } };
-    };
-    const responseMessage = maybeError.response?.data?.message;
-
-    if (typeof responseMessage === "string" && responseMessage.trim()) {
-      return responseMessage;
-    }
-
-    if (typeof maybeError.message === "string" && maybeError.message.trim()) {
-      return maybeError.message;
-    }
-  }
-
-  return fallback;
+  return getFriendlyErrorMessage(error, fallback);
 }

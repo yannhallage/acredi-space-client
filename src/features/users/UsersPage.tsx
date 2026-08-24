@@ -1,6 +1,7 @@
 import { AnimatePresence } from "framer-motion";
 
 import Toast from "../../components/app/Toast/Toast";
+import { getFriendlyErrorMessage } from "../../shared/feedback";
 import {
   PermissionGate,
   USERS_INVITE_PERMISSIONS,
@@ -58,7 +59,14 @@ export function UsersPage() {
         visibleUsers={page.visibleUsers}
         hasFilters={page.hasFilters}
         canViewUsers={page.canViewUsers}
-        errorMessage={page.usersQuery.error?.message}
+        errorMessage={
+          page.usersQuery.error
+            ? getFriendlyErrorMessage(
+                page.usersQuery.error,
+                "Nous n’avons pas pu charger les utilisateurs.",
+              )
+            : undefined
+        }
         openActionsUserId={page.openActionsUserId}
         onOpenActionsChange={page.setOpenActionsUserId}
         onRefetch={page.usersQuery.refetch}
@@ -75,7 +83,7 @@ export function UsersPage() {
             name={page.name}
             email={page.email}
             role={page.role}
-            errorMessage={page.inviteMutation.error?.message}
+            error={page.inviteMutation.error}
             isPending={page.inviteMutation.isPending}
             onNameChange={page.setName}
             onEmailChange={page.setEmail}
@@ -92,7 +100,7 @@ export function UsersPage() {
             editName={page.editName}
             editEmail={page.editEmail}
             editRole={page.editRole}
-            errorMessage={page.updateUserMutation.error?.message}
+            error={page.updateUserMutation.error}
             isPending={page.updateUserMutation.isPending}
             onEditNameChange={page.setEditName}
             onEditEmailChange={page.setEditEmail}
@@ -107,7 +115,7 @@ export function UsersPage() {
         {page.deletingUser ? (
           <DeleteUserConfirmModal
             user={page.deletingUser}
-            errorMessage={page.deleteUserMutation.error?.message}
+            error={page.deleteUserMutation.error}
             isPending={page.deleteUserMutation.isPending}
             onClose={() => page.setDeletingUser(null)}
             onConfirm={() => {

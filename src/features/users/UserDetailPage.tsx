@@ -1,6 +1,7 @@
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useUserTeamsQuery } from '../../shared/api/teams';
 import { useUserQuery } from '../../shared/api/users';
+import { getFriendlyErrorMessage } from '../../shared/feedback';
 import type { Presence } from '../../shared/types';
 import { Avatar, Icon } from '../../shared/ui';
 import { presenceLabel, roleLabel, themePreferenceLabel } from './utils';
@@ -192,7 +193,12 @@ export function UserDetailPage() {
           {teamsQuery.error ? (
             <div className="user-detail-inline-state error">
               <Icon name="alert" size={16} />
-              <span>{teamsQuery.error.message}</span>
+              <span>
+                {getFriendlyErrorMessage(
+                  teamsQuery.error,
+                  'Nous n’avons pas pu charger les équipes de cet utilisateur.',
+                )}
+              </span>
             </div>
           ) : null}
 

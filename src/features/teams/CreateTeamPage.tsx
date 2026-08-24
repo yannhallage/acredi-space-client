@@ -1,6 +1,12 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { Icon } from "../../shared/ui";
+import {
+  feedback,
+  resolveActionFeedback,
+  type Feedback,
+} from "../../shared/feedback";
+import { FeedbackBanner, Icon } from "../../shared/ui";
 import { CreateTeamForm } from "./components";
 import { useAddTeamMember, useCreateTeam } from "./hooks";
 import "./create-team-page.css";
@@ -9,6 +15,7 @@ export function CreateTeamPage() {
   const navigate = useNavigate();
   const createTeamMutation = useCreateTeam();
   const addMemberMutation = useAddTeamMember();
+  const [formFeedback, setFormFeedback] = useState<Feedback | null>(null);
 
   const isSubmitting =
     createTeamMutation.isPending || addMemberMutation.isPending;
@@ -18,6 +25,8 @@ export function CreateTeamPage() {
     description: string;
     teamColor: string;
   }) {
+    setFormFeedback(null);
+
     try {
       await createTeamMutation.mutateAsync({
         name: form.name.trim(),
@@ -28,7 +37,16 @@ export function CreateTeamPage() {
 
       navigate("/app/teams");
     } catch (error) {
-      console.error("Erreur création équipe :", error);
+      setFormFeedback(
+        resolveActionFeedback(
+          error,
+          feedback(
+            "error",
+            "Création impossible",
+            "Nous n’avons pas pu créer cette équipe. Réessayez dans un moment.",
+          ),
+        ),
+      );
     }
   }
 
@@ -53,6 +71,8 @@ export function CreateTeamPage() {
           </p>
         </div>
       </section>
+
+      {formFeedback ? <FeedbackBanner feedback={formFeedback} /> : null}
 
       <CreateTeamForm
         isSubmitting={isSubmitting}

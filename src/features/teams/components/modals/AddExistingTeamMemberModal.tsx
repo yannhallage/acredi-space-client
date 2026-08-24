@@ -5,7 +5,7 @@ import { Avatar, Icon } from "../../../../shared/ui";
 import type { User } from "../../../../shared/types";
 import { useTeamMembers } from "../../hooks";
 import type { Team, TeamMemberRole } from "../../types";
-import { normalizeSearch, userPresenceLabel } from "../../utils";
+import { getErrorMessage, normalizeSearch, userPresenceLabel } from "../../utils";
 
 export function AddExistingTeamMemberModal({
   addMemberPending,
@@ -177,7 +177,12 @@ export function AddExistingTeamMemberModal({
             <div className="dm-new-conversation-empty">
               <Icon name="alert" size={18} />
               <strong>Chargement impossible</strong>
-              <span>{error.message}</span>
+              <span>
+                {getErrorMessage(
+                  error,
+                  "Nous n’avons pas pu charger les utilisateurs.",
+                )}
+              </span>
               <button
                 className="button ghost mini"
                 type="button"

@@ -15,6 +15,7 @@ import {
 } from "../../shared/api/polls";
 import { PERMISSIONS, PermissionGate, usePermissions } from "../../shared/permissions";
 import { Icon } from "../../shared/ui";
+import { getFriendlyErrorMessage } from "../../shared/feedback";
 import {
   PollDonutKpi,
   PollParticipantsPanel,
@@ -97,7 +98,7 @@ export function PollDetailPage() {
       showToast(successMessage, "success");
     } catch (error) {
       showToast(
-        error instanceof Error ? error.message : "Action impossible.",
+        getFriendlyErrorMessage(error, "Action impossible."),
         "error"
       );
     }

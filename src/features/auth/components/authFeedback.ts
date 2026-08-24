@@ -1,50 +1,14 @@
 import { HttpError } from '../../../shared/api/http';
+import {
+  feedback,
+  resolveNetworkFeedback,
+  type Feedback,
+  type FeedbackTone,
+} from '../../../shared/feedback';
 
-export type AuthFeedbackTone = 'error' | 'warning' | 'success';
-
-export type AuthFeedback = {
-  tone: AuthFeedbackTone;
-  title: string;
-  description: string;
-};
-
-export function authFeedback(
-  tone: AuthFeedbackTone,
-  title: string,
-  description: string
-): AuthFeedback {
-  return { tone, title, description };
-}
-
-function resolveNetworkFeedback(error: unknown, fallback: AuthFeedback): AuthFeedback {
-  if (error instanceof TypeError) {
-    return authFeedback(
-      'error',
-      'Connexion réseau interrompue',
-      'Vérifiez votre connexion internet, puis réessayez.'
-    );
-  }
-
-  if (error instanceof HttpError) {
-    if (error.status === 429) {
-      return authFeedback(
-        'warning',
-        'Trop de tentatives',
-        'Par sécurité, patientez quelques instants avant une nouvelle tentative.'
-      );
-    }
-
-    if (error.status >= 500) {
-      return authFeedback(
-        'error',
-        'Service indisponible',
-        'Nous n’avons pas pu joindre le serveur. Réessayez dans un moment.'
-      );
-    }
-  }
-
-  return fallback;
-}
+export type AuthFeedbackTone = FeedbackTone;
+export type AuthFeedback = Feedback;
+export const authFeedback = feedback;
 
 export function resolveLoginFeedback(error: unknown): AuthFeedback {
   if (error instanceof HttpError) {

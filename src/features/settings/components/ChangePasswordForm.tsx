@@ -1,5 +1,12 @@
 import { FormEvent, useState } from 'react';
 import { useChangeMyPasswordMutation } from '../../../shared/api/users';
+import {
+  feedback,
+  resolveActionFeedback,
+  validationFeedback,
+  type Feedback,
+} from '../../../shared/feedback';
+import { FeedbackBanner } from '../../../shared/ui';
 import { PasswordInput } from '../../auth/components/PasswordInput';
 
 export function ChangePasswordForm() {
@@ -7,27 +14,26 @@ export function ChangePasswordForm() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [message, setMessage] = useState<Feedback | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
 
     if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-      setMessage({ type: 'error', text: 'Merci de remplir tous les champs.' });
+      setMessage(validationFeedback('Merci de remplir tous les champs.'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setMessage({ type: 'error', text: 'Les mots de passe ne correspondent pas.' });
+      setMessage(validationFeedback('Les mots de passe ne correspondent pas.'));
       return;
     }
 
     if (newPassword.length < 8) {
-      setMessage({
-        type: 'error',
-        text: 'Le nouveau mot de passe doit contenir au moins 8 caracteres.',
-      });
+      setMessage(
+        validationFeedback('Le nouveau mot de passe doit contenir au moins 8 caractères.'),
+      );
       return;
     }
 
@@ -36,18 +42,20 @@ export function ChangePasswordForm() {
         currentPassword,
         newPassword,
       });
-      // Déconnexion complète et redirection vers la page de login
       window.localStorage.clear();
       window.sessionStorage.clear();
-      // Si vous avez une logique de logout côté front, appelez-la ici, ex:
-      // await logout(); 
       window.location.href = '/login';
-      // Pas besoin de setMessage ou de reset les champs ici, l'utilisateur sera déconnecté
     } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error instanceof Error ? error.message : 'Le changement de mot de passe a echoue.',
-      });
+      setMessage(
+        resolveActionFeedback(
+          error,
+          feedback(
+            'error',
+            'Mise à jour impossible',
+            'Nous n’avons pas pu enregistrer le nouveau mot de passe. Réessayez dans un moment.',
+          ),
+        ),
+      );
     }
   }
 
@@ -90,9 +98,7 @@ export function ChangePasswordForm() {
         />
       </label>
 
-      {message ? (
-        <p className={`change-password-message ${message.type}`}>{message.text}</p>
-      ) : null}
+      {message ? <FeedbackBanner feedback={message} /> : null}
 
       <div className="change-password-actions">
         <button className="button primary" type="submit" disabled={isSubmitting}>

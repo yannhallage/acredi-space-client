@@ -4,6 +4,7 @@ import {
   useUpdateOrganizationMutation,
   useUploadOrganizationLogoMutation,
 } from '../../../../shared/api/organizations';
+import { getFriendlyErrorMessage } from '../../../../shared/feedback';
 import { Icon } from '../../../../shared/ui';
 import { MAX_AVATAR_SIZE } from '../../utils';
 
@@ -120,10 +121,7 @@ export function OrganizationSection({ canUpdate }: OrganizationSectionProps) {
       setLogoPreviewUrl(null);
       setLogoMessage({
         type: 'error',
-        text:
-          error instanceof Error
-            ? error.message
-            : 'Impossible de mettre à jour le logo.',
+        text: getFriendlyErrorMessage(error, 'Impossible de mettre à jour le logo.'),
       });
     } finally {
       event.target.value = '';
@@ -155,9 +153,7 @@ export function OrganizationSection({ canUpdate }: OrganizationSectionProps) {
     } catch (error) {
       setMessageTone('error');
       setMessage(
-        error instanceof Error
-          ? error.message
-          : "Impossible de mettre à jour l'organisation."
+        getFriendlyErrorMessage(error, "Impossible de mettre à jour l'organisation.")
       );
     }
   }

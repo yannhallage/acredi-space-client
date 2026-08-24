@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AcrediLockup, Icon } from '../../shared/ui';
+import { AcrediLockup, FeedbackBanner, Icon } from '../../shared/ui';
+import {
+  feedback,
+  getFriendlyErrorMessage,
+  resolveActionFeedback,
+} from '../../shared/feedback';
 import {
   useBillingPlansQuery,
   useCreateSubscriptionMutation,
@@ -38,7 +43,7 @@ export function PlansPage() {
       navigate(homePath, { replace: true });
     } catch (error) {
       window.alert(
-        error instanceof Error ? error.message : 'Impossible de changer de plan.'
+        getFriendlyErrorMessage(error, 'Impossible de changer de plan.')
       );
     } finally {
       setPendingPlanId(null);
@@ -71,7 +76,18 @@ export function PlansPage() {
           </div>
         </header>
 
-        {plansQuery.error ? <p>{plansQuery.error.message}</p> : null}
+        {plansQuery.error ? (
+          <FeedbackBanner
+            feedback={resolveActionFeedback(
+              plansQuery.error,
+              feedback(
+                'error',
+                'Offres indisponibles',
+                'Nous n’avons pas pu charger les abonnements. Vérifiez votre connexion, puis réessayez.'
+              )
+            )}
+          />
+        ) : null}
 
         <section
           className="plans-grid"

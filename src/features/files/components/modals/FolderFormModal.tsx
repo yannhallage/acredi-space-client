@@ -1,7 +1,8 @@
 import type { FormEvent } from "react";
 
 import type { Folder } from "../../../../shared/api/folders";
-import { Icon } from "../../../../shared/ui";
+import type { Feedback } from "../../../../shared/feedback";
+import { FeedbackBanner, Icon } from "../../../../shared/ui";
 
 export function FolderFormModal({
   currentFolder,
@@ -17,7 +18,7 @@ export function FolderFormModal({
   title,
 }: {
   currentFolder: Folder | null;
-  errorMessage: string | null;
+  errorMessage: Feedback | null;
   folderName: string;
   isOpen: boolean;
   isSaving: boolean;
@@ -74,9 +75,7 @@ export function FolderFormModal({
           />
         </label>
 
-        {errorMessage ? (
-          <p className="files-folder-error">{errorMessage}</p>
-        ) : null}
+        {errorMessage ? <FeedbackBanner feedback={errorMessage} /> : null}
 
         <footer>
           <button

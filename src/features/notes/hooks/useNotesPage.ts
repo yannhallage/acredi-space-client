@@ -8,6 +8,7 @@ import {
   useUpdateNote,
 } from "../../../shared/api/notes";
 import { useUsersQuery } from "../../../shared/api/users";
+import { getFriendlyErrorMessage } from "../../../shared/feedback";
 import type { User } from "../../../shared/types";
 
 import {
@@ -200,11 +201,12 @@ export function useNotesPage() {
     } catch (caughtError) {
       showToast(
         "error",
-        caughtError instanceof Error
-          ? caughtError.message
-          : editingNote
-            ? "Error while updating the note."
-            : "Error while creating the note.",
+        getFriendlyErrorMessage(
+          caughtError,
+          editingNote
+            ? "Impossible de modifier la note."
+            : "Impossible de créer la note.",
+        ),
         5000,
       );
     }
@@ -229,9 +231,7 @@ export function useNotesPage() {
     } catch (caughtError) {
       showToast(
         "error",
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Error while sharing the note.",
+        getFriendlyErrorMessage(caughtError, "Impossible de partager la note."),
         5000,
       );
     } finally {
@@ -248,9 +248,7 @@ export function useNotesPage() {
     } catch (caughtError) {
       showToast(
         "error",
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Error while deleting the note.",
+        getFriendlyErrorMessage(caughtError, "Impossible de supprimer la note."),
         5000,
       );
     } finally {
@@ -266,7 +264,11 @@ export function useNotesPage() {
     const result = await refetch();
 
     if (result.error) {
-      showToast("error", result.error.message, 5000);
+      showToast(
+        "error",
+        getFriendlyErrorMessage(result.error, "Impossible de charger les notes."),
+        5000,
+      );
     }
   }
 

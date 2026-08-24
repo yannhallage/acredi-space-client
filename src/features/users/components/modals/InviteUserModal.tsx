@@ -1,14 +1,18 @@
 import { motion } from "framer-motion";
 
+import {
+  feedback,
+  resolveActionFeedback,
+} from "../../../../shared/feedback";
 import type { AdminRole } from "../../../../shared/types";
-import { Icon } from "../../../../shared/ui";
+import { FeedbackBanner, Icon } from "../../../../shared/ui";
 import { ROLE_OPTIONS } from "../../utils";
 
 export function InviteUserModal({
   name,
   email,
   role,
-  errorMessage,
+  error,
   isPending,
   onNameChange,
   onEmailChange,
@@ -19,7 +23,7 @@ export function InviteUserModal({
   name: string;
   email: string;
   role: AdminRole;
-  errorMessage?: string;
+  error?: unknown;
   isPending: boolean;
   onNameChange: (value: string) => void;
   onEmailChange: (value: string) => void;
@@ -98,8 +102,17 @@ export function InviteUserModal({
           </select>
         </label>
 
-        {errorMessage ? (
-          <p className="auth-error text-red-500 text-sm">{errorMessage}</p>
+        {error ? (
+          <FeedbackBanner
+            feedback={resolveActionFeedback(
+              error,
+              feedback(
+                "error",
+                "Invitation impossible",
+                "Nous n’avons pas pu inviter cet utilisateur. Réessayez dans un moment.",
+              ),
+            )}
+          />
         ) : null}
 
         <footer>

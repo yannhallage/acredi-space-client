@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { Avatar, Icon } from "../../../../shared/ui";
 import type { User } from "../../../../shared/types";
-import { normalizeSearch, userPresenceLabel } from "../../utils";
+import { getErrorMessage, normalizeSearch, userPresenceLabel } from "../../utils";
 
 export function TeamUserPickerModal({
   isOpen,
@@ -161,7 +161,12 @@ export function TeamUserPickerModal({
                 <div className="dm-new-conversation-empty">
                   <Icon name="alert" size={18} />
                   <strong>Chargement impossible</strong>
-                  <span>{error.message}</span>
+                  <span>
+                    {getErrorMessage(
+                      error,
+                      "Nous n’avons pas pu charger les utilisateurs.",
+                    )}
+                  </span>
                   <button
                     className="button ghost mini"
                     type="button"

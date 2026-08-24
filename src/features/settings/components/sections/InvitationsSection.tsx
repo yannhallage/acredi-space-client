@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useUsersQuery } from '../../../../shared/api/users';
+import { getFriendlyErrorMessage } from '../../../../shared/feedback';
 import { Avatar, Icon } from '../../../../shared/ui';
 import { formatInviteRole, isPendingInvitation } from '../../utils';
 
@@ -30,7 +31,12 @@ export function InvitationsSection() {
       {pendingInvitesQuery.error ? (
         <div className="modal-setting-inline-state error">
           <Icon name="alert" size={16} />
-          <span>{pendingInvitesQuery.error.message}</span>
+          <span>
+            {getFriendlyErrorMessage(
+              pendingInvitesQuery.error,
+              'Nous n’avons pas pu charger les invitations.',
+            )}
+          </span>
         </div>
       ) : null}
 

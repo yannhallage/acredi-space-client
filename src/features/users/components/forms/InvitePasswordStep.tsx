@@ -1,5 +1,8 @@
 import { useState } from "react";
 
+import { validationFeedback, type Feedback } from "../../../../shared/feedback";
+import { FeedbackBanner } from "../../../../shared/ui";
+
 interface InvitePasswordStepProps {
   onNext: (password: string) => void;
 }
@@ -10,26 +13,28 @@ export function InvitePasswordStep({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<Feedback | null>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setMessage("");
+    setMessage(null);
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setMessage("Veuillez remplir tous les champs.");
+      setMessage(validationFeedback("Veuillez remplir tous les champs."));
       return;
     }
 
     if (newPassword.length < 8) {
       setMessage(
-        "Le nouveau mot de passe doit contenir au moins 8 caractères.",
+        validationFeedback(
+          "Le nouveau mot de passe doit contenir au moins 8 caractères.",
+        ),
       );
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setMessage("Les mots de passe ne correspondent pas.");
+      setMessage(validationFeedback("Les mots de passe ne correspondent pas."));
       return;
     }
 
@@ -77,7 +82,7 @@ export function InvitePasswordStep({
           />
         </label>
 
-        {message && <p className="invite-error">{message}</p>}
+        {message ? <FeedbackBanner feedback={message} /> : null}
 
         <div className="invite-actions">
           <button type="submit">Next</button>

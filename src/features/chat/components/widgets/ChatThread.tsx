@@ -11,6 +11,7 @@ import { useShareDiscussionMessage } from "../../../../shared/api/discussions/ho
 import { discussionService } from "../../../../shared/api/discussions/service";
 import { useMyTeamsQuery } from "../../../../shared/api/teams";
 import { useUsersQuery } from "../../../../shared/api/users";
+import { getFriendlyErrorMessage } from "../../../../shared/feedback";
 import { Avatar, EmptyState, Icon } from "../../../../shared/ui";
 
 import {
@@ -150,9 +151,7 @@ export function ChatThread({
       setMessageToShare(null);
     } catch (error) {
       setShareError(
-        error instanceof Error
-          ? error.message
-          : "Impossible de partager ce message.",
+        getFriendlyErrorMessage(error, "Impossible de partager ce message."),
       );
     } finally {
       setSharingTargetId(null);

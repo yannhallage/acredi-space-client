@@ -5,6 +5,7 @@ import { useCreateDirectChannelMutation } from "../../../../shared/api/dm/hooks"
 import type { ChannelResponse } from "../../../../shared/api/dm/types";
 import { useUsersQuery } from "../../../../shared/api/users";
 import { useAuth } from "../../../../shared/context";
+import { getFriendlyErrorMessage } from "../../../../shared/feedback";
 import type { User } from "../../../../shared/types";
 import { Avatar, Icon } from "../../../../shared/ui";
 
@@ -239,7 +240,12 @@ export function NewDirectConversationModal({
             <div className="dm-new-conversation-empty">
               <Icon name="alert" size={18} />
               <strong>Chargement impossible</strong>
-              <span>{usersQuery.error.message}</span>
+              <span>
+                {getFriendlyErrorMessage(
+                  usersQuery.error,
+                  "Nous n’avons pas pu charger les utilisateurs.",
+                )}
+              </span>
 
               {"refetch" in usersQuery ? (
                 <button

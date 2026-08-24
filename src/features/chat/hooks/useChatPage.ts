@@ -24,6 +24,7 @@ import {
 import { fileService } from "../../../shared/api/files/service";
 import { useUsersQuery } from "../../../shared/api/users";
 import { useAuth } from "../../../shared/context";
+import { getFriendlyErrorMessage } from "../../../shared/feedback";
 
 import {
   filterMentionMembers,
@@ -729,8 +730,9 @@ export function useChatPage() {
     );
   }
 
-  const sendError =
-    sendMessage.error instanceof Error ? sendMessage.error.message : null;
+  const sendError = sendMessage.error
+    ? getFriendlyErrorMessage(sendMessage.error, "Impossible d'envoyer le message.")
+    : null;
 
   const discussionName = discussionDetail?.name ?? activeDiscussion?.name ?? "";
   const teamName = discussionDetail?.teamName ?? activeDiscussion?.teamName;

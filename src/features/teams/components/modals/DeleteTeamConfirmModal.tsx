@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 
-import { Icon } from "../../../../shared/ui";
+import type { Feedback } from "../../../../shared/feedback";
+import { FeedbackBanner, Icon } from "../../../../shared/ui";
 import type { Team } from "../../types";
 
 export function DeleteTeamConfirmModal({
@@ -11,7 +12,7 @@ export function DeleteTeamConfirmModal({
   onConfirm,
   team,
 }: {
-  error: string | null;
+  error: Feedback | null;
   isDeleting: boolean;
   onClose: () => void;
   onConfirm: () => Promise<void>;
@@ -81,12 +82,7 @@ export function DeleteTeamConfirmModal({
           associees. Voulez-vous continuer ?
         </p>
 
-        {error ? (
-          <div className="team-delete-error">
-            <Icon name="alert" size={16} />
-            {error}
-          </div>
-        ) : null}
+        {error ? <FeedbackBanner feedback={error} /> : null}
 
         <footer>
           <button

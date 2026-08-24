@@ -1,5 +1,8 @@
 import { useState } from "react";
 
+import { validationFeedback, type Feedback } from "../../../../shared/feedback";
+import { FeedbackBanner } from "../../../../shared/ui";
+
 type ProfileType = "DEVELOPER" | "COMMUNITY_MANAGER" | "VIDEASTE" | "GRAPHISTE";
 
 interface InviteProfileData {
@@ -23,14 +26,16 @@ export function InviteProfileStep({ onPrevious, onNext }: InviteProfileStepProps
   const [address, setAddress] = useState("");
   const [profile, setProfile] = useState<ProfileType>("DEVELOPER");
   const [photo, setPhoto] = useState<File | null>(null);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<Feedback | null>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setMessage("");
+    setMessage(null);
 
     if (!firstName || !lastName || !phone || !address || !profile) {
-      setMessage("Veuillez remplir tous les champs obligatoires.");
+      setMessage(
+        validationFeedback("Veuillez remplir tous les champs obligatoires."),
+      );
       return;
     }
 
@@ -113,7 +118,7 @@ export function InviteProfileStep({ onPrevious, onNext }: InviteProfileStepProps
           </select>
         </label>
 
-        {message && <p className="invite-error">{message}</p>}
+        {message ? <FeedbackBanner feedback={message} /> : null}
 
         <div className="invite-actions invite-actions-between">
           <button type="button" className="invite-secondary" onClick={onPrevious}>

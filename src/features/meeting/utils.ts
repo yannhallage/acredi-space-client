@@ -1,3 +1,4 @@
+import { getFriendlyErrorMessage } from "../../shared/feedback";
 import { extractMeetingRoomName } from "../../shared/api/meeting/room";
 import type { User } from "../../shared/types";
 import {
@@ -51,23 +52,7 @@ export function getUserLabel(user: User) {
 }
 
 export function getErrorMessage(error: unknown) {
-  if (error && typeof error === "object") {
-    const maybeError = error as {
-      message?: unknown;
-      response?: { data?: { message?: unknown } };
-    };
-    const responseMessage = maybeError.response?.data?.message;
-
-    if (typeof responseMessage === "string" && responseMessage.trim()) {
-      return responseMessage;
-    }
-
-    if (typeof maybeError.message === "string" && maybeError.message.trim()) {
-      return maybeError.message;
-    }
-  }
-
-  return "Une erreur est survenue.";
+  return getFriendlyErrorMessage(error, "Une erreur est survenue.");
 }
 
 export function isPastMeeting(meeting: Meeting) {

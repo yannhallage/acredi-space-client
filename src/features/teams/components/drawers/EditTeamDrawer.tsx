@@ -1,25 +1,35 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-import { Avatar, Icon } from "../../../../shared/ui";
+import {
+  feedback,
+  resolveActionFeedback,
+  type Feedback,
+} from "../../../../shared/feedback";
+import { Avatar, FeedbackBanner, Icon } from "../../../../shared/ui";
 import { TEAM_COLORS } from "../../constants";
 import { useRemoveTeamMember, useTeamMembers } from "../../hooks";
 import { memberDisplayName, roleLabels } from "../../teamMemberDisplay";
-import { getErrorMessage } from "../../utils";
 import type { Team } from "../../types";
 
 export function EditTeamDrawer({
   error,
+  isAddingMember,
   isOpen,
   isUpdating,
+  isUserPickerOpen,
   onClose,
+  onOpenUserPicker,
   onSubmit,
   team,
 }: {
-  error: string | null;
+  error: Feedback | null;
+  isAddingMember: boolean;
   isOpen: boolean;
   isUpdating: boolean;
+  isUserPickerOpen: boolean;
   onClose: () => void;
+  onOpenUserPicker: () => void;
   onSubmit: (request: {
     description: string;
     name: string;
@@ -35,7 +45,7 @@ export function EditTeamDrawer({
   const [description, setDescription] = useState("");
   const [name, setName] = useState("");
   const [teamColor, setTeamColor] = useState(TEAM_COLORS[0]);
-  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<Feedback | null>(null);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -52,6 +62,7 @@ export function EditTeamDrawer({
 
   const isBusy = isUpdating || removeMemberMutation.isPending;
   const canSubmit = name.trim().length >= 2 && !isBusy;
+  const formFeedback = error ?? removeError;
 
   useEffect(() => {
     if (!isOpen) {
@@ -59,14 +70,14 @@ export function EditTeamDrawer({
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !isBusy) {
+      if (event.key === "Escape" && !isBusy && !isUserPickerOpen) {
         onClose();
       }
     };
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [isBusy, isOpen, onClose]);
+  }, [isBusy, isOpen, isUserPickerOpen, onClose]);
 
   async function handleRemoveMember(userId: string, displayName: string) {
     if (!team || removeMemberMutation.isPending) {
@@ -83,9 +94,13 @@ export function EditTeamDrawer({
       });
     } catch (caught) {
       setRemoveError(
-        getErrorMessage(
+        resolveActionFeedback(
           caught,
-          `Impossible de retirer ${displayName} de l'equipe.`,
+          feedback(
+            "error",
+            "Membre non retiré",
+            `Nous n’avons pas pu retirer ${displayName} de l'équipe.`,
+          ),
         ),
       );
     } finally {
@@ -153,12 +168,7 @@ export function EditTeamDrawer({
               </header>
 
               <div className="team-drawer-body">
-                {error || removeError ? (
-                  <div className="team-form-error">
-                    <Icon name="alert" size={16} />
-                    {error || removeError}
-                  </div>
-                ) : null}
+                {formFeedback ? <FeedbackBanner feedback={formFeedback} /> : null}
 
                 <section className="team-drawer-section">
                   <label className="note-field">
@@ -211,6 +221,15 @@ export function EditTeamDrawer({
                       <h3>Membres</h3>
                       <span>{members.length} membre(s)</span>
                     </div>
+                    <button
+                      className="button ghost"
+                      type="button"
+                      disabled={isBusy || isAddingMember}
+                      onClick={onOpenUserPicker}
+                    >
+                      <Icon name="plus" size={14} />
+                      Ajouter
+                    </button>
                   </div>
 
                   <div className="team-member-table-wrap">
@@ -226,7 +245,18 @@ export function EditTeamDrawer({
                       <div className="team-member-empty-table">
                         <Icon name="alert" size={18} />
                         <strong>Membres indisponibles</strong>
-                        <span>{membersQuery.error.message}</span>
+                        <span>
+                          {
+                            resolveActionFeedback(
+                              membersQuery.error,
+                              feedback(
+                                "error",
+                                "Membres indisponibles",
+                                "Nous n’avons pas pu charger les membres de cette équipe.",
+                              ),
+                            ).description
+                          }
+                        </span>
                       </div>
                     ) : null}
 
@@ -238,7 +268,7 @@ export function EditTeamDrawer({
                           <tr>
                             <th>Utilisateur</th>
                             <th>Role</th>
-                            <th aria-label="Actions" />
+                            <th>Action</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -258,19 +288,22 @@ export function EditTeamDrawer({
                                     src={member.user?.avatarUrl}
                                   />
                                   <span>
-                                    <strong>{displayName}</strong>
+                                    <span className="team-member-name-row">
+                                      <strong>{displayName}</strong>
+                                      {isOwner ? (
+                                        <span className="team-details-owner-badge">
+                                          Propriétaire
+                                        </span>
+                                      ) : null}
+                                    </span>
                                     <small>
                                       {member.user?.email || roleLabels[member.roleName]}
                                     </small>
                                   </span>
                                 </td>
                                 <td>{roleLabels[member.roleName]}</td>
-                                <td>
-                                  {isOwner ? (
-                                    <span className="team-details-owner-badge">
-                                      Proprietaire
-                                    </span>
-                                  ) : (
+                                <td className="team-details-actions-cell">
+                                  {isOwner ? null : (
                                     <button
                                       className="icon-button bordered danger"
                                       type="button"
