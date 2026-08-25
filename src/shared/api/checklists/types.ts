@@ -10,6 +10,7 @@ export interface ApiResponse<TData> {
 export interface ChecklistMember {
   userId: string;
   userName: string | null;
+  avatarUrl?: string | null;
   role: ChecklistRole;
   createdAt: string;
 }

@@ -1,4 +1,5 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 
 import Toast from "../../components/app/Toast/Toast";
@@ -25,7 +26,11 @@ import { PERMISSIONS, usePermissions } from "../../shared/permissions";
 import type { User } from "../../shared/types";
 import { Icon } from "../../shared/ui";
 import { ChecklistBoard } from "./components/ChecklistBoard";
-import type { DropTarget } from "./components/ChecklistColumn";
+import {
+  ChecklistItemRow,
+  type DropTarget,
+} from "./components/ChecklistColumn";
+import { ChecklistEmptyArt } from "./components/ChecklistEmptyArt";
 import { ChecklistListModal } from "./components/ChecklistListModal";
 import { ChecklistMembersModal } from "./components/ChecklistMembersModal";
 import { ChecklistParticipantScreen } from "./components/ChecklistParticipantScreen";
@@ -34,6 +39,7 @@ import {
   ChecklistViewSwitcher,
   type ChecklistScreen,
 } from "./components/ChecklistViewSwitcher";
+import { useChecklistPointerDrag } from "./useChecklistPointerDrag";
 import { isChecklistOwner, isChecklistParticipant } from "./utils";
 import "./checklists.css";
 
@@ -54,11 +60,6 @@ type TaskDraft = {
   item?: ChecklistItem;
   title: string;
   description: string;
-};
-
-type DragPayload = {
-  itemId: string;
-  sourceListId: string;
 };
 
 export function ChecklistsPage() {
@@ -87,10 +88,9 @@ export function ChecklistsPage() {
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [listModal, setListModal] = useState<ListModalState | null>(null);
   const [taskDraft, setTaskDraft] = useState<TaskDraft | null>(null);
-  const [dragging, setDragging] = useState<DragPayload | null>(null);
-  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [screen, setScreen] = useState<ChecklistScreen>("board");
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const pageRef = useRef<HTMLDivElement | null>(null);
 
   const usersQuery = useUsersQuery({ enabled: Boolean(membersTarget) });
   const lists = useMemo(
@@ -109,6 +109,18 @@ export function ChecklistsPage() {
     () => lists.filter((list) => isChecklistParticipant(list, user?.id)),
     [lists, user?.id],
   );
+  const moveItemRef = useRef<
+    (sourceListId: string, itemId: string, target: DropTarget) => void
+  >(() => undefined);
+  const {
+    dragging,
+    dropTarget,
+    overlayRef,
+    skipClickRef,
+    onItemPointerDown,
+  } = useChecklistPointerDrag((sourceListId, itemId, target) => {
+    moveItemRef.current(sourceListId, itemId, target);
+  });
 
   useEffect(() => {
     if (!toast.show) return undefined;
@@ -125,7 +137,7 @@ export function ChecklistsPage() {
       intent: "error",
       message: getFriendlyErrorMessage(
         checklistsQuery.error,
-        "Impossible de charger les listes.",
+        "Impossible de charger les checklists.",
       ),
     });
   }, [checklistsQuery.error, checklistsQuery.isError]);
@@ -141,16 +153,6 @@ export function ChecklistsPage() {
       ),
     });
   }, [membersTarget, usersQuery.error]);
-
-  useEffect(() => {
-    if (!dragging) return undefined;
-    const onEnd = () => {
-      setDragging(null);
-      setDropTarget(null);
-    };
-    window.addEventListener("dragend", onEnd);
-    return () => window.removeEventListener("dragend", onEnd);
-  }, [dragging]);
 
   useEffect(() => {
     if (!openMenuId) return undefined;
@@ -179,7 +181,7 @@ export function ChecklistsPage() {
     if (!listModal) return;
     const title = listModal.title.trim();
     if (!title) {
-      showToast("warning", "Le nom de la liste est obligatoire.");
+      showToast("warning", "Le nom de la checklist est obligatoire.");
       return;
     }
     try {
@@ -188,25 +190,25 @@ export function ChecklistsPage() {
           id: listModal.list.id,
           request: { title },
         });
-        showToast("success", "Liste renommÃ©e.");
+        showToast("success", "Checklist renommée.");
       } else {
         await createList.mutateAsync({ title });
-        showToast("success", "Liste crÃ©Ã©e.");
+        showToast("success", "Checklist créée.");
       }
       setListModal(null);
     } catch (error) {
-      showError(error, "Impossible dâ€™enregistrer la liste.");
+      showError(error, "Impossible d’enregistrer la checklist.");
     }
   }
 
   async function handleDeleteList(list: Checklist) {
     setOpenMenuId(null);
-    if (!window.confirm(`Supprimer la liste Â« ${list.title} Â» ?`)) return;
+    if (!window.confirm(`Supprimer la checklist « ${list.title} » ?`)) return;
     try {
       await deleteList.mutateAsync(list.id);
-      showToast("success", "Liste supprimÃ©e.");
+      showToast("success", "Checklist supprimée.");
     } catch (error) {
-      showError(error, "Impossible de supprimer la liste.");
+      showError(error, "Impossible de supprimer la checklist.");
     }
   }
 
@@ -218,9 +220,9 @@ export function ChecklistsPage() {
         id: membersTarget.id,
         request: { userId: person.id },
       });
-      showToast("success", `${person.name} a Ã©tÃ© ajoutÃ© Ã  la liste.`);
+      showToast("success", `${person.name} a été ajouté à la checklist.`);
     } catch (error) {
-      showError(error, "Impossible dâ€™ajouter ce participant.");
+      showError(error, "Impossible d’ajouter ce participant.");
     } finally {
       setPendingUserId(null);
     }
@@ -236,7 +238,7 @@ export function ChecklistsPage() {
       });
       showToast(
         "success",
-        `${member.userName ?? "Le participant"} a Ã©tÃ© retirÃ© de la liste.`,
+        `${member.userName ?? "Le participant"} a été retiré de la checklist.`,
       );
     } catch (error) {
       showError(error, "Impossible de retirer ce participant.");
@@ -249,7 +251,7 @@ export function ChecklistsPage() {
     if (!taskDraft) return;
     const title = taskDraft.title.trim();
     if (!title) {
-      showToast("warning", "Le titre de la tÃ¢che est obligatoire.");
+      showToast("warning", "Le titre de la tâche est obligatoire.");
       return;
     }
     try {
@@ -262,7 +264,7 @@ export function ChecklistsPage() {
             description: taskDraft.description.trim(),
           },
         });
-        showToast("success", "TÃ¢che enregistrÃ©e.");
+        showToast("success", "Tâche enregistrée.");
       } else {
         await createItem.mutateAsync({
           id: taskDraft.listId,
@@ -271,11 +273,11 @@ export function ChecklistsPage() {
             description: taskDraft.description.trim() || undefined,
           },
         });
-        showToast("success", "TÃ¢che ajoutÃ©e.");
+        showToast("success", "Tâche ajoutée.");
       }
       setTaskDraft(null);
     } catch (error) {
-      showError(error, "Impossible dâ€™enregistrer la tÃ¢che.");
+      showError(error, "Impossible d’enregistrer la tâche.");
     }
   }
 
@@ -287,9 +289,9 @@ export function ChecklistsPage() {
         itemId: taskDraft.item.id,
       });
       setTaskDraft(null);
-      showToast("success", "TÃ¢che supprimÃ©e.");
+      showToast("success", "Tâche supprimée.");
     } catch (error) {
-      showError(error, "Impossible de supprimer la tÃ¢che.");
+      showError(error, "Impossible de supprimer la tâche.");
     }
   }
 
@@ -297,7 +299,7 @@ export function ChecklistsPage() {
     try {
       await toggleItem.mutateAsync({ id: listId, itemId });
     } catch (error) {
-      showError(error, "Impossible de cocher la tÃ¢che.");
+      showError(error, "Impossible de cocher la tâche.");
     }
   }
 
@@ -324,13 +326,17 @@ export function ChecklistsPage() {
       showToast(
         "success",
         sourceListId === target.listId
-          ? "TÃ¢che rÃ©ordonnÃ©e."
-          : "TÃ¢che dÃ©placÃ©e.",
+          ? "Tâche réordonnée."
+          : "Tâche déplacée.",
       );
     } catch (error) {
-      showError(error, "Impossible de dÃ©placer la tÃ¢che.");
+      showError(error, "Impossible de déplacer la tâche.");
     }
   }
+
+  moveItemRef.current = (sourceListId, itemId, target) => {
+    handleMoveItem(sourceListId, itemId, target).catch(() => undefined);
+  };
 
   const isSavingList = createList.isPending || updateList.isPending;
   const isInitialLoading =
@@ -345,6 +351,7 @@ export function ChecklistsPage() {
     dropTarget,
     menuOpenId: openMenuId,
     menuRef,
+    skipClickRef,
     onAddTask: (list: Checklist) =>
       setTaskDraft({
         listId: list.id,
@@ -354,27 +361,6 @@ export function ChecklistsPage() {
     onDeleteList: (list: Checklist) => {
       handleDeleteList(list).catch(() => undefined);
     },
-    onDragLeaveColumn: (listId: string) => {
-      setDropTarget((current) => (current?.listId === listId ? null : current));
-    },
-    onDragOverColumn: (listId: string, index: number) => {
-      if (!dragging) return;
-      setDropTarget({ listId, index });
-    },
-    onDropColumn: (listId: string) => {
-      if (!dragging || !dropTarget || dropTarget.listId !== listId) {
-        setDragging(null);
-        setDropTarget(null);
-        return;
-      }
-      const payload = dragging;
-      const target = dropTarget;
-      setDragging(null);
-      setDropTarget(null);
-      handleMoveItem(payload.sourceListId, payload.itemId, target).catch(
-        () => undefined,
-      );
-    },
     onEditTask: (list: Checklist, item: ChecklistItem) =>
       setTaskDraft({
         listId: list.id,
@@ -382,6 +368,13 @@ export function ChecklistsPage() {
         title: item.title,
         description: item.description ?? "",
       }),
+    onItemPointerDown: (
+      list: Checklist,
+      item: ChecklistItem,
+      event: PointerEvent<HTMLElement>,
+    ) => {
+      onItemPointerDown(list.id, item, event);
+    },
     onOpenMembers: (list: Checklist) => {
       setOpenMenuId(null);
       setMembersTarget(list);
@@ -394,8 +387,6 @@ export function ChecklistsPage() {
         title: list.title,
       });
     },
-    onStartDrag: (listId: string, itemId: string) =>
-      setDragging({ itemId, sourceListId: listId }),
     onToggleItem: handleToggleItem,
     onToggleMenu: (listId: string) =>
       setOpenMenuId((current) => (current === listId ? null : listId)),
@@ -423,15 +414,33 @@ export function ChecklistsPage() {
   }
 
   return (
-    <div className="cl-page">
+    <div className="cl-page" ref={pageRef}>
       {toast.show ? (
         <Toast intent={toast.intent} message={toast.message} />
       ) : null}
 
+      {dragging && pageRef.current
+        ? createPortal(
+            <div
+              ref={overlayRef}
+              className="cl-drag-overlay"
+              style={{ width: dragging.width }}
+            >
+              <ChecklistItemRow
+                item={dragging.item}
+                skipClickRef={skipClickRef}
+                onEdit={() => undefined}
+                onToggle={() => undefined}
+              />
+            </div>,
+            pageRef.current,
+          )
+        : null}
+
       {checklistsQuery.isError && lists.length === 0 ? (
         <div className="cl-error">
           <Icon name="alert" size={18} />
-          <strong>Impossible de charger les listes</strong>
+          <strong>Impossible de charger les checklists</strong>
           <span>{checklistsQuery.error?.message}</span>
         </div>
       ) : (
@@ -444,13 +453,23 @@ export function ChecklistsPage() {
           }
           transition={{ type: "spring", damping: 28, stiffness: 320 }}
         >
-          <ChecklistBoard
-            {...boardShared}
-            canCreate={canCreate}
-            label="Listes"
-            lists={ownedLists}
-            onAddList={() => setListModal({ mode: "create", title: "" })}
-          />
+          {ownedLists.length === 0 ? (
+            <div className="cl-empty">
+              <ChecklistEmptyArt />
+              <strong>Aucune checklist</strong>
+              <span>
+                {canCreate
+                  ? "Créez votre première checklist pour organiser vos tâches."
+                  : "Vous n’avez pas encore de checklist."}
+              </span>
+            </div>
+          ) : (
+            <ChecklistBoard
+              {...boardShared}
+              label="Checklists"
+              lists={ownedLists}
+            />
+          )}
         </motion.div>
       )}
 
@@ -462,8 +481,10 @@ export function ChecklistsPage() {
       />
 
       <ChecklistViewSwitcher
+        canAddList={canCreate}
         participantCount={participantLists.length}
         value={screen}
+        onAddList={() => setListModal({ mode: "create", title: "" })}
         onChange={changeScreen}
       />
 

@@ -1,10 +1,9 @@
-import { useRef, type DragEvent, type RefObject } from "react";
+import { useMemo, type PointerEvent, type RefObject } from "react";
 
-import type { Checklist, ChecklistItem } from "../../../shared/api/checklists";
-import { Icon } from "../../../shared/ui";
+import type { Checklist, ChecklistItem, ChecklistMember } from "../../../shared/api/checklists";
+import { Avatar, Icon } from "../../../shared/ui";
 import { formatDueDate, isOverdue } from "../utils";
-
-export const DRAG_MIME = "application/x-acredi-checklist-item";
+import { ChecklistEmptyArt } from "./ChecklistEmptyArt";
 
 export type DropTarget = {
   listId: string;
@@ -20,15 +19,13 @@ type ChecklistColumnProps = {
   menuRef?: RefObject<HTMLDivElement | null>;
   onAddTask: () => void;
   onDeleteList: () => void;
-  onDragLeaveColumn: () => void;
-  onDragOverColumn: (index: number) => void;
-  onDropColumn: () => void;
   onEditTask: (item: ChecklistItem) => void;
+  onItemPointerDown: (item: ChecklistItem, event: PointerEvent<HTMLElement>) => void;
   onOpenMembers: () => void;
   onRename: () => void;
-  onStartDrag: (itemId: string) => void;
   onToggleItem: (listId: string, itemId: string) => Promise<void>;
   onToggleMenu: () => void;
+  skipClickRef: RefObject<boolean>;
 };
 
 export function ChecklistColumn({
@@ -40,77 +37,75 @@ export function ChecklistColumn({
   menuRef,
   onAddTask,
   onDeleteList,
-  onDragLeaveColumn,
-  onDragOverColumn,
-  onDropColumn,
   onEditTask,
+  onItemPointerDown,
   onOpenMembers,
   onRename,
-  onStartDrag,
   onToggleItem,
   onToggleMenu,
+  skipClickRef,
 }: ChecklistColumnProps) {
-  function handleDragOver(event: DragEvent<HTMLElement>, index: number) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    onDragOverColumn(index);
-  }
-
   const isEmpty = checklist.items.length === 0;
+  const participants = useMemo(
+    () => (checklist.members ?? []).filter((member) => member.role === "EDITOR"),
+    [checklist.members],
+  );
 
   return (
     <article
       className={dropIndex !== null ? "cl-column drag-over" : "cl-column"}
-      onDragOver={(event) => handleDragOver(event, checklist.items.length)}
-      onDragLeave={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node)) {
-          onDragLeaveColumn();
-        }
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        onDropColumn();
-      }}
+      data-cl-column={checklist.id}
     >
       <header className="cl-column-head">
         <h2 className="cl-column-title">{checklist.title}</h2>
-        {canManage ? (
-          <div className="cl-column-menu" ref={menuRef}>
-            <button
-              className="cl-icon-btn"
-              type="button"
-              aria-label="Actions de la liste"
-              aria-expanded={menuOpen}
-              onClick={onToggleMenu}
-            >
-              <Icon name="moreV" size={16} />
-            </button>
-            {menuOpen ? (
-              <div className="cl-menu">
-                <button type="button" onClick={onRename}>
-                  Renommer
-                </button>
-                <button type="button" onClick={onOpenMembers}>
-                  Participants
-                </button>
-                <button className="danger" type="button" onClick={onDeleteList}>
-                  Supprimer
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <div className="cl-column-menu">
-            <button
-              className="cl-icon-btn"
-              type="button"
-              aria-label="Actions de la liste"
-              disabled
-            >
-              <Icon name="moreV" size={16} />
-            </button>
-          </div>
-        )}
+        <div className="cl-column-tools">
+          {participants.length > 0 ? (
+            <ChecklistParticipantAvatars
+              onOpen={onOpenMembers}
+              participants={participants}
+            />
+          ) : null}
+          {canManage ? (
+            <div className="cl-column-menu" ref={menuRef}>
+              <button
+                className="cl-icon-btn"
+                type="button"
+                aria-label="Actions de la checklist"
+                aria-expanded={menuOpen}
+                onClick={onToggleMenu}
+              >
+                <Icon name="moreV" size={18} strokeWidth={2.2} />
+              </button>
+              {menuOpen ? (
+                <div className="cl-menu">
+                  <button type="button" onClick={onRename}>
+                    <Icon name="edit" size={16} strokeWidth={2} />
+                    Renommer
+                  </button>
+                  <button type="button" onClick={onOpenMembers}>
+                    <Icon name="users" size={16} strokeWidth={2} />
+                    Participants
+                  </button>
+                  <button className="danger" type="button" onClick={onDeleteList}>
+                    <Icon name="trash" size={16} strokeWidth={2} />
+                    Supprimer
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="cl-column-menu">
+              <button
+                className="cl-icon-btn"
+                type="button"
+                aria-label="Actions de la checklist"
+                disabled
+              >
+                <Icon name="moreV" size={18} strokeWidth={2.2} />
+              </button>
+            </div>
+          )}
+        </div>
       </header>
 
       <button className="cl-add-task" type="button" onClick={onAddTask}>
@@ -122,7 +117,7 @@ export function ChecklistColumn({
             />
           </svg>
         </span>
-        Add a task
+        Add a list
       </button>
 
       {isEmpty ? (
@@ -130,24 +125,7 @@ export function ChecklistColumn({
           {dropIndex === 0 ? <div className="cl-drop-line" /> : null}
           <div className="cl-list-body cl-list-body-empty">
             <div className="cl-column-empty">
-              <img
-                className="cl-column-empty-art cl-column-empty-art-light"
-                src="https://www.gstatic.com/tasks/empty-tasks-light.svg"
-                alt=""
-                draggable={false}
-                onError={(event) => {
-                  event.currentTarget.src = "/checklists/empty-tasks-light.svg";
-                }}
-              />
-              <img
-                className="cl-column-empty-art cl-column-empty-art-dark"
-                src="https://www.gstatic.com/tasks/empty-tasks-dark.svg"
-                alt=""
-                draggable={false}
-                onError={(event) => {
-                  event.currentTarget.src = "/checklists/empty-tasks-dark.svg";
-                }}
-              />
+              <ChecklistEmptyArt />
               <strong>No tasks yet</strong>
               <span>
                 Add your to-dos and keep track of them across Google Workspace.
@@ -158,17 +136,14 @@ export function ChecklistColumn({
       ) : (
         <div className="cl-list-body cl-tasks">
           {checklist.items.map((item, index) => (
-            <div key={item.id}>
+            <div key={item.id} data-cl-item={item.id}>
               {dropIndex === index ? <div className="cl-drop-line" /> : null}
               <ChecklistItemRow
                 dragging={draggingItemId === item.id}
                 item={item}
-                onDragOverRow={(event) => {
-                  event.stopPropagation();
-                  handleDragOver(event, index);
-                }}
+                skipClickRef={skipClickRef}
                 onEdit={() => onEditTask(item)}
-                onStartDrag={() => onStartDrag(item.id)}
+                onPointerDown={(event) => onItemPointerDown(item, event)}
                 onToggle={() => {
                   onToggleItem(checklist.id, item.id).catch(() => undefined);
                 }}
@@ -178,6 +153,7 @@ export function ChecklistColumn({
                   key={child.id}
                   item={child}
                   nested
+                  skipClickRef={skipClickRef}
                   onEdit={() => onEditTask(child)}
                   onToggle={() => {
                     onToggleItem(checklist.id, child.id).catch(() => undefined);
@@ -197,22 +173,21 @@ type ItemRowProps = {
   dragging?: boolean;
   item: ChecklistItem;
   nested?: boolean;
-  onDragOverRow?: (event: DragEvent<HTMLElement>) => void;
+  skipClickRef: RefObject<boolean>;
   onEdit: () => void;
-  onStartDrag?: () => void;
+  onPointerDown?: (event: PointerEvent<HTMLElement>) => void;
   onToggle: () => void;
 };
 
-function ChecklistItemRow({
+export function ChecklistItemRow({
   dragging = false,
   item,
   nested = false,
-  onDragOverRow,
+  skipClickRef,
   onEdit,
-  onStartDrag,
+  onPointerDown,
   onToggle,
 }: ItemRowProps) {
-  const skipClickRef = useRef(false);
   const dueLabel = formatDueDate(item.dueDate);
   const overdue = isOverdue(item.dueDate, item.completed);
 
@@ -225,15 +200,7 @@ function ChecklistItemRow({
       ]
         .filter(Boolean)
         .join(" ")}
-      draggable={!nested}
-      onDragStart={(event) => {
-        if (nested || !onStartDrag) return;
-        skipClickRef.current = true;
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData(DRAG_MIME, item.id);
-        onStartDrag();
-      }}
-      onDragOver={onDragOverRow}
+      onPointerDown={nested ? undefined : onPointerDown}
       onClick={() => {
         if (skipClickRef.current) {
           skipClickRef.current = false;
@@ -267,5 +234,42 @@ function ChecklistItemRow({
         ) : null}
       </div>
     </div>
+  );
+}
+
+const MAX_VISIBLE_AVATARS = 3;
+
+function ChecklistParticipantAvatars({
+  onOpen,
+  participants,
+}: {
+  onOpen: () => void;
+  participants: ChecklistMember[];
+}) {
+  const visible = participants.slice(0, MAX_VISIBLE_AVATARS);
+  const extra = participants.length - visible.length;
+  const label = participants
+    .map((member) => member.userName ?? "Participant")
+    .join(", ");
+
+  return (
+    <button
+      className="cl-column-avatars"
+      type="button"
+      aria-label={`Participants : ${label}`}
+      title={label}
+      onClick={onOpen}
+    >
+      {visible.map((member, index) => (
+        <span
+          className="cl-column-avatar"
+          key={member.userId}
+          style={{ zIndex: visible.length - index }}
+        >
+          <Avatar name={member.userName} size={22} src={member.avatarUrl} />
+        </span>
+      ))}
+      {extra > 0 ? <span className="cl-column-avatars-extra">+{extra}</span> : null}
+    </button>
   );
 }

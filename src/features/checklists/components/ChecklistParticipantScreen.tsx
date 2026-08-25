@@ -1,10 +1,11 @@
-import type { RefObject } from "react";
+import type { PointerEvent, RefObject } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import type { Checklist, ChecklistItem } from "../../../shared/api/checklists";
 import { Icon } from "../../../shared/ui";
 import { ChecklistBoard } from "./ChecklistBoard";
 import type { DropTarget } from "./ChecklistColumn";
+import { ChecklistEmptyArt } from "./ChecklistEmptyArt";
 
 type ChecklistParticipantScreenProps = {
   canManageList: (list: Checklist) => boolean;
@@ -14,16 +15,18 @@ type ChecklistParticipantScreenProps = {
   lists: Checklist[];
   menuOpenId: string | null;
   menuRef: RefObject<HTMLDivElement | null>;
+  skipClickRef: RefObject<boolean>;
   onAddTask: (list: Checklist) => void;
   onClose: () => void;
   onDeleteList: (list: Checklist) => void;
-  onDragLeaveColumn: (listId: string) => void;
-  onDragOverColumn: (listId: string, index: number) => void;
-  onDropColumn: (listId: string) => void;
   onEditTask: (list: Checklist, item: ChecklistItem) => void;
+  onItemPointerDown: (
+    list: Checklist,
+    item: ChecklistItem,
+    event: PointerEvent<HTMLElement>,
+  ) => void;
   onOpenMembers: (list: Checklist) => void;
   onRename: (list: Checklist) => void;
-  onStartDrag: (listId: string, itemId: string) => void;
   onToggleItem: (listId: string, itemId: string) => Promise<void>;
   onToggleMenu: (listId: string) => void;
 };
@@ -43,16 +46,14 @@ export function ChecklistParticipantScreen({
   lists,
   menuOpenId,
   menuRef,
+  skipClickRef,
   onAddTask,
   onClose,
   onDeleteList,
-  onDragLeaveColumn,
-  onDragOverColumn,
-  onDropColumn,
   onEditTask,
+  onItemPointerDown,
   onOpenMembers,
   onRename,
-  onStartDrag,
   onToggleItem,
   onToggleMenu,
 }: ChecklistParticipantScreenProps) {
@@ -61,7 +62,7 @@ export function ChecklistParticipantScreen({
       {isOpen ? (
         <motion.section
           className="cl-participant-screen"
-          aria-label="Listes participantes"
+          aria-label="Checklists participantes"
           initial={slide.initial}
           animate={slide.animate}
           exit={slide.exit}
@@ -69,13 +70,13 @@ export function ChecklistParticipantScreen({
         >
           <header className="cl-participant-head">
             <div>
-              <h2>Listes participantes</h2>
-              <p>Uniquement les listes auxquelles vous avez été ajouté.</p>
+              <h2>Checklists participantes</h2>
+              <p>Uniquement les checklists auxquelles vous avez été ajouté.</p>
             </div>
             <button
               className="icon-button"
               type="button"
-              aria-label="Fermer les listes participantes"
+              aria-label="Fermer les checklists participantes"
               onClick={onClose}
             >
               <Icon name="x" size={16} />
@@ -84,27 +85,10 @@ export function ChecklistParticipantScreen({
 
           {lists.length === 0 ? (
             <div className="cl-participant-empty">
-              <img
-                className="cl-column-empty-art cl-column-empty-art-light"
-                src="https://www.gstatic.com/tasks/empty-tasks-light.svg"
-                alt=""
-                draggable={false}
-                onError={(event) => {
-                  event.currentTarget.src = "/checklists/empty-tasks-light.svg";
-                }}
-              />
-              <img
-                className="cl-column-empty-art cl-column-empty-art-dark"
-                src="https://www.gstatic.com/tasks/empty-tasks-dark.svg"
-                alt=""
-                draggable={false}
-                onError={(event) => {
-                  event.currentTarget.src = "/checklists/empty-tasks-dark.svg";
-                }}
-              />
-              <strong>Aucune liste partagée</strong>
+              <ChecklistEmptyArt />
+              <strong>Aucune checklist partagée</strong>
               <span>
-                Les listes où quelqu’un vous ajoute comme participant
+                Les checklists où quelqu’un vous ajoute comme participant
                 apparaîtront ici.
               </span>
             </div>
@@ -113,19 +97,17 @@ export function ChecklistParticipantScreen({
               canManageList={canManageList}
               draggingItemId={draggingItemId}
               dropTarget={dropTarget}
-              label="Listes participantes"
+              label="Checklists participantes"
               lists={lists}
               menuOpenId={menuOpenId}
               menuRef={menuRef}
+              skipClickRef={skipClickRef}
               onAddTask={onAddTask}
               onDeleteList={onDeleteList}
-              onDragLeaveColumn={onDragLeaveColumn}
-              onDragOverColumn={onDragOverColumn}
-              onDropColumn={onDropColumn}
               onEditTask={onEditTask}
+              onItemPointerDown={onItemPointerDown}
               onOpenMembers={onOpenMembers}
               onRename={onRename}
-              onStartDrag={onStartDrag}
               onToggleItem={onToggleItem}
               onToggleMenu={onToggleMenu}
             />

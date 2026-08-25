@@ -76,7 +76,7 @@ export function ChecklistListModal({
           >
             <header className="cl-modal-head">
               <h2 id="cl-list-modal-title">
-                {mode === "rename" ? "Renommer la liste" : "Nouvelle liste"}
+                {mode === "rename" ? "Renommer la checklist" : "Nouvelle checklist"}
               </h2>
               <button
                 className="icon-button"
@@ -90,7 +90,7 @@ export function ChecklistListModal({
             </header>
 
             <label className="cl-modal-field">
-              <span>Nom de la liste</span>
+              <span>Nom de la checklist</span>
               <input
                 autoFocus
                 value={title}

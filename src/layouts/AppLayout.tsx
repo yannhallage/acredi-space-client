@@ -47,7 +47,7 @@ const pageMeta: Record<string, { title: string; crumb: string }> = {
   "/app/teams": { title: "Équipes", crumb: "COLLABORATION" },
   "/app/users": { title: "Utilisateurs", crumb: "CRM" },
   "/app/notes": { title: "Notes", crumb: "CRM" },
-  "/app/checklists": { title: "Listes", crumb: "CRM" },
+  "/app/checklists": { title: "Checklists", crumb: "CRM" },
 };
 
 const SIDEBAR_COLLAPSED_KEY = "acredi-sidebar-collapsed";
@@ -241,7 +241,7 @@ export function AppLayout() {
         {
           to: "/app/checklists",
           icon: "checklists",
-          label: "Listes",
+          label: "Checklists",
           permissions: FEATURE_PERMISSION_REQUIREMENTS.checklists,
           isActive: (pathname) => pathname.startsWith("/app/checklists"),
         },

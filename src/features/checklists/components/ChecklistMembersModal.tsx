@@ -131,7 +131,11 @@ export function ChecklistMembersModal({
 
                 return (
                   <div className="cl-members-row" key={member.userId}>
-                    <Avatar name={member.userName ?? "Utilisateur"} size={34} />
+                    <Avatar
+                      name={member.userName ?? "Utilisateur"}
+                      size={34}
+                      src={member.avatarUrl}
+                    />
                     <span>
                       <strong>{member.userName ?? "Utilisateur"}</strong>
                       <small>

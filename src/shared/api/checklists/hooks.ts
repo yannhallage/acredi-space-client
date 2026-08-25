@@ -1,13 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  moveItemOnBoard,
+  toggleItemOnBoard,
+} from "./optimistic";
 import { checklistService } from "./service";
 import type {
   AddChecklistMemberRequest,
+  Checklist,
   CreateChecklistItemRequest,
   CreateChecklistRequest,
   MoveChecklistItemRequest,
   UpdateChecklistItemRequest,
   UpdateChecklistRequest,
 } from "./types";
+
+type BoardSnapshot = { previous: Checklist[] | undefined };
 
 export const checklistKeys = {
   all: ["checklists"] as const,
@@ -131,7 +138,31 @@ export function useMoveChecklistItem() {
       itemId: string;
       request: MoveChecklistItemRequest;
     }) => checklistService.moveItem(id, itemId, request),
-    onSuccess: () => invalidateBoard(queryClient),
+    onMutate: async ({ id, itemId, request }): Promise<BoardSnapshot> => {
+      const previous = queryClient.getQueryData<Checklist[]>(
+        checklistKeys.lists(),
+      );
+      if (previous) {
+        queryClient.setQueryData(
+          checklistKeys.lists(),
+          moveItemOnBoard(
+            previous,
+            id,
+            itemId,
+            request.targetChecklistId,
+            request.position,
+          ),
+        );
+      }
+      await queryClient.cancelQueries({ queryKey: checklistKeys.lists() });
+      return { previous };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(checklistKeys.lists(), context.previous);
+      }
+    },
+    onSettled: () => invalidateBoard(queryClient),
   });
 }
 
@@ -140,7 +171,24 @@ export function useToggleChecklistItem() {
   return useMutation({
     mutationFn: ({ id, itemId }: { id: string; itemId: string }) =>
       checklistService.toggleItem(id, itemId),
-    onSuccess: () => invalidateBoard(queryClient),
+    onMutate: async ({ id, itemId }): Promise<BoardSnapshot> => {
+      const previous = queryClient.getQueryData<Checklist[]>(
+        checklistKeys.lists(),
+      );
+      if (previous) {
+        queryClient.setQueryData(
+          checklistKeys.lists(),
+          toggleItemOnBoard(previous, id, itemId),
+        );
+      }
+      await queryClient.cancelQueries({ queryKey: checklistKeys.lists() });
+      return { previous };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(checklistKeys.lists(), context.previous);
+      }
+    },
   });
 }
 
