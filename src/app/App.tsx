@@ -17,6 +17,7 @@ import MeetingPage from '../features/meeting/MeetingPage';
 import { MeetingRoom } from '../features/meeting/MeetingRoom';
 import { MailPage } from '../features/mail/MailPage';
 import { NotesPage } from '../features/notes/NotesPage';
+import { ChecklistsPage } from '../features/checklists/ChecklistsPage';
 import { PreviewPage } from '../features/preview/PreviewPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
 import { ChangePasswordPage } from '../features/settings/ChangePasswordPage';
@@ -109,6 +110,11 @@ export default function App() {
                   <Route path="users" element={<UsersPage />} />
                   <Route path="users/:userId" element={<UserDetailPage />} />
                   <Route path="notes" element={<NotesPage />} />
+                  <Route path="checklists" element={<ChecklistsPage />} />
+                  <Route
+                    path="checklists/:listId"
+                    element={<Navigate to="/app/checklists" replace />}
+                  />
                 </Route>
                 </Route>
               </Route>

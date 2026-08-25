@@ -47,6 +47,7 @@ const pageMeta: Record<string, { title: string; crumb: string }> = {
   "/app/teams": { title: "Équipes", crumb: "COLLABORATION" },
   "/app/users": { title: "Utilisateurs", crumb: "CRM" },
   "/app/notes": { title: "Notes", crumb: "CRM" },
+  "/app/checklists": { title: "Listes", crumb: "CRM" },
 };
 
 const SIDEBAR_COLLAPSED_KEY = "acredi-sidebar-collapsed";
@@ -237,6 +238,13 @@ export function AppLayout() {
           label: "Notes",
           permissions: FEATURE_PERMISSION_REQUIREMENTS.notes,
         },
+        {
+          to: "/app/checklists",
+          icon: "checklists",
+          label: "Listes",
+          permissions: FEATURE_PERMISSION_REQUIREMENTS.checklists,
+          isActive: (pathname) => pathname.startsWith("/app/checklists"),
+        },
       ],
     },
   ];
@@ -314,6 +322,7 @@ export function AppLayout() {
     "/app/trash",
     "/app/meeting",
     "/app/calendar",
+    "/app/checklists",
   ].some((path) => location.pathname.startsWith(path));
 
   useEffect(() => {

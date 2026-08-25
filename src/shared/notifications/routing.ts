@@ -13,6 +13,7 @@ const EXACT_APP_PATHS = new Set([
   "/app/teams/create",
   "/app/users",
   "/app/notes",
+  "/app/checklists",
   "/app/meeting/meet-daily",
 ]);
 
