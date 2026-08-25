@@ -19,11 +19,13 @@
   padding: 16px 16px 20px;
   background: var(--cl-canvas);
   color: var(--cl-title);
-  font-family: Roboto, "Google Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
   font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.15px;
+  -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  position: relative;
 }
 
 [data-theme="dark"] .cl-page {
@@ -40,20 +42,20 @@
 .cl-board {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 16px;
   overflow: auto;
-  padding: 4px 4px 16px;
+  padding: 8px 8px 88px;
   flex: 1;
   min-height: 0;
 }
 
 .cl-column {
-  flex: 0 0 280px;
-  width: 280px;
+  flex: 0 0 300px;
+  width: 300px;
   background: var(--cl-column-bg);
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: var(--cl-shadow);
-  padding: 12px 10px 8px;
+  padding: 10px 8px 12px;
   display: flex;
   flex-direction: column;
   max-height: 100%;
@@ -75,11 +77,12 @@
 .cl-column-title {
   margin: 0;
   padding-top: 6px;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--cl-title);
-  line-height: 1.35;
-  letter-spacing: 0;
+  line-height: 1.5;
+  letter-spacing: 0.15px;
   word-break: break-word;
 }
 
@@ -164,7 +167,7 @@
   margin: 0 0 4px;
   border-radius: 8px;
   cursor: pointer;
-  font: inherit;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.15px;
@@ -260,11 +263,12 @@
 
 .cl-task-title {
   margin: 0;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--cl-task);
-  line-height: 1.35;
-  letter-spacing: 0.1px;
+  line-height: 20px;
+  letter-spacing: 0.2px;
 }
 
 .cl-task-title.done,
@@ -275,10 +279,11 @@
 
 .cl-task-desc {
   margin: 0;
-  font-size: 13px;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+  font-size: 12px;
   font-weight: 400;
   color: var(--cl-muted);
-  line-height: 1.45;
+  line-height: 16px;
   letter-spacing: 0.2px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -295,7 +300,10 @@
   border-radius: 999px;
   background: var(--cl-due-bg);
   color: var(--cl-due);
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
   font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.2px;
   width: fit-content;
 }
 
@@ -314,15 +322,15 @@
 }
 
 .cl-add-list-card {
-  flex: 0 0 280px;
-  width: 280px;
+  flex: 0 0 300px;
+  width: 300px;
   align-self: flex-start;
   border: 0;
   background: transparent;
   color: var(--cl-muted);
   text-align: left;
   padding: 16px 14px;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   font: inherit;
   font-size: 14px;
@@ -334,31 +342,63 @@
   color: var(--cl-title);
 }
 
+.cl-list-body {
+  min-height: 0;
+}
+
+.cl-list-body-empty {
+  display: flex;
+  justify-content: center;
+}
+
 .cl-column-empty {
   display: grid;
   justify-items: center;
   text-align: center;
-  gap: 6px;
-  padding: 8px 12px 18px;
+  gap: 8px;
+  padding: 20px 16px 28px;
+  width: 100%;
 }
 
 .cl-column-empty-art {
-  width: 148px;
-  height: 92px;
-  margin-bottom: 4px;
+  width: 118px;
+  height: 86px;
+  object-fit: cover;
+  object-position: 50% 47%;
+  display: block;
+  margin: 0 0 4px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.cl-column-empty-art-dark {
+  display: none;
+}
+
+[data-theme="dark"] .cl-column-empty-art-light {
+  display: none;
+}
+
+[data-theme="dark"] .cl-column-empty-art-dark {
+  display: block;
 }
 
 .cl-column-empty strong {
-  font-size: 14px;
-  font-weight: 700;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
   color: var(--cl-title);
+  letter-spacing: 0.15px;
 }
 
 .cl-column-empty span {
-  font-size: 12px;
-  line-height: 1.45;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
   color: var(--cl-muted);
   max-width: 220px;
+  letter-spacing: 0.15px;
 }
 
 .cl-empty,
@@ -523,4 +563,129 @@
 
 .cl-modal-actions-spacer {
   flex: 1;
+}
+
+.cl-board-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cl-board-stage.is-away {
+  pointer-events: none;
+}
+
+.cl-board-stage .cl-board {
+  flex: 1;
+}
+
+.cl-view-switcher {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 24;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--cl-column-bg);
+  box-shadow: 0 8px 24px rgba(60, 64, 67, 0.18), 0 1px 3px rgba(60, 64, 67, 0.12);
+}
+
+.cl-view-switcher button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--cl-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cl-view-switcher button:hover {
+  background: rgba(60, 64, 67, 0.06);
+  color: var(--cl-title);
+}
+
+.cl-view-switcher button.active {
+  background: rgba(26, 115, 232, 0.1);
+  color: var(--cl-blue);
+}
+
+.cl-view-switcher em {
+  font-style: normal;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--cl-blue);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cl-participant-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  background: var(--cl-canvas);
+  padding: 0 0 84px;
+}
+
+.cl-participant-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px 8px;
+}
+
+.cl-participant-head h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+  color: var(--cl-title);
+}
+
+.cl-participant-head p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--cl-muted);
+}
+
+.cl-participant-empty {
+  margin: auto;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 24px 16px 80px;
+}
+
+.cl-participant-empty strong {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--cl-title);
+}
+
+.cl-participant-empty span {
+  font-size: 14px;
+  color: var(--cl-muted);
+  max-width: 280px;
+  line-height: 1.45;
 }

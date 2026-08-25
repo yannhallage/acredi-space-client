@@ -71,3 +71,24 @@ export function isOverdue(value: string | null | undefined, completed: boolean) 
   endOfDay.setHours(23, 59, 59, 999);
   return endOfDay.getTime() < Date.now();
 }
+
+export function isChecklistOwner(
+  list: { ownerId?: string; members: { userId: string; role: string }[] },
+  userId: string | undefined,
+) {
+  if (!userId) return false;
+  if (list.ownerId === userId) return true;
+  return list.members.some(
+    (member) => member.userId === userId && member.role === "OWNER",
+  );
+}
+
+export function isChecklistParticipant(
+  list: { ownerId?: string; members: { userId: string; role: string }[] },
+  userId: string | undefined,
+) {
+  if (!userId || isChecklistOwner(list, userId)) return false;
+  return list.members.some(
+    (member) => member.userId === userId && member.role === "EDITOR",
+  );
+}
