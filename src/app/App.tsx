@@ -17,10 +17,6 @@ import MeetingPage from '../features/meeting/MeetingPage';
 import { MeetingRoom } from '../features/meeting/MeetingRoom';
 import { MailPage } from '../features/mail/MailPage';
 import { NotesPage } from '../features/notes/NotesPage';
-import { PollsPage } from '../features/polls/PollsPage';
-import { PollCreatePage } from '../features/polls/PollCreatePage';
-import { PollDetailPage } from '../features/polls/PollDetailPage';
-import { PollTakePage } from '../features/polls/PollTakePage';
 import { PreviewPage } from '../features/preview/PreviewPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
 import { ChangePasswordPage } from '../features/settings/ChangePasswordPage';
@@ -113,11 +109,6 @@ export default function App() {
                   <Route path="users" element={<UsersPage />} />
                   <Route path="users/:userId" element={<UserDetailPage />} />
                   <Route path="notes" element={<NotesPage />} />
-                  <Route path="polls/create" element={<PollCreatePage />} />
-                  <Route path="polls/:pollId/edit" element={<PollCreatePage />} />
-                  <Route path="polls/:pollId/take" element={<PollTakePage />} />
-                  <Route path="polls/:pollId" element={<PollDetailPage />} />
-                  <Route path="polls" element={<PollsPage />} />
                 </Route>
                 </Route>
               </Route>

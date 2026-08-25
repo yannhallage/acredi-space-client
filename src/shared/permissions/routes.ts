@@ -2,7 +2,6 @@ import { PERMISSIONS, type PermissionCode } from './constants';
 import {
   ADMIN_FEATURE_PERMISSIONS,
   FEATURE_PERMISSION_REQUIREMENTS,
-  POLLS_CREATE_PERMISSIONS,
   TEAM_CREATE_PERMISSIONS,
 } from './requirements';
 import { hasAnyPermissionCode } from './utils';
@@ -35,8 +34,6 @@ export const APP_ROUTE_PERMISSION_RULES = [
   },
   { path: '/app/teams', permissions: FEATURE_PERMISSION_REQUIREMENTS.teams },
   { path: '/app/notes', permissions: FEATURE_PERMISSION_REQUIREMENTS.notes },
-  { path: '/app/polls/create', permissions: POLLS_CREATE_PERMISSIONS },
-  { path: '/app/polls', permissions: FEATURE_PERMISSION_REQUIREMENTS.polls },
 ] as const satisfies readonly AppRoutePermissionRule[];
 
 export const DEFAULT_APP_ROUTE_CANDIDATES = [
@@ -49,7 +46,6 @@ export const DEFAULT_APP_ROUTE_CANDIDATES = [
   { path: '/app/teams', permissions: FEATURE_PERMISSION_REQUIREMENTS.teams },
   { path: '/app/users', permissions: FEATURE_PERMISSION_REQUIREMENTS.users },
   { path: '/app/notes', permissions: FEATURE_PERMISSION_REQUIREMENTS.notes },
-  { path: '/app/polls', permissions: FEATURE_PERMISSION_REQUIREMENTS.polls },
 ] as const satisfies readonly AppRoutePermissionRule[];
 
 function pathMatches(pathname: string, routePath: string) {
