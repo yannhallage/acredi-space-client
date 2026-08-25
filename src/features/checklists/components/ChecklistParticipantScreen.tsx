@@ -19,6 +19,7 @@ type ChecklistParticipantScreenProps = {
   onAddTask: (list: Checklist) => void;
   onClose: () => void;
   onDeleteList: (list: Checklist) => void;
+  onDeleteTask: (list: Checklist, item: ChecklistItem) => void;
   onEditTask: (list: Checklist, item: ChecklistItem) => void;
   onItemPointerDown: (
     list: Checklist,
@@ -50,6 +51,7 @@ export function ChecklistParticipantScreen({
   onAddTask,
   onClose,
   onDeleteList,
+  onDeleteTask,
   onEditTask,
   onItemPointerDown,
   onOpenMembers,
@@ -104,6 +106,7 @@ export function ChecklistParticipantScreen({
               skipClickRef={skipClickRef}
               onAddTask={onAddTask}
               onDeleteList={onDeleteList}
+              onDeleteTask={onDeleteTask}
               onEditTask={onEditTask}
               onItemPointerDown={onItemPointerDown}
               onOpenMembers={onOpenMembers}

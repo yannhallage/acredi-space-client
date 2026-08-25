@@ -1,9 +1,10 @@
-import { useMemo, type PointerEvent, type RefObject } from "react";
+import { useMemo, useRef, useState, type PointerEvent, type RefObject } from "react";
 
 import type { Checklist, ChecklistItem, ChecklistMember } from "../../../shared/api/checklists";
 import { Avatar, Icon } from "../../../shared/ui";
 import { formatDueDate, isOverdue } from "../utils";
 import { ChecklistEmptyArt } from "./ChecklistEmptyArt";
+import { ChecklistItemMenu } from "./ChecklistItemMenu";
 
 export type DropTarget = {
   listId: string;
@@ -19,6 +20,7 @@ type ChecklistColumnProps = {
   menuRef?: RefObject<HTMLDivElement | null>;
   onAddTask: () => void;
   onDeleteList: () => void;
+  onDeleteTask: (item: ChecklistItem) => void;
   onEditTask: (item: ChecklistItem) => void;
   onItemPointerDown: (item: ChecklistItem, event: PointerEvent<HTMLElement>) => void;
   onOpenMembers: () => void;
@@ -37,6 +39,7 @@ export function ChecklistColumn({
   menuRef,
   onAddTask,
   onDeleteList,
+  onDeleteTask,
   onEditTask,
   onItemPointerDown,
   onOpenMembers,
@@ -142,6 +145,7 @@ export function ChecklistColumn({
                 dragging={draggingItemId === item.id}
                 item={item}
                 skipClickRef={skipClickRef}
+                onDelete={() => onDeleteTask(item)}
                 onEdit={() => onEditTask(item)}
                 onPointerDown={(event) => onItemPointerDown(item, event)}
                 onToggle={() => {
@@ -154,6 +158,7 @@ export function ChecklistColumn({
                   item={child}
                   nested
                   skipClickRef={skipClickRef}
+                  onDelete={() => onDeleteTask(child)}
                   onEdit={() => onEditTask(child)}
                   onToggle={() => {
                     onToggleItem(checklist.id, child.id).catch(() => undefined);
@@ -174,6 +179,7 @@ type ItemRowProps = {
   item: ChecklistItem;
   nested?: boolean;
   skipClickRef: RefObject<boolean>;
+  onDelete?: () => void;
   onEdit: () => void;
   onPointerDown?: (event: PointerEvent<HTMLElement>) => void;
   onToggle: () => void;
@@ -184,12 +190,16 @@ export function ChecklistItemRow({
   item,
   nested = false,
   skipClickRef,
+  onDelete,
   onEdit,
   onPointerDown,
   onToggle,
 }: ItemRowProps) {
+  const menuBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const dueLabel = formatDueDate(item.dueDate);
   const overdue = isOverdue(item.dueDate, item.completed);
+  const showActions = Boolean(onDelete) && !dragging;
 
   return (
     <div
@@ -197,6 +207,7 @@ export function ChecklistItemRow({
         "cl-task",
         nested ? "cl-task-child" : "",
         dragging ? "dragging" : "",
+        menuOpen ? "is-menu-open" : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -233,6 +244,32 @@ export function ChecklistItemRow({
           </span>
         ) : null}
       </div>
+      {showActions ? (
+        <>
+          <button
+            ref={menuBtnRef}
+            className="cl-task-menu-btn"
+            type="button"
+            aria-label="Actions de la tâche"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              setMenuOpen((current) => !current);
+            }}
+          >
+            <Icon name="moreV" size={16} strokeWidth={2.2} />
+          </button>
+          <ChecklistItemMenu
+            open={menuOpen}
+            trigger={menuBtnRef.current}
+            onClose={() => setMenuOpen(false)}
+            onDelete={onDelete!}
+            onEdit={onEdit}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

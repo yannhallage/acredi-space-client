@@ -283,12 +283,27 @@ export function ChecklistsPage() {
 
   async function handleDeleteTask() {
     if (!taskDraft?.item) return;
+    await handleDeleteItem(
+      { id: taskDraft.listId } as Checklist,
+      taskDraft.item,
+      false,
+    );
+  }
+
+  async function handleDeleteItem(
+    list: Pick<Checklist, "id">,
+    item: ChecklistItem,
+    confirm = true,
+  ) {
+    if (confirm && !window.confirm(`Supprimer « ${item.title} » ?`)) return;
     try {
       await deleteItem.mutateAsync({
-        id: taskDraft.listId,
-        itemId: taskDraft.item.id,
+        id: list.id,
+        itemId: item.id,
       });
-      setTaskDraft(null);
+      if (taskDraft?.item?.id === item.id) {
+        setTaskDraft(null);
+      }
       showToast("success", "Tâche supprimée.");
     } catch (error) {
       showError(error, "Impossible de supprimer la tâche.");
@@ -360,6 +375,9 @@ export function ChecklistsPage() {
       }),
     onDeleteList: (list: Checklist) => {
       handleDeleteList(list).catch(() => undefined);
+    },
+    onDeleteTask: (list: Checklist, item: ChecklistItem) => {
+      handleDeleteItem(list, item).catch(() => undefined);
     },
     onEditTask: (list: Checklist, item: ChecklistItem) =>
       setTaskDraft({

@@ -172,7 +172,7 @@
   top: 34px;
   right: 0;
   min-width: 180px;
-  background: var(--cl-column-bg);
+  background: var(--cl-column-bg, #ffffff);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(60, 64, 67, 0.2);
   padding: 6px;
@@ -262,7 +262,7 @@
 
 .cl-task {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
   gap: 8px;
   align-items: start;
   padding: 10px 8px 12px 6px;
@@ -288,6 +288,88 @@
   margin-left: 18px;
   cursor: default;
   touch-action: auto;
+}
+
+.cl-task-menu-btn {
+  width: 28px;
+  height: 28px;
+  margin-top: -2px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--cl-title);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s ease, background 0.14s ease;
+}
+
+.cl-task:hover .cl-task-menu-btn,
+.cl-task:focus-within .cl-task-menu-btn,
+.cl-task.is-menu-open .cl-task-menu-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .cl-task-menu-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.cl-task-menu-btn:hover,
+.cl-task-menu-btn[aria-expanded="true"] {
+  background: rgba(60, 64, 67, 0.1);
+}
+
+.cl-item-menu {
+  position: fixed;
+  top: auto;
+  right: auto;
+  z-index: 90;
+  min-width: 168px;
+  background: #ffffff;
+  color: #202124;
+  box-shadow: 0 12px 32px rgba(32, 33, 36, 0.22);
+}
+
+[data-theme="dark"] .cl-item-menu {
+  background: var(--surface, #1b1b24);
+  color: var(--text, #fafafa);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.cl-column-menu .cl-icon-btn {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s ease, background 0.14s ease;
+}
+
+.cl-column:hover .cl-column-menu .cl-icon-btn,
+.cl-column-menu .cl-icon-btn[aria-expanded="true"],
+.cl-column-menu:focus-within .cl-icon-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .cl-column-menu .cl-icon-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.cl-drag-overlay .cl-task-menu-btn {
+  display: none;
+}
+
+body.cl-is-dragging .cl-task-menu-btn {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .cl-drag-overlay {

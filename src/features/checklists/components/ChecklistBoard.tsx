@@ -14,6 +14,7 @@ type ChecklistBoardProps = {
   skipClickRef: RefObject<boolean>;
   onAddTask: (list: Checklist) => void;
   onDeleteList: (list: Checklist) => void;
+  onDeleteTask: (list: Checklist, item: ChecklistItem) => void;
   onEditTask: (list: Checklist, item: ChecklistItem) => void;
   onItemPointerDown: (
     list: Checklist,
@@ -37,6 +38,7 @@ export function ChecklistBoard({
   skipClickRef,
   onAddTask,
   onDeleteList,
+  onDeleteTask,
   onEditTask,
   onItemPointerDown,
   onOpenMembers,
@@ -58,6 +60,7 @@ export function ChecklistBoard({
           skipClickRef={skipClickRef}
           onAddTask={() => onAddTask(list)}
           onDeleteList={() => onDeleteList(list)}
+          onDeleteTask={(item) => onDeleteTask(list, item)}
           onEditTask={(item) => onEditTask(list, item)}
           onItemPointerDown={(item, event) => onItemPointerDown(list, item, event)}
           onOpenMembers={() => onOpenMembers(list)}
