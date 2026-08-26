@@ -4,6 +4,7 @@ import Toast from "../../components/app/Toast/Toast";
 import { useAuth } from "../../shared/context";
 import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
 import { EmptyState, Icon } from "../../shared/ui";
+import { getFriendlyErrorMessage } from "../../shared/feedback";
 
 import {
   FileGrid,
@@ -52,11 +53,10 @@ export function FolderFilesPage() {
         <section className="files-explorer">
           <EmptyState
             title="Fichiers indisponibles"
-            body={
-              error instanceof Error
-                ? error.message
-                : "Impossible de charger les fichiers."
-            }
+            body={getFriendlyErrorMessage(
+              error,
+              "Impossible de charger les fichiers.",
+            )}
           />
         </section>
       </div>

@@ -40,12 +40,11 @@ export const PERMISSIONS = {
   DELETE_NOTES: 'notes.delete',
   SHARE_NOTES: 'notes.share',
 
-  VIEW_POLLS: 'polls.view',
-  CREATE_POLLS: 'polls.create',
-  UPDATE_POLLS: 'polls.update',
-  DELETE_POLLS: 'polls.delete',
-  RESPOND_POLLS: 'polls.respond',
-  MANAGE_POLL_PARTICIPANTS: 'polls.manage_participants',
+  VIEW_CHECKLISTS: 'checklists.view',
+  CREATE_CHECKLISTS: 'checklists.create',
+  UPDATE_CHECKLISTS: 'checklists.update',
+  DELETE_CHECKLISTS: 'checklists.delete',
+  MANAGE_CHECKLIST_MEMBERS: 'checklists.manage_members',
 
   VIEW_DASHBOARD: 'dashboard.view',
 

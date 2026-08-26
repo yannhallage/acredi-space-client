@@ -1,17 +1,21 @@
 import { motion } from "framer-motion";
 
+import {
+  feedback,
+  resolveActionFeedback,
+} from "../../../../shared/feedback";
 import type { User } from "../../../../shared/types";
-import { Icon } from "../../../../shared/ui";
+import { FeedbackBanner, Icon } from "../../../../shared/ui";
 
 export function DeleteUserConfirmModal({
   user,
-  errorMessage,
+  error,
   isPending,
   onClose,
   onConfirm,
 }: {
   user: User;
-  errorMessage?: string;
+  error?: unknown;
   isPending: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -54,12 +58,25 @@ export function DeleteUserConfirmModal({
           Voulez-vous vraiment supprimer <strong>{user.name}</strong> ?
         </p>
 
-        <p className="auth-error text-red-500 text-sm">
-          Cette action est irréversible.
-        </p>
+        <FeedbackBanner
+          feedback={feedback(
+            "warning",
+            "Action irréversible",
+            "Cette suppression ne pourra pas être annulée.",
+          )}
+        />
 
-        {errorMessage ? (
-          <p className="auth-error text-red-500 text-sm">{errorMessage}</p>
+        {error ? (
+          <FeedbackBanner
+            feedback={resolveActionFeedback(
+              error,
+              feedback(
+                "error",
+                "Suppression impossible",
+                "Nous n’avons pas pu supprimer cet utilisateur. Réessayez dans un moment.",
+              ),
+            )}
+          />
         ) : null}
 
         <footer>

@@ -723,6 +723,20 @@ a {
   color: #216e4e;
 }
 
+.auth-feedback-with-action {
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.auth-feedback-action {
+  display: inline-flex;
+  align-items: center;
+}
+
+.auth-feedback-action .button {
+  white-space: nowrap;
+}
+
 .input-wrap,
 .search-box,
 .mini-search {
@@ -8949,6 +8963,10 @@ a {
   gap: 24px;
 }
 
+.teams-page > .auth-feedback {
+  align-self: start;
+}
+
 
 
 .teams-page-skeleton {
@@ -9700,10 +9718,17 @@ a {
   gap: 10px;
 }
 
-.team-member-table td:first-child span {
+.team-member-table td:first-child > span {
   min-width: 0;
   display: grid;
   gap: 2px;
+}
+
+.team-member-table th:last-child,
+.team-member-table td:last-child {
+  width: 88px;
+  white-space: nowrap;
+  text-align: right;
 }
 
 .team-member-table strong,
@@ -9982,7 +10007,7 @@ a {
 
 .team-details-table.team-details-table--manage th:first-child,
 .team-details-table.team-details-table--manage td:first-child {
-  width: 56%;
+  width: auto;
 }
 
 .team-details-table.team-details-table--manage th:nth-child(2),
@@ -9992,7 +10017,10 @@ a {
 
 .team-details-table.team-details-table--manage th:last-child,
 .team-details-table.team-details-table--manage td:last-child {
-  width: 16%;
+  width: 88px;
+  padding-right: 12px;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .team-details-user-cell {
@@ -10006,14 +10034,31 @@ a {
   flex: none;
 }
 
+.team-details-user-meta,
+.team-member-name-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .team-details-actions-cell {
   text-align: right;
 }
 
 .team-details-owner-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
   color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .team-details-table strong {

@@ -13,6 +13,7 @@ import {
   usePermissions,
 } from "../../../shared/permissions";
 import type { AdminRole, User } from "../../../shared/types";
+import { getFriendlyErrorMessage } from "../../../shared/feedback";
 import {
   adminRoleFromUser,
   getInviteErrorMessage,
@@ -199,9 +200,7 @@ export function useUsersPage() {
     } catch (error) {
       showToast(
         "error",
-        error instanceof Error
-          ? error.message
-          : "Impossible de modifier l'utilisateur",
+        getFriendlyErrorMessage(error, "Impossible de modifier l'utilisateur"),
       );
     }
   }
@@ -218,9 +217,7 @@ export function useUsersPage() {
     } catch (error) {
       showToast(
         "error",
-        error instanceof Error
-          ? error.message
-          : "Impossible de supprimer l'utilisateur",
+        getFriendlyErrorMessage(error, "Impossible de supprimer l'utilisateur"),
       );
     }
   }

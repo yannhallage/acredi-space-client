@@ -5,6 +5,7 @@ import { useUploadAvatarMutation } from '../api/users';
 import { PresetAvatarPicker, extractPresetAvatarFile } from '../avatars/PresetAvatarPicker';
 import type { AvatarPreset } from '../avatars/presets';
 import { useAuth } from '../context';
+import { getFriendlyErrorMessage } from '../feedback';
 import type { User } from '../types';
 import { Avatar, Icon, type IconName } from '../ui';
 import { PERMISSIONS, usePermissions, type PermissionCode } from '../permissions';
@@ -71,9 +72,7 @@ const GLOBAL_SETTINGS_UPDATE_PERMISSIONS = [
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
 function getAvatarErrorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : 'Impossible de mettre a jour la photo.';
+  return getFriendlyErrorMessage(error, 'Impossible de mettre à jour la photo.');
 }
 
 function formatProfileDate(value?: string) {
@@ -761,7 +760,7 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
     } catch (error) {
       setProfileMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Impossible de creer le profil.',
+        text: getFriendlyErrorMessage(error, 'Impossible de créer le profil.'),
       });
     }
   }
@@ -902,7 +901,12 @@ export default function ModalSetting({ userEmail, userName, workspaceName, onClo
                   {profilesQuery.error ? (
                     <div className="modal-setting-inline-state error">
                       <Icon name="alert" size={16} />
-                      <span>{profilesQuery.error.message}</span>
+                      <span>
+                        {getFriendlyErrorMessage(
+                          profilesQuery.error,
+                          'Nous n’avons pas pu charger les profils.',
+                        )}
+                      </span>
                     </div>
                   ) : null}
 

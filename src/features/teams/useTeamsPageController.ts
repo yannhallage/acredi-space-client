@@ -3,12 +3,19 @@ import type { ToastIntent } from "../../components/app/Toast/Toast";
 import { useUsersQuery } from "../../shared/api/users";
 import { teamService } from "../../shared/api/teams/service";
 import { useAuth } from "../../shared/context";
+import {
+  feedback,
+  resolveActionFeedback,
+  validationFeedback,
+  type Feedback,
+} from "../../shared/feedback";
 import type { User } from "../../shared/types";
 import { canAccessAllTeams } from "./access";
 import {
   useAddTeamMember,
   useCreateTeam,
   useDeleteTeam,
+  useTeamMembers,
   useTeams,
 } from "./hooks";
 import { createInitialTeamForm, type TeamFormState } from "./teamForm";
@@ -31,12 +38,12 @@ export function useTeamsPageController() {
   const resetCreateTeam = createTeamMutation.reset;
   const resetAddMember = addMemberMutation.reset;
   const [form, setForm] = useState<TeamFormState>(createInitialTeamForm);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<Feedback | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isUserPickerOpen, setIsUserPickerOpen] = useState(false);
   const [detailsTeam, setDetailsTeam] = useState<Team | null>(null);
   const [deleteTargetTeam, setDeleteTargetTeam] = useState<Team | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<Feedback | null>(null);
   const [editTargetTeam, setEditTargetTeam] = useState<Team | null>(null);
   const [addMemberTargetTeam, setAddMemberTargetTeam] = useState<Team | null>(
     null,
@@ -44,15 +51,20 @@ export function useTeamsPageController() {
   const [openActionsTeamId, setOpenActionsTeamId] = useState<string | null>(
     null,
   );
-  const [editTeamError, setEditTeamError] = useState<string | null>(null);
+  const [editTeamError, setEditTeamError] = useState<Feedback | null>(null);
   const [isUpdatingTeam, setIsUpdatingTeam] = useState(false);
   const [toast, setToast] = useState<ToastState>({
     show: false,
     intent: "success",
     message: "",
   });
+  const editMembersQuery = useTeamMembers(editTargetTeam?.id ?? "");
   const usersQuery = useUsersQuery({
-    enabled: isDrawerOpen || Boolean(addMemberTargetTeam),
+    enabled:
+      isDrawerOpen ||
+      Boolean(addMemberTargetTeam) ||
+      Boolean(editTargetTeam) ||
+      isUserPickerOpen,
   });
   const teams = teamsQuery.data ?? [];
   const isSubmitting =
@@ -70,23 +82,33 @@ export function useTeamsPageController() {
     (teamsQuery.isPending || teamsQuery.isLoading || teamsQuery.isFetching);
   const canSubmit = form.name.trim().length >= 2 && !isSubmitting;
 
-  const selectedUserIds = useMemo(
-    () => new Set(form.members.map((member) => member.user.id)),
-    [form.members],
-  );
-
-  const closeDrawer = useCallback(() => {
-    if (isSubmitting) {
-      return;
+  const selectedUserIds = useMemo(() => {
+    if (editTargetTeam) {
+      return new Set(
+        (editMembersQuery.data ?? []).map(
+          (member) => member.user?.id ?? member.userId,
+        ),
+      );
     }
 
-    setIsDrawerOpen(false);
-    setIsUserPickerOpen(false);
-    setForm(createInitialTeamForm());
-    setFormError(null);
-    resetCreateTeam();
-    resetAddMember();
-  }, [isSubmitting, resetAddMember, resetCreateTeam]);
+    return new Set(form.members.map((member) => member.user.id));
+  }, [editMembersQuery.data, editTargetTeam, form.members]);
+
+  const closeDrawer = useCallback(
+    (options?: { force?: boolean }) => {
+      if (isSubmitting && !options?.force) {
+        return;
+      }
+
+      setIsDrawerOpen(false);
+      setIsUserPickerOpen(false);
+      setForm(createInitialTeamForm());
+      setFormError(null);
+      resetCreateTeam();
+      resetAddMember();
+    },
+    [isSubmitting, resetAddMember, resetCreateTeam],
+  );
 
   useEffect(() => {
     if (!isDrawerOpen) {
@@ -172,6 +194,37 @@ export function useTeamsPageController() {
     [],
   );
 
+  async function handleSelectPickerUser(user: User) {
+    if (editTargetTeam) {
+      if (addMemberMutation.isPending) {
+        return;
+      }
+
+      try {
+        await addMemberMutation.mutateAsync({
+          teamId: editTargetTeam.id,
+          request: {
+            roleName: "COLLABORATOR",
+            userId: user.id,
+          },
+        });
+
+        await teamsQuery.refetch();
+        showToast("success", "Membre ajoute avec succes.");
+      } catch (error) {
+        showToast(
+          "error",
+          getErrorMessage(error, "Impossible d'ajouter ce membre."),
+          5000,
+        );
+      }
+
+      return;
+    }
+
+    addDraftMember(user);
+  }
+
   function openDeleteTeamModal(team: Team) {
     if (isDeletingTeam) {
       return;
@@ -203,13 +256,14 @@ export function useTeamsPageController() {
     setEditTargetTeam(team);
   }
 
-  function closeEditTeamModal() {
-    if (isUpdatingTeam) {
+  function closeEditTeamModal(options?: { force?: boolean }) {
+    if (isUpdatingTeam && !options?.force) {
       return;
     }
 
     setEditTargetTeam(null);
     setEditTeamError(null);
+    setIsUserPickerOpen(false);
   }
 
   function openAddMemberModal(team: Team) {
@@ -242,7 +296,11 @@ export function useTeamsPageController() {
     const nextName = request.name.trim();
 
     if (nextName.length < 2) {
-      setEditTeamError("Le nom de l'équipe doit contenir au moins 2 caractères.");
+      setEditTeamError(
+        validationFeedback(
+          "Le nom de l'équipe doit contenir au moins 2 caractères.",
+        ),
+      );
       return;
     }
 
@@ -257,17 +315,20 @@ export function useTeamsPageController() {
       });
 
       await teamsQuery.refetch();
-      setEditTargetTeam(null);
-      setEditTeamError(null);
+      closeEditTeamModal({ force: true });
       showToast("success", "Equipe modifiee avec succes.");
     } catch (error) {
-      const message = getErrorMessage(
+      const nextFeedback = resolveActionFeedback(
         error,
-        "Impossible de modifier cette equipe.",
+        feedback(
+          "error",
+          "Modification impossible",
+          "Nous n’avons pas pu modifier cette équipe. Réessayez dans un moment.",
+        ),
       );
 
-      setEditTeamError(message);
-      showToast("error", message, 5000);
+      setEditTeamError(nextFeedback);
+      showToast("error", nextFeedback.description, 5000);
     } finally {
       setIsUpdatingTeam(false);
     }
@@ -326,13 +387,17 @@ export function useTeamsPageController() {
       showToast("success", "Team supprimee avec succes.");
       teamsQuery.refetch().catch(() => undefined);
     } catch (error) {
-      const message = getErrorMessage(
+      const nextFeedback = resolveActionFeedback(
         error,
-        "Impossible de supprimer cette equipe.",
+        feedback(
+          "error",
+          "Suppression impossible",
+          "Nous n’avons pas pu supprimer cette équipe. Réessayez dans un moment.",
+        ),
       );
 
-      setDeleteError(message);
-      showToast("error", message, 5000);
+      setDeleteError(nextFeedback);
+      showToast("error", nextFeedback.description, 5000);
     }
   }
 
@@ -364,10 +429,18 @@ export function useTeamsPageController() {
       }
 
       await teamsQuery.refetch();
-      closeDrawer();
+      closeDrawer({ force: true });
+      showToast("success", "Equipe creee avec succes.");
     } catch (error) {
       setFormError(
-        getErrorMessage(error, "Une erreur est survenue pendant la creation."),
+        resolveActionFeedback(
+          error,
+          feedback(
+            "error",
+            "Création impossible",
+            "Nous n’avons pas pu créer cette équipe. Réessayez dans un moment.",
+          ),
+        ),
       );
     }
   }
@@ -376,6 +449,7 @@ export function useTeamsPageController() {
     addMemberMutation,
     addMemberTargetTeam,
     addDraftMember,
+    handleSelectPickerUser,
     canSubmit,
     canViewAllTeams,
     closeAddMemberModal,
@@ -399,6 +473,7 @@ export function useTeamsPageController() {
     isTeamsFetching,
     isTeamsInitialLoading,
     isUpdatingTeam,
+    isAddingMember: addMemberMutation.isPending && Boolean(editTargetTeam),
     isUserPickerOpen,
     openActionsTeamId,
     openAddMemberModal,

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ClipLoader } from "react-spinners";
 
 import { useAuth } from "../../../../shared/context";
+import { getFriendlyErrorMessage } from "../../../../shared/feedback";
 import type { User } from "../../../../shared/types";
 import { Avatar, Icon } from "../../../../shared/ui";
 import { normalizeSearch, type NoteCardModel } from "../../utils";
@@ -182,7 +183,12 @@ export function NoteShareModal({
                 <div className="dm-new-conversation-empty">
                   <Icon name="alert" size={18} />
                   <strong>Chargement impossible</strong>
-                  <span>{error.message}</span>
+                  <span>
+                    {getFriendlyErrorMessage(
+                      error,
+                      "Nous n’avons pas pu charger les utilisateurs.",
+                    )}
+                  </span>
                   <button
                     className="button ghost mini"
                     type="button"

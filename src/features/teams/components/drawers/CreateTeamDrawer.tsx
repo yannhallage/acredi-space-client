@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 
-import { Avatar, Icon } from "../../../../shared/ui";
+import type { Feedback } from "../../../../shared/feedback";
+import { Avatar, FeedbackBanner, Icon } from "../../../../shared/ui";
 import { TEAM_COLORS } from "../../constants";
 import type { TeamFormState } from "../../teamForm";
 import type { TeamMemberRole } from "../../types";
@@ -20,7 +21,7 @@ export function CreateTeamDrawer({
 }: {
   canSubmit: boolean;
   form: TeamFormState;
-  formError: string | null;
+  formError: Feedback | null;
   isOpen: boolean;
   isSubmitting: boolean;
   onClose: () => void;
@@ -78,12 +79,7 @@ export function CreateTeamDrawer({
               </header>
 
               <div className="team-drawer-body">
-                {formError ? (
-                  <div className="team-form-error">
-                    <Icon name="alert" size={16} />
-                    {formError}
-                  </div>
-                ) : null}
+                {formError ? <FeedbackBanner feedback={formError} /> : null}
 
                 <section className="team-drawer-section">
                   <label className="note-field">
@@ -166,7 +162,7 @@ export function CreateTeamDrawer({
                           <tr>
                             <th>Utilisateur</th>
                             <th>Role</th>
-                            <th aria-label="Actions" />
+                            <th>Action</th>
                           </tr>
                         </thead>
                         <tbody>

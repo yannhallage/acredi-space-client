@@ -1,14 +1,18 @@
 import { motion } from "framer-motion";
 
+import {
+  feedback,
+  resolveActionFeedback,
+} from "../../../../shared/feedback";
 import type { AdminRole } from "../../../../shared/types";
-import { Icon } from "../../../../shared/ui";
+import { FeedbackBanner, Icon } from "../../../../shared/ui";
 import { ROLE_OPTIONS } from "../../utils";
 
 export function EditUserModal({
   editName,
   editEmail,
   editRole,
-  errorMessage,
+  error,
   isPending,
   onEditNameChange,
   onEditEmailChange,
@@ -19,7 +23,7 @@ export function EditUserModal({
   editName: string;
   editEmail: string;
   editRole: AdminRole;
-  errorMessage?: string;
+  error?: unknown;
   isPending: boolean;
   onEditNameChange: (value: string) => void;
   onEditEmailChange: (value: string) => void;
@@ -100,8 +104,17 @@ export function EditUserModal({
           </select>
         </label>
 
-        {errorMessage ? (
-          <p className="auth-error text-red-500 text-sm">{errorMessage}</p>
+        {error ? (
+          <FeedbackBanner
+            feedback={resolveActionFeedback(
+              error,
+              feedback(
+                "error",
+                "Modification impossible",
+                "Nous n’avons pas pu modifier cet utilisateur. Réessayez dans un moment.",
+              ),
+            )}
+          />
         ) : null}
 
         <footer>

@@ -6,6 +6,7 @@ import {
   type ProfileResponse,
 } from '../../../../shared/api/profiles';
 import { useAuth } from '../../../../shared/context';
+import { getFriendlyErrorMessage } from '../../../../shared/feedback';
 import { Icon } from '../../../../shared/ui';
 import { formatProfileDate } from '../../utils';
 import { CreateProfileDenied, CreateProfileForm } from '../forms/CreateProfileForm';
@@ -54,7 +55,7 @@ export function ProfilesSection() {
     } catch (error) {
       showToast(
         'error',
-        error instanceof Error ? error.message : 'Impossible de supprimer le profil.',
+        getFriendlyErrorMessage(error, 'Impossible de supprimer le profil.'),
         5000
       );
     } finally {
@@ -84,7 +85,12 @@ export function ProfilesSection() {
       {profilesQuery.error ? (
         <div className="modal-setting-inline-state error">
           <Icon name="alert" size={16} />
-          <span>{profilesQuery.error.message}</span>
+          <span>
+            {getFriendlyErrorMessage(
+              profilesQuery.error,
+              'Nous n’avons pas pu charger les profils.',
+            )}
+          </span>
         </div>
       ) : null}
 

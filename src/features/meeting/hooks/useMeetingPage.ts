@@ -14,6 +14,12 @@ import {
 } from "../../../shared/api/meeting/room";
 import { useUsersQuery } from "../../../shared/api/users";
 import { useAuth } from "../../../shared/context";
+import {
+  feedback,
+  resolveActionFeedback,
+  validationFeedback,
+  type Feedback,
+} from "../../../shared/feedback";
 import type { User } from "../../../shared/types";
 import {
   buildLocalDateTime,
@@ -50,7 +56,7 @@ export function useMeetingPage() {
   const { user } = useAuth();
   const [openModal, setOpenModal] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
-  const [formError, setFormError] = useState("");
+  const [formError, setFormError] = useState<Feedback | null>(null);
   const [toast, setToast] = useState<ToastState>({
     show: false,
     intent: "success",
@@ -158,7 +164,7 @@ export function useMeetingPage() {
     setNewMeetingMenuOpen(false);
     setOpenMenuId(null);
     setMenuPosition(null);
-    setFormError("");
+    setFormError(null);
     setEditingMeeting(null);
     setForm({
       title: "",
@@ -175,7 +181,7 @@ export function useMeetingPage() {
     setNewMeetingMenuOpen(false);
     setOpenMenuId(null);
     setMenuPosition(null);
-    setFormError("");
+    setFormError(null);
     setEditingMeeting(meeting);
     setForm({
       title: meeting.title,
@@ -190,11 +196,13 @@ export function useMeetingPage() {
 
   const saveMeeting = async () => {
     if (!form.title.trim()) {
-      setFormError("Ajoute un titre à la réunion.");
+      setFormError(validationFeedback("Ajoute un titre à la réunion."));
       return;
     }
     if (!form.date || !form.start || !form.end) {
-      setFormError("Renseigne la date, l'heure de début et l'heure de fin.");
+      setFormError(
+        validationFeedback("Renseigne la date, l'heure de début et l'heure de fin."),
+      );
       return;
     }
     const { endsAt, isValid } = resolveEndDateTime(
@@ -203,18 +211,22 @@ export function useMeetingPage() {
       form.end,
     );
     if (!isValid) {
-      setFormError("L'heure de fin doit être après l'heure de début.");
+      setFormError(
+        validationFeedback("L'heure de fin doit être après l'heure de début."),
+      );
       return;
     }
     if (isPastDateTime(form.date, form.start)) {
       setFormError(
-        "Impossible de créer ou modifier une réunion à une date déjà passée.",
+        validationFeedback(
+          "Impossible de créer ou modifier une réunion à une date déjà passée.",
+        ),
       );
       return;
     }
 
     setIsSaving(true);
-    setFormError("");
+    setFormError(null);
     const payload = {
       title: form.title.trim(),
       description: form.description.trim() || null,
@@ -237,7 +249,14 @@ export function useMeetingPage() {
     } catch (error) {
       console.error("Failed to save meeting", error);
       setFormError(
-        "Impossible d'enregistrer la réunion. Vérifie le backend puis réessaie.",
+        resolveActionFeedback(
+          error,
+          feedback(
+            "error",
+            "Enregistrement impossible",
+            "Nous n’avons pas pu enregistrer cette réunion. Réessayez dans un moment.",
+          ),
+        ),
       );
     } finally {
       setIsSaving(false);

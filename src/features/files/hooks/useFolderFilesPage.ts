@@ -14,6 +14,11 @@ import {
 } from "../../../shared/api/files";
 import { useFolders, useCreateFolder, useUpdateFolder, useDeleteFolder, type Folder } from "../../../shared/api/folders";
 import { useUsersQuery } from "../../../shared/api/users";
+import {
+  feedback,
+  getFriendlyErrorMessage,
+  resolveActionFeedback,
+} from "../../../shared/feedback";
 import type { User } from "../../../shared/types";
 import { downloadFileFromUrl } from "../../../shared/utils/downloadFile";
 
@@ -157,9 +162,7 @@ export function useFolderFilesPage(folderId: string | undefined) {
 
     showToast(
       "error",
-      error instanceof Error
-        ? error.message
-        : "Impossible de charger les fichiers.",
+      getFriendlyErrorMessage(error, "Impossible de charger les fichiers."),
       5000,
     );
   }, [filesError, foldersError, isFilesError, isFoldersError, showToast]);
@@ -361,13 +364,16 @@ export function useFolderFilesPage(folderId: string | undefined) {
   const folderSavingLabel = editingFolder ? "Modification..." : "Creation...";
   const folderFormError =
     createFolderMutation.isError || updateFolderMutation.isError
-      ? createFolderMutation.error instanceof Error
-        ? createFolderMutation.error.message
-        : updateFolderMutation.error instanceof Error
-          ? updateFolderMutation.error.message
-          : editingFolder
-            ? "Impossible de modifier le dossier."
-            : "Impossible de creer le dossier."
+      ? resolveActionFeedback(
+          createFolderMutation.error ?? updateFolderMutation.error,
+          feedback(
+            "error",
+            editingFolder ? "Modification impossible" : "Création impossible",
+            editingFolder
+              ? "Nous n’avons pas pu modifier ce dossier. Réessayez dans un moment."
+              : "Nous n’avons pas pu créer ce dossier. Réessayez dans un moment.",
+          ),
+        )
       : null;
 
   function openCreateModal() {

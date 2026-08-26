@@ -13,7 +13,7 @@ const EXACT_APP_PATHS = new Set([
   "/app/teams/create",
   "/app/users",
   "/app/notes",
-  "/app/polls",
+  "/app/checklists",
   "/app/meeting/meet-daily",
 ]);
 
@@ -23,8 +23,6 @@ const VALID_APP_ROUTE_PATTERNS = [
   /^\/app\/dm\/[^/]+$/,
   /^\/app\/meeting\/[^/]+$/,
   /^\/app\/users\/[^/]+$/,
-  /^\/app\/polls\/[^/]+$/,
-  /^\/app\/polls\/[^/]+\/(take|edit)$/,
 ] as const;
 
 const RESOURCE_PATH_MATCHERS: Array<{

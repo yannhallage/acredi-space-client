@@ -1,4 +1,11 @@
 import { useState } from "react";
+
+import {
+  feedback,
+  resolveActionFeedback,
+  type Feedback,
+} from "../../shared/feedback";
+import { FeedbackBanner } from "../../shared/ui";
 import type { InviteUserRequest, RoleName } from "./users.types";
 
 interface UserFormModalProps {
@@ -11,7 +18,7 @@ export function UserFormModal({ onClose, onInvite }: UserFormModalProps) {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [roleName, setRoleName] = useState<RoleName>("COLLABORATOR");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<Feedback | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -19,7 +26,7 @@ export function UserFormModal({ onClose, onInvite }: UserFormModalProps) {
 
     try {
       setSubmitting(true);
-      setMessage("");
+      setMessage(null);
 
       await onInvite({
         firstName,
@@ -30,8 +37,16 @@ export function UserFormModal({ onClose, onInvite }: UserFormModalProps) {
 
       onClose();
     } catch (error: unknown) {
-      console.error(error);
-      setMessage(error instanceof Error ? error.message : "Validation failed");
+      setMessage(
+        resolveActionFeedback(
+          error,
+          feedback(
+            "error",
+            "Invitation impossible",
+            "Nous n’avons pas pu inviter cet utilisateur. Réessayez dans un moment.",
+          ),
+        ),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -92,7 +107,7 @@ export function UserFormModal({ onClose, onInvite }: UserFormModalProps) {
           </select>
         </label>
 
-        {message && <p className="auth-error">{message}</p>}
+        {message ? <FeedbackBanner feedback={message} /> : null}
 
         <div className="button-row">
           <button type="button" className="button ghost" onClick={onClose}>

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
 
 import { useAuth } from "../../shared/context";
-import { AccessDeniedState, EmptyState, Icon } from "../../shared/ui";
+import { feedback, resolveActionFeedback } from "../../shared/feedback";
+import { AccessDeniedState, EmptyState, FeedbackBanner, Icon } from "../../shared/ui";
 import { canAccessMyTeams } from "./access";
 import { TeamDetailsModal } from "./components";
 import { useMyTeams } from "./hooks";
@@ -140,18 +141,27 @@ export function MyTeamsPage() {
       </section>
 
       {myTeamsQuery.isError ? (
-        <div className="team-error-banner">
-          Erreur lors du chargement de mes equipes: {myTeamsQuery.error.message}
-          <button
-            className="button ghost"
-            type="button"
-            onClick={() => {
-              myTeamsQuery.refetch().catch(() => undefined);
-            }}
-          >
-            Reessayer
-          </button>
-        </div>
+        <FeedbackBanner
+          feedback={resolveActionFeedback(
+            myTeamsQuery.error,
+            feedback(
+              "error",
+              "Équipes indisponibles",
+              "Nous n’avons pas pu charger vos équipes. Vérifiez votre connexion, puis réessayez.",
+            ),
+          )}
+          action={
+            <button
+              className="button ghost"
+              type="button"
+              onClick={() => {
+                myTeamsQuery.refetch().catch(() => undefined);
+              }}
+            >
+              Réessayer
+            </button>
+          }
+        />
       ) : null}
 
       {isMyTeamsFetching ? (

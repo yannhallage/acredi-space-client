@@ -1,7 +1,13 @@
 import { type ChangeEvent, useEffect, useRef, useState } from 'react';
 import { useUploadAvatarMutation } from '../../../../shared/api/users';
 import { useAuth } from '../../../../shared/context';
-import { Avatar, Card, Icon } from '../../../../shared/ui';
+import {
+  feedback,
+  resolveActionFeedback,
+  validationFeedback,
+  type Feedback,
+} from '../../../../shared/feedback';
+import { Avatar, Card, FeedbackBanner, Icon } from '../../../../shared/ui';
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
@@ -12,18 +18,12 @@ const preferences = [
   ['Notifications', 'Mentions et reunions']
 ];
 
-function getErrorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : "Impossible de mettre a jour la photo.";
-}
-
 export function ProfileForm() {
   const { user, updateUser } = useAuth();
   const uploadAvatarMutation = useUploadAvatarMutation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [message, setMessage] = useState<Feedback | null>(null);
   const avatarSrc = avatarPreviewUrl ?? user?.avatarUrl;
   const isUploadingAvatar = uploadAvatarMutation.isPending;
 
@@ -47,13 +47,13 @@ export function ProfileForm() {
     setMessage(null);
 
     if (!file.type.startsWith('image/')) {
-      setMessage({ type: 'error', text: 'Merci de choisir une image valide.' });
+      setMessage(validationFeedback('Merci de choisir une image valide.'));
       event.target.value = '';
       return;
     }
 
     if (file.size > MAX_AVATAR_SIZE) {
-      setMessage({ type: 'error', text: 'La photo doit faire moins de 5 Mo.' });
+      setMessage(validationFeedback('La photo doit faire moins de 5 Mo.'));
       event.target.value = '';
       return;
     }
@@ -65,10 +65,19 @@ export function ProfileForm() {
       const updatedUser = await uploadAvatarMutation.mutateAsync(file);
       updateUser(updatedUser);
       setAvatarPreviewUrl(null);
-      setMessage({ type: 'success', text: 'Photo de profil mise a jour.' });
+      setMessage(feedback('success', 'Photo mise à jour', 'Votre photo de profil a bien été enregistrée.'));
     } catch (error) {
       setAvatarPreviewUrl(null);
-      setMessage({ type: 'error', text: getErrorMessage(error) });
+      setMessage(
+        resolveActionFeedback(
+          error,
+          feedback(
+            'error',
+            'Mise à jour impossible',
+            'Nous n’avons pas pu mettre à jour la photo. Réessayez dans un moment.',
+          ),
+        ),
+      );
     } finally {
       event.target.value = '';
     }
@@ -107,11 +116,7 @@ export function ProfileForm() {
           <p className="eyebrow">Profil utilisateur</p>
           <h1>{user?.name}</h1>
           <p>{user?.role} - {user?.team}</p>
-          {message ? (
-            <small className={`profile-avatar-message ${message.type}`}>
-              {message.text}
-            </small>
-          ) : null}
+          {message ? <FeedbackBanner feedback={message} /> : null}
         </div>
         <button
           className="button primary"

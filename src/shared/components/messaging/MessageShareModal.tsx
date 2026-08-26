@@ -4,6 +4,7 @@ import { ClipLoader } from "react-spinners";
 
 import type { TeamResponse } from "../../api/teams";
 import { useAuth } from "../../context";
+import { getFriendlyErrorMessage } from "../../feedback";
 import type { User } from "../../types";
 import { Avatar, Icon } from "../../ui";
 
@@ -152,7 +153,12 @@ export function MessageShareModal({
                 <div className="dm-new-conversation-empty">
                   <Icon name="alert" size={18} />
                   <strong>Chargement impossible</strong>
-                  <span>{error.message}</span>
+                  <span>
+                    {getFriendlyErrorMessage(
+                      error,
+                      "Nous n’avons pas pu charger les destinataires.",
+                    )}
+                  </span>
                   <button
                     className="button ghost mini"
                     type="button"

@@ -24,6 +24,7 @@ import {
 import { fileService } from "../../../shared/api/files/service";
 import { useUsersQuery } from "../../../shared/api/users";
 import { useAuth } from "../../../shared/context";
+import { getFriendlyErrorMessage } from "../../../shared/feedback";
 
 import {
   filterMentionMembers,
@@ -79,9 +80,11 @@ export function useChatPage() {
   } | null>(null);
 
   const [draft, setDraft] = useState("");
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionStart, setMentionStart] = useState<number | null>(null);
   const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
+  const editedMessagesRef = useRef(new Map<string, string>());
 
   const [emojiOpen, setEmojiOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -247,6 +250,7 @@ export function useChatPage() {
     setEditingMessageId(null);
     setDraft("");
     setSelectedFile(null);
+    setMessageOverrides({});
     editedMessagesRef.current.clear();
   }, [activeDiscussion?.id]);
 
@@ -503,13 +507,17 @@ export function useChatPage() {
       const editedAt = new Date().toISOString();
 
       editedMessagesRef.current.set(editingMessageId, nextContent);
-      setLocalMessages((currentMessages) =>
-        currentMessages.map((message) =>
-          message.id === editingMessageId
-            ? { ...message, content: nextContent, editedAt }
-            : message,
-        ),
-      );
+      setMessageOverrides((currentOverrides) => ({
+        ...currentOverrides,
+        [editingMessageId]: {
+          ...(currentMessage ?? currentOverrides[editingMessageId]),
+          id: editingMessageId,
+          content: nextContent,
+          editedAt,
+          pending: false,
+          failed: false,
+        } as LocalGroupMessage,
+      }));
 
       const messageId = editingMessageId;
       setEditingMessageId(null);
@@ -643,14 +651,21 @@ export function useChatPage() {
     }
 
     const deletedAt = new Date().toISOString();
-
-    setLocalMessages((currentMessages) =>
-      currentMessages.map((message) =>
-        message.id === messageId
-          ? { ...message, content: "", deletedAt }
-          : message,
-      ),
+    const currentMessage = localMessages.find(
+      (message) => message.id === messageId,
     );
+
+    setMessageOverrides((currentOverrides) => ({
+      ...currentOverrides,
+      [messageId]: {
+        ...(currentMessage ?? currentOverrides[messageId]),
+        id: messageId,
+        content: "",
+        deletedAt,
+        pending: false,
+        failed: false,
+      } as LocalGroupMessage,
+    }));
 
     if (!activeDiscussion?.id || messageId.startsWith("temp-")) {
       return;
@@ -729,8 +744,9 @@ export function useChatPage() {
     );
   }
 
-  const sendError =
-    sendMessage.error instanceof Error ? sendMessage.error.message : null;
+  const sendError = sendMessage.error
+    ? getFriendlyErrorMessage(sendMessage.error, "Impossible d'envoyer le message.")
+    : null;
 
   const discussionName = discussionDetail?.name ?? activeDiscussion?.name ?? "";
   const teamName = discussionDetail?.teamName ?? activeDiscussion?.teamName;

@@ -1,6 +1,7 @@
 import Toast from "../../components/app/Toast/Toast";
 import { PERMISSIONS, PermissionGate } from "../../shared/permissions";
 import { EmptyState, Icon } from "../../shared/ui";
+import { getFriendlyErrorMessage } from "../../shared/feedback";
 
 import {
   FilesBreadcrumb,
@@ -38,11 +39,10 @@ export function FilesPage() {
         <section className="files-explorer">
           <EmptyState
             title="Dossiers indisponibles"
-            body={
-              page.error instanceof Error
-                ? page.error.message
-                : "Impossible de charger les dossiers."
-            }
+            body={getFriendlyErrorMessage(
+              page.error,
+              "Impossible de charger les dossiers.",
+            )}
           />
         </section>
       </div>

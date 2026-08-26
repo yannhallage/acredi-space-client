@@ -16,6 +16,11 @@ import {
 } from "./components/widgets/CalendarEventContextMenu";
 import { useCalendarPage } from "./hooks/useCalendarPage";
 import { isManagedCalendarEvent } from "./utils";
+import {
+  feedback,
+  resolveActionFeedback,
+} from "../../shared/feedback";
+import { FeedbackBanner } from "../../shared/ui";
 
 dayjs.locale("fr");
 
@@ -96,8 +101,17 @@ export function CalendarPage() {
         />
 
         {eventsQuery.isError ? (
-          <div className="mt-4 shrink-0 rounded-[12px] border border-[color-mix(in_srgb,var(--red)_28%,var(--border))] bg-[var(--red-soft)] px-4 py-3 text-[12px] font-medium text-[var(--red)]">
-            Impossible de charger le calendrier.
+          <div className="mt-4 shrink-0">
+            <FeedbackBanner
+              feedback={resolveActionFeedback(
+                eventsQuery.error,
+                feedback(
+                  "error",
+                  "Calendrier indisponible",
+                  "Nous n’avons pas pu charger le calendrier. Vérifiez votre connexion, puis réessayez.",
+                ),
+              )}
+            />
           </div>
         ) : null}
 

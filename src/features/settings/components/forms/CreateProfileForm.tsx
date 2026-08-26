@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import type { ToastIntent } from '../../../../components/app/Toast/Toast';
 import { useCreateProfileMutation } from '../../../../shared/api/profiles';
+import { getFriendlyErrorMessage } from '../../../../shared/feedback';
 import { Icon } from '../../../../shared/ui';
 
 type CreateProfileFormProps = {
@@ -36,7 +37,7 @@ export function CreateProfileForm({ onCreated, onToast }: CreateProfileFormProps
     } catch (error) {
       onToast(
         'error',
-        error instanceof Error ? error.message : 'Impossible de creer le profil.',
+        getFriendlyErrorMessage(error, 'Impossible de créer le profil.'),
         5000
       );
     }

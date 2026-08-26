@@ -1,11 +1,13 @@
 import { motion } from "framer-motion";
+import type { Feedback } from "../../../../shared/feedback";
+import { FeedbackBanner } from "../../../../shared/ui";
 import { toDateKey } from "../../../../shared/utils/calendarGrid";
 import type { Meeting, MeetingFormState, MeetingMode } from "../../types";
 
 type MeetingFormModalProps = {
   editingMeeting: Meeting | null;
   form: MeetingFormState;
-  formError: string;
+  formError: Feedback | null;
   isSaving: boolean;
   isEnding: boolean;
   onClose: () => void;
@@ -90,11 +92,7 @@ export function MeetingFormModal({
             <option value="On-site">On-site</option>
           </select>
 
-          {formError && (
-            <p className="rounded-[10px] bg-[var(--red-soft)] px-3 py-2 text-[12px] font-medium text-[var(--red)]">
-              {formError}
-            </p>
-          )}
+          {formError ? <FeedbackBanner feedback={formError} /> : null}
         </div>
 
         <div className="mt-6 flex flex-wrap justify-between gap-3">

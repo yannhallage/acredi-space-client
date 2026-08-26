@@ -1,3 +1,4 @@
+import { getFriendlyErrorMessage } from '../../shared/feedback';
 import type { User } from '../../shared/types';
 
 export type InvoiceStatus = 'paid' | 'pending' | 'failed';
@@ -5,9 +6,7 @@ export type InvoiceStatus = 'paid' | 'pending' | 'failed';
 export const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
 export function getAvatarErrorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : 'Impossible de mettre a jour la photo.';
+  return getFriendlyErrorMessage(error, 'Impossible de mettre à jour la photo.');
 }
 
 export function formatProfileDate(value?: string) {

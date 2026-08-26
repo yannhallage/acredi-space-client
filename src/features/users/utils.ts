@@ -1,3 +1,4 @@
+import { getFriendlyErrorMessage } from "../../shared/feedback";
 import type { AdminRole, Presence, User } from "../../shared/types";
 import type { IconName } from "../../shared/ui";
 
@@ -64,23 +65,7 @@ export function themePreferenceLabel(value?: string | null) {
 }
 
 export function getInviteErrorMessage(error: unknown) {
-  if (error && typeof error === "object") {
-    const maybeError = error as {
-      message?: unknown;
-      response?: { data?: { message?: unknown } };
-    };
-    const responseMessage = maybeError.response?.data?.message;
-
-    if (typeof responseMessage === "string" && responseMessage.trim()) {
-      return responseMessage;
-    }
-
-    if (typeof maybeError.message === "string" && maybeError.message.trim()) {
-      return maybeError.message;
-    }
-  }
-
-  return "Failed to invite user";
+  return getFriendlyErrorMessage(error, "Impossible d'inviter cet utilisateur.");
 }
 
 export function adminRoleFromUser(user: User): AdminRole {

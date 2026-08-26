@@ -57,13 +57,8 @@ export const NOTES_FEATURE_PERMISSIONS = [
   PERMISSIONS.SHARE_NOTES,
 ] as const satisfies readonly PermissionCode[];
 
-/** Accès nav / routes Polls : visible pour tout rôle ayant polls.view (collaborateur inclus). */
-export const POLLS_FEATURE_PERMISSIONS = [
-  PERMISSIONS.VIEW_POLLS,
-] as const satisfies readonly PermissionCode[];
-
-export const POLLS_CREATE_PERMISSIONS = [
-  PERMISSIONS.CREATE_POLLS,
+export const CHECKLISTS_FEATURE_PERMISSIONS = [
+  PERMISSIONS.VIEW_CHECKLISTS,
 ] as const satisfies readonly PermissionCode[];
 
 export const SETTINGS_FEATURE_PERMISSIONS = [
@@ -133,8 +128,8 @@ export const FEATURE_PERMISSION_REQUIREMENTS = {
   meetings: MEETINGS_FEATURE_PERMISSIONS,
   myTeams: MY_TEAMS_VIEW_PERMISSIONS,
   notes: NOTES_FEATURE_PERMISSIONS,
+  checklists: CHECKLISTS_FEATURE_PERMISSIONS,
   notifications: [PERMISSIONS.VIEW_NOTIFICATIONS],
-  polls: POLLS_FEATURE_PERMISSIONS,
   settings: SETTINGS_FEATURE_PERMISSIONS,
   teams: TEAMS_FEATURE_PERMISSIONS,
   users: USERS_FEATURE_PERMISSIONS,
