@@ -187,6 +187,10 @@ export function getNotificationTarget(notification: DashboardNotification) {
     return "/app/notes";
   }
 
+  if (type.includes("CHECKLIST")) {
+    return "/app/checklists";
+  }
+
   if (type.includes("TEAM")) {
     return "/app/teams";
   }

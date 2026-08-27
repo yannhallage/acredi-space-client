@@ -583,6 +583,9 @@ export function ChecklistsPage() {
 
       <ChecklistViewSwitcher
         canAddList={canCreate}
+        listCount={
+          participantOpen ? participantLists.length : ownedLists.length
+        }
         participantCount={participantLists.length}
         value={screen}
         onAddList={() => setListModal({ mode: "create", title: "" })}
