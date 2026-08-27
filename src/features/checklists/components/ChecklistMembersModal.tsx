@@ -39,29 +39,33 @@ export function ChecklistMembersModal({
   const { user: currentUser } = useAuth();
   const [query, setQuery] = useState("");
 
+  const members = checklist?.members ?? [];
   const memberIds = useMemo(
-    () => new Set((checklist?.members ?? []).map((member) => member.userId)),
-    [checklist?.members],
+    () => new Set(members.map((member) => member.userId)),
+    [members],
   );
+
+  const searchableUsers = useMemo(() => {
+    return users
+      .filter((person) => person.id !== currentUser?.id)
+      .filter((person) => !memberIds.has(person.id));
+  }, [currentUser?.id, memberIds, users]);
 
   const visibleUsers = useMemo(() => {
     const normalizedQuery = normalizeSearch(query.trim());
+    if (!normalizedQuery) return searchableUsers;
 
-    return users
-      .filter((person) => person.id !== currentUser?.id)
-      .filter((person) => !memberIds.has(person.id))
-      .filter((person) => {
-        if (!normalizedQuery) return true;
+    return searchableUsers.filter((person) => {
+      const searchable = normalizeSearch(
+        [person.name, person.email, person.role, person.team]
+          .filter(Boolean)
+          .join(" "),
+      );
+      return searchable.includes(normalizedQuery);
+    });
+  }, [query, searchableUsers]);
 
-        const searchable = normalizeSearch(
-          [person.name, person.email, person.role, person.team, person.status]
-            .filter(Boolean)
-            .join(" "),
-        );
-
-        return searchable.includes(normalizedQuery);
-      });
-  }, [currentUser?.id, memberIds, query, users]);
+  const isSearching = query.trim().length > 0;
 
   useEffect(() => {
     if (!isOpen) {
@@ -83,7 +87,7 @@ export function ChecklistMembersModal({
     <AnimatePresence>
       {isOpen && checklist ? (
         <motion.div
-          className="dm-new-conversation-overlay note-share-overlay"
+          className="cl-modal-overlay"
           role="presentation"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -94,7 +98,7 @@ export function ChecklistMembersModal({
           }}
         >
           <motion.section
-            className="dm-new-conversation-modal note-share-modal"
+            className="cl-modal cl-members-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="checklist-members-title"
@@ -104,13 +108,10 @@ export function ChecklistMembersModal({
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <header className="dm-new-conversation-header">
+            <header className="cl-modal-head">
               <div>
                 <h2 id="checklist-members-title">Participants</h2>
-                <small>
-                  {checklist.title} — tous les participants peuvent intervenir
-                  sur les tâches
-                </small>
+                <p className="cl-members-subtitle">{checklist.title}</p>
               </div>
               <button
                 className="icon-button"
@@ -123,161 +124,124 @@ export function ChecklistMembersModal({
               </button>
             </header>
 
-            <div className="cl-members-current">
-              <p>Membres actuels</p>
-              {(checklist.members ?? []).map((member) => {
+            <label className="cl-members-search">
+              <Icon name="search" size={16} />
+              <input
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Ajouter une personne"
+                disabled={isBusy}
+              />
+            </label>
+
+            {loading ? (
+              <div className="cl-members-hint">Chargement des utilisateurs…</div>
+            ) : error ? (
+              <div className="cl-members-empty">
+                <strong>Impossible de charger les utilisateurs</strong>
+                <span>
+                  {getFriendlyErrorMessage(
+                    error,
+                    "Nous n’avons pas pu charger les utilisateurs.",
+                  )}
+                </span>
+                <button
+                  className="button ghost mini"
+                  type="button"
+                  onClick={() => {
+                    onRetry().catch(() => undefined);
+                  }}
+                  disabled={isBusy}
+                >
+                  Réessayer
+                </button>
+              </div>
+            ) : isSearching ? (
+              <div className="cl-members-results">
+                {visibleUsers.length === 0 ? (
+                  <p className="cl-members-hint">Aucun utilisateur trouvé.</p>
+                ) : (
+                  visibleUsers.map((person) => {
+                    const isPending = pendingUserId === person.id;
+                    return (
+                      <button
+                        key={person.id}
+                        className="cl-members-add"
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => onAdd(person)}
+                      >
+                        <Avatar name={person.name} size={32} />
+                        <span>
+                          <strong>{person.name}</strong>
+                          <small>{person.email || person.role}</small>
+                        </span>
+                        {isPending ? (
+                          <ClipLoader size={14} color="currentColor" />
+                        ) : (
+                          <em>Ajouter</em>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            ) : searchableUsers.length > 0 ? (
+              <p className="cl-members-hint">
+                {searchableUsers.length} personne
+                {searchableUsers.length > 1 ? "s" : ""} disponible
+                {searchableUsers.length > 1 ? "s" : ""} — tapez un nom pour
+                ajouter.
+              </p>
+            ) : (
+              <p className="cl-members-hint">
+                Tous les membres de l’organisation ont déjà accès.
+              </p>
+            )}
+
+            <div className="cl-members-list">
+              <p>
+                {members.length} participant{members.length > 1 ? "s" : ""}
+              </p>
+              {members.map((member) => {
+                const isOwner = member.role === "OWNER";
                 const isPending = pendingUserId === member.userId;
-                const canRemove = member.role !== "OWNER";
 
                 return (
                   <div className="cl-members-row" key={member.userId}>
                     <Avatar
                       name={member.userName ?? "Utilisateur"}
-                      size={34}
+                      size={32}
                       src={member.avatarUrl}
                     />
                     <span>
                       <strong>{member.userName ?? "Utilisateur"}</strong>
-                      <small>
-                        {member.role === "OWNER" ? "Propriétaire" : "Éditeur"}
-                      </small>
                     </span>
-                    {canRemove ? (
+                    <em className={isOwner ? "is-owner" : undefined}>
+                      {isOwner ? "Propriétaire" : "Éditeur"}
+                    </em>
+                    {isOwner ? (
+                      <span className="cl-members-remove-spacer" />
+                    ) : (
                       <button
-                        className="button danger mini"
+                        className="cl-members-remove"
                         type="button"
+                        aria-label={`Retirer ${member.userName ?? "le participant"}`}
                         disabled={isBusy}
                         onClick={() => onRemove(member)}
                       >
                         {isPending ? (
                           <ClipLoader size={12} color="currentColor" />
                         ) : (
-                          "Retirer"
+                          <Icon name="x" size={14} strokeWidth={2.2} />
                         )}
                       </button>
-                    ) : (
-                      <em>Propriétaire</em>
                     )}
                   </div>
                 );
               })}
             </div>
-
-            <label className="dm-new-conversation-search">
-              <Icon name="search" size={16} />
-              <input
-                autoFocus
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Ajouter un utilisateur de l'organisation..."
-                disabled={isBusy}
-              />
-            </label>
-
-            <div className="dm-new-conversation-list">
-              <p>Utilisateurs</p>
-              {loading
-                ? ["checklist-share-loading-1", "checklist-share-loading-2"].map(
-                    (item) => (
-                      <div
-                        className="dm-new-conversation-user team-picker-row-skeleton"
-                        key={item}
-                      >
-                        <span className="skeleton-dot" />
-                        <span className="skeleton-avatar" />
-                        <span>
-                          <span className="skeleton-line" />
-                          <span className="skeleton-line skeleton-short" />
-                        </span>
-                        <span className="skeleton-pill" />
-                      </div>
-                    ),
-                  )
-                : visibleUsers.map((person) => {
-                    const isSelected = pendingUserId === person.id;
-
-                    return (
-                      <button
-                        key={person.id}
-                        className="dm-new-conversation-user note-share-user"
-                        type="button"
-                        disabled={isBusy}
-                        onClick={() => onAdd(person)}
-                      >
-                        {isSelected ? (
-                          <ClipLoader size={14} color="currentColor" />
-                        ) : (
-                          <Icon name="plus" size={16} />
-                        )}
-                        <Avatar
-                          name={person.name}
-                          presence={person.presence}
-                          size={34}
-                        />
-                        <span>
-                          <strong>{person.name}</strong>
-                          <small>
-                            {person.role} - {person.team}
-                          </small>
-                        </span>
-                        <em
-                          className={`dm-new-conversation-status presence-${person.presence}`}
-                        >
-                          {person.status}
-                        </em>
-                      </button>
-                    );
-                  })}
-
-              {!loading && error ? (
-                <div className="dm-new-conversation-empty">
-                  <Icon name="alert" size={18} />
-                  <strong>Chargement impossible</strong>
-                  <span>
-                    {getFriendlyErrorMessage(
-                      error,
-                      "Nous n’avons pas pu charger les utilisateurs.",
-                    )}
-                  </span>
-                  <button
-                    className="button ghost mini"
-                    type="button"
-                    onClick={() => {
-                      onRetry().catch(() => undefined);
-                    }}
-                    disabled={isBusy}
-                  >
-                    Réessayer
-                  </button>
-                </div>
-              ) : null}
-
-              {!loading && !error && visibleUsers.length === 0 ? (
-                <div className="dm-new-conversation-empty">
-                  <Icon name="users" size={18} />
-                  <strong>Aucun utilisateur trouvé</strong>
-                  <span>
-                    Tous les membres de l’organisation sont déjà participants,
-                    ou essayez un autre nom.
-                  </span>
-                </div>
-              ) : null}
-            </div>
-
-            <footer className="dm-new-conversation-footer">
-              <span>
-                <Icon name="checklists" size={14} />
-                {checklist.members.length} membre(s)
-              </span>
-              <button
-                className="button primary"
-                type="button"
-                onClick={onClose}
-                disabled={isBusy}
-              >
-                Fermer
-              </button>
-            </footer>
           </motion.section>
         </motion.div>
       ) : null}

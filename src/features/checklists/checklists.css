@@ -646,36 +646,212 @@ button.cl-due:hover {
   line-height: 1.45;
 }
 
-.cl-members-current {
-  padding: 0 16px 8px;
+.cl-members-modal {
+  width: min(420px, 100%);
+  max-height: min(560px, calc(100vh - 48px));
+  overflow: auto;
+  gap: 12px;
+}
+
+.cl-members-modal .cl-modal-head {
+  align-items: flex-start;
+}
+
+.cl-members-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--cl-muted, #5f6368);
+}
+
+.cl-members-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cl-muted, #5f6368);
+}
+
+.cl-members-search:focus-within {
+  outline: 2px solid rgba(26, 115, 232, 0.35);
+  border-color: var(--cl-blue, #1a73e8);
+}
+
+.cl-members-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--cl-title, #202124);
+  font: inherit;
+  font-size: 14px;
+}
+
+.cl-members-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--cl-muted, #5f6368);
+}
+
+.cl-members-empty {
   display: grid;
   gap: 8px;
+  justify-items: start;
+  padding: 4px 0 2px;
 }
 
-.cl-members-current > p,
-.dm-new-conversation-list > p {
-  margin: 0;
-  font-size: 12px;
-  color: var(--cl-muted);
+.cl-members-empty strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cl-title, #202124);
 }
 
-.cl-members-row {
+.cl-members-empty span {
+  font-size: 13px;
+  color: var(--cl-muted, #5f6368);
+}
+
+.cl-members-results {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 2px;
+  max-height: 180px;
+  overflow: auto;
+  margin: -4px 0 0;
+}
+
+.cl-members-add {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
+.cl-members-add:hover:not(:disabled) {
+  background: rgba(60, 64, 67, 0.06);
+}
+
+.cl-members-add:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.cl-members-add span,
 .cl-members-row span {
   display: grid;
   min-width: 0;
 }
 
-.cl-members-row small,
-.cl-members-row em {
-  color: var(--cl-muted);
+.cl-members-add strong,
+.cl-members-row strong {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cl-title, #202124);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cl-members-add small {
   font-size: 12px;
+  color: var(--cl-muted, #5f6368);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cl-members-add em {
   font-style: normal;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cl-blue, #1a73e8);
+}
+
+.cl-members-list {
+  display: grid;
+  gap: 2px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(60, 64, 67, 0.12);
+}
+
+.cl-members-list > p {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cl-muted, #5f6368);
+}
+
+.cl-members-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto 28px;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+  padding: 4px 0;
+}
+
+.cl-members-row em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--cl-muted, #5f6368);
+  background: var(--cl-due-bg, #f1f3f4);
+  border-radius: 999px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.cl-members-row em.is-owner {
+  color: var(--cl-blue, #1a73e8);
+  background: rgba(26, 115, 232, 0.1);
+}
+
+.cl-members-remove-spacer {
+  width: 28px;
+  height: 28px;
+}
+
+.cl-members-remove {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--cl-muted, #5f6368);
+  cursor: pointer;
+}
+
+.cl-members-remove:hover:not(:disabled) {
+  background: rgba(217, 48, 37, 0.08);
+  color: var(--cl-danger, #d93025);
+}
+
+.cl-members-remove:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+[data-theme="dark"] .cl-members-search {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] .cl-members-list {
+  border-top-color: rgba(255, 255, 255, 0.08);
 }
 
 .cl-skeleton {
