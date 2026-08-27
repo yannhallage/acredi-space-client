@@ -23,8 +23,10 @@ type ChecklistBoardProps = {
   ) => void;
   onOpenMembers: (list: Checklist) => void;
   onRename: (list: Checklist) => void;
+  onSetDeadline: (list: Checklist, item: ChecklistItem) => void;
   onToggleItem: (listId: string, itemId: string) => Promise<void>;
   onToggleMenu: (listId: string) => void;
+  onViewTask: (list: Checklist, item: ChecklistItem) => void;
 };
 
 export function ChecklistBoard({
@@ -43,8 +45,10 @@ export function ChecklistBoard({
   onItemPointerDown,
   onOpenMembers,
   onRename,
+  onSetDeadline,
   onToggleItem,
   onToggleMenu,
+  onViewTask,
 }: ChecklistBoardProps) {
   return (
     <section className="cl-board" aria-label={label}>
@@ -65,8 +69,10 @@ export function ChecklistBoard({
           onItemPointerDown={(item, event) => onItemPointerDown(list, item, event)}
           onOpenMembers={() => onOpenMembers(list)}
           onRename={() => onRename(list)}
+          onSetDeadline={(item) => onSetDeadline(list, item)}
           onToggleItem={onToggleItem}
           onToggleMenu={() => onToggleMenu(list.id)}
+          onViewTask={(item) => onViewTask(list, item)}
         />
       ))}
     </section>

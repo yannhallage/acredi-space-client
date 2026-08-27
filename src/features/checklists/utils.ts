@@ -1,3 +1,5 @@
+import type { Checklist, ChecklistItem } from "../../shared/api/checklists";
+
 export function normalizeSearch(value: string) {
   return value
     .toLowerCase()
@@ -42,19 +44,20 @@ export function formatDueDate(value: string | null | undefined) {
   );
 
   if (diffDays === 0) {
-    return "Today";
+    return "Aujourd'hui";
   }
   if (diffDays === 1) {
-    return "Tomorrow";
+    return "Demain";
+  }
+  if (diffDays === -1) {
+    return "Hier";
   }
 
-  const formatted = new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("fr-FR", {
     weekday: "short",
-    month: "short",
     day: "numeric",
+    month: "short",
   }).format(date);
-
-  return `Due ${formatted}`;
 }
 
 export function isOverdue(value: string | null | undefined, completed: boolean) {
@@ -91,4 +94,21 @@ export function isChecklistParticipant(
   return list.members.some(
     (member) => member.userId === userId && member.role === "EDITOR",
   );
+}
+
+export function findChecklistItem(
+  lists: Checklist[],
+  listId: string,
+  itemId: string,
+): ChecklistItem | null {
+  const list = lists.find((entry) => entry.id === listId);
+  if (!list) return null;
+
+  for (const item of list.items) {
+    if (item.id === itemId) return item;
+    const child = item.children?.find((entry) => entry.id === itemId);
+    if (child) return child;
+  }
+
+  return null;
 }

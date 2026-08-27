@@ -9,6 +9,7 @@ type ChecklistItemMenuProps = {
   onClose: () => void;
   onDelete: () => void;
   onEdit: () => void;
+  onSetDeadline: () => void;
   trigger: HTMLElement | null;
 };
 
@@ -21,6 +22,7 @@ export function ChecklistItemMenu({
   onClose,
   onDelete,
   onEdit,
+  onSetDeadline,
   trigger,
 }: ChecklistItemMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -37,7 +39,7 @@ export function ChecklistItemMenu({
       const rect = trigger.getBoundingClientRect();
       const menu = menuRef.current?.getBoundingClientRect();
       const width = menu?.width ?? 168;
-      const height = menu?.height ?? 88;
+      const height = menu?.height ?? 128;
       const padding = 12;
       let left = rect.right - width;
       let top = rect.bottom + 6;
@@ -105,21 +107,38 @@ export function ChecklistItemMenu({
           <button
             type="button"
             role="menuitem"
-            onClick={() => {
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={(event) => {
+              event.stopPropagation();
               onEdit();
-              onClose();
+              window.requestAnimationFrame(onClose);
             }}
           >
             <Icon name="edit" size={16} strokeWidth={2} />
             Modifier
           </button>
           <button
+            type="button"
+            role="menuitem"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSetDeadline();
+              window.requestAnimationFrame(onClose);
+            }}
+          >
+            <Icon name="calendar" size={16} strokeWidth={2} />
+            Deadline
+          </button>
+          <button
             className="danger"
             type="button"
             role="menuitem"
-            onClick={() => {
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={(event) => {
+              event.stopPropagation();
               onDelete();
-              onClose();
+              window.requestAnimationFrame(onClose);
             }}
           >
             <Icon name="trash" size={16} strokeWidth={2} />

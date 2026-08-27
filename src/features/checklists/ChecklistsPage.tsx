@@ -31,16 +31,23 @@ import {
   type DropTarget,
 } from "./components/ChecklistColumn";
 import { ChecklistEmptyArt } from "./components/ChecklistEmptyArt";
+import { ChecklistDeadlineModal } from "./components/ChecklistDeadlineModal";
 import { ChecklistListModal } from "./components/ChecklistListModal";
 import { ChecklistMembersModal } from "./components/ChecklistMembersModal";
 import { ChecklistParticipantScreen } from "./components/ChecklistParticipantScreen";
+import { ChecklistTaskDrawer } from "./components/ChecklistTaskDrawer";
 import { ChecklistTaskModal } from "./components/ChecklistTaskModal";
 import {
   ChecklistViewSwitcher,
   type ChecklistScreen,
 } from "./components/ChecklistViewSwitcher";
 import { useChecklistPointerDrag } from "./useChecklistPointerDrag";
-import { isChecklistOwner, isChecklistParticipant } from "./utils";
+import {
+  findChecklistItem,
+  isChecklistOwner,
+  isChecklistParticipant,
+  toDueDatePayload,
+} from "./utils";
 import "./checklists.css";
 
 type ToastState = {
@@ -60,6 +67,16 @@ type TaskDraft = {
   item?: ChecklistItem;
   title: string;
   description: string;
+};
+
+type ViewingItem = {
+  listId: string;
+  itemId: string;
+};
+
+type DeadlineDraft = {
+  listId: string;
+  item: ChecklistItem;
 };
 
 export function ChecklistsPage() {
@@ -88,6 +105,8 @@ export function ChecklistsPage() {
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [listModal, setListModal] = useState<ListModalState | null>(null);
   const [taskDraft, setTaskDraft] = useState<TaskDraft | null>(null);
+  const [viewingItem, setViewingItem] = useState<ViewingItem | null>(null);
+  const [deadlineDraft, setDeadlineDraft] = useState<DeadlineDraft | null>(null);
   const [screen, setScreen] = useState<ChecklistScreen>("board");
   const menuRef = useRef<HTMLDivElement | null>(null);
   const pageRef = useRef<HTMLDivElement | null>(null);
@@ -304,9 +323,45 @@ export function ChecklistsPage() {
       if (taskDraft?.item?.id === item.id) {
         setTaskDraft(null);
       }
+      if (viewingItem?.itemId === item.id) {
+        setViewingItem(null);
+      }
+      if (deadlineDraft?.item.id === item.id) {
+        setDeadlineDraft(null);
+      }
       showToast("success", "Tâche supprimée.");
     } catch (error) {
       showError(error, "Impossible de supprimer la tâche.");
+    }
+  }
+
+  async function handleSaveDeadline(value: string) {
+    if (!deadlineDraft) return;
+    try {
+      await updateItem.mutateAsync({
+        id: deadlineDraft.listId,
+        itemId: deadlineDraft.item.id,
+        request: { dueDate: toDueDatePayload(value) },
+      });
+      setDeadlineDraft(null);
+      showToast("success", "Échéance enregistrée.");
+    } catch (error) {
+      showError(error, "Impossible d’enregistrer l’échéance.");
+    }
+  }
+
+  async function handleClearDeadline() {
+    if (!deadlineDraft) return;
+    try {
+      await updateItem.mutateAsync({
+        id: deadlineDraft.listId,
+        itemId: deadlineDraft.item.id,
+        request: { clearDueDate: true },
+      });
+      setDeadlineDraft(null);
+      showToast("success", "Échéance retirée.");
+    } catch (error) {
+      showError(error, "Impossible de retirer l’échéance.");
     }
   }
 
@@ -359,6 +414,16 @@ export function ChecklistsPage() {
     checklistsQuery.isLoading ||
     (checklistsQuery.isFetching && !checklistsQuery.data);
   const participantOpen = screen === "participant";
+  const viewingLiveItem = viewingItem
+    ? findChecklistItem(lists, viewingItem.listId, viewingItem.itemId)
+    : null;
+  const viewingListTitle = viewingItem
+    ? lists.find((list) => list.id === viewingItem.listId)?.title
+    : undefined;
+  const deadlineLiveItem = deadlineDraft
+    ? findChecklistItem(lists, deadlineDraft.listId, deadlineDraft.item.id) ??
+      deadlineDraft.item
+    : null;
 
   const boardShared = {
     canManageList: isOwner,
@@ -377,14 +442,32 @@ export function ChecklistsPage() {
       handleDeleteList(list).catch(() => undefined);
     },
     onDeleteTask: (list: Checklist, item: ChecklistItem) => {
+      skipClickRef.current = true;
+      setViewingItem(null);
       handleDeleteItem(list, item).catch(() => undefined);
     },
-    onEditTask: (list: Checklist, item: ChecklistItem) =>
+    onEditTask: (list: Checklist, item: ChecklistItem) => {
+      skipClickRef.current = true;
+      setViewingItem(null);
       setTaskDraft({
         listId: list.id,
         item,
         title: item.title,
         description: item.description ?? "",
+      });
+    },
+    onSetDeadline: (list: Checklist, item: ChecklistItem) => {
+      skipClickRef.current = true;
+      setViewingItem(null);
+      setDeadlineDraft({
+        listId: list.id,
+        item,
+      });
+    },
+    onViewTask: (list: Checklist, item: ChecklistItem) =>
+      setViewingItem({
+        listId: list.id,
+        itemId: item.id,
       }),
     onItemPointerDown: (
       list: Checklist,
@@ -447,8 +530,8 @@ export function ChecklistsPage() {
               <ChecklistItemRow
                 item={dragging.item}
                 skipClickRef={skipClickRef}
-                onEdit={() => undefined}
                 onToggle={() => undefined}
+                onView={() => undefined}
               />
             </div>,
             pageRef.current,
@@ -527,7 +610,10 @@ export function ChecklistsPage() {
         description={taskDraft?.description ?? ""}
         isDeleting={deleteItem.isPending}
         isOpen={Boolean(taskDraft)}
-        isSaving={createItem.isPending || updateItem.isPending}
+        isSaving={
+          createItem.isPending ||
+          (updateItem.isPending && Boolean(taskDraft) && !deadlineDraft)
+        }
         mode={taskDraft?.item ? "edit" : "create"}
         onClose={() => setTaskDraft(null)}
         onDelete={
@@ -549,6 +635,29 @@ export function ChecklistsPage() {
           setTaskDraft((current) => (current ? { ...current, title } : current))
         }
         title={taskDraft?.title ?? ""}
+      />
+
+      <ChecklistTaskDrawer
+        isOpen={Boolean(viewingLiveItem)}
+        item={viewingLiveItem}
+        listTitle={viewingListTitle}
+        onClose={() => setViewingItem(null)}
+      />
+
+      <ChecklistDeadlineModal
+        dueDate={deadlineLiveItem?.dueDate}
+        isOpen={Boolean(deadlineDraft)}
+        isSaving={updateItem.isPending && Boolean(deadlineDraft)}
+        onClear={() => {
+          handleClearDeadline().catch(() => undefined);
+        }}
+        onClose={() => {
+          if (updateItem.isPending) return;
+          setDeadlineDraft(null);
+        }}
+        onSubmit={(value) => {
+          handleSaveDeadline(value).catch(() => undefined);
+        }}
       />
 
       <ChecklistMembersModal

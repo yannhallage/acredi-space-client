@@ -25,8 +25,10 @@ type ChecklistColumnProps = {
   onItemPointerDown: (item: ChecklistItem, event: PointerEvent<HTMLElement>) => void;
   onOpenMembers: () => void;
   onRename: () => void;
+  onSetDeadline: (item: ChecklistItem) => void;
   onToggleItem: (listId: string, itemId: string) => Promise<void>;
   onToggleMenu: () => void;
+  onViewTask: (item: ChecklistItem) => void;
   skipClickRef: RefObject<boolean>;
 };
 
@@ -44,8 +46,10 @@ export function ChecklistColumn({
   onItemPointerDown,
   onOpenMembers,
   onRename,
+  onSetDeadline,
   onToggleItem,
   onToggleMenu,
+  onViewTask,
   skipClickRef,
 }: ChecklistColumnProps) {
   const isEmpty = checklist.items.length === 0;
@@ -148,9 +152,11 @@ export function ChecklistColumn({
                 onDelete={() => onDeleteTask(item)}
                 onEdit={() => onEditTask(item)}
                 onPointerDown={(event) => onItemPointerDown(item, event)}
+                onSetDeadline={() => onSetDeadline(item)}
                 onToggle={() => {
                   onToggleItem(checklist.id, item.id).catch(() => undefined);
                 }}
+                onView={() => onViewTask(item)}
               />
               {item.children.map((child) => (
                 <ChecklistItemRow
@@ -160,9 +166,11 @@ export function ChecklistColumn({
                   skipClickRef={skipClickRef}
                   onDelete={() => onDeleteTask(child)}
                   onEdit={() => onEditTask(child)}
+                  onSetDeadline={() => onSetDeadline(child)}
                   onToggle={() => {
                     onToggleItem(checklist.id, child.id).catch(() => undefined);
                   }}
+                  onView={() => onViewTask(child)}
                 />
               ))}
             </div>
@@ -180,9 +188,11 @@ type ItemRowProps = {
   nested?: boolean;
   skipClickRef: RefObject<boolean>;
   onDelete?: () => void;
-  onEdit: () => void;
+  onEdit?: () => void;
   onPointerDown?: (event: PointerEvent<HTMLElement>) => void;
+  onSetDeadline?: () => void;
   onToggle: () => void;
+  onView?: () => void;
 };
 
 export function ChecklistItemRow({
@@ -193,13 +203,15 @@ export function ChecklistItemRow({
   onDelete,
   onEdit,
   onPointerDown,
+  onSetDeadline,
   onToggle,
+  onView,
 }: ItemRowProps) {
   const menuBtnRef = useRef<HTMLButtonElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const dueLabel = formatDueDate(item.dueDate);
   const overdue = isOverdue(item.dueDate, item.completed);
-  const showActions = Boolean(onDelete) && !dragging;
+  const showActions = Boolean(onDelete && onEdit && onSetDeadline) && !dragging;
 
   return (
     <div
@@ -217,7 +229,7 @@ export function ChecklistItemRow({
           skipClickRef.current = false;
           return;
         }
-        onEdit();
+        onView?.();
       }}
     >
       <input
@@ -238,10 +250,26 @@ export function ChecklistItemRow({
           </p>
         ) : null}
         {dueLabel ? (
-          <span className={overdue ? "cl-due overdue" : "cl-due"}>
-            <Icon name="calendar" size={12} />
-            {dueLabel}
-          </span>
+          onSetDeadline ? (
+            <button
+              className={overdue ? "cl-due overdue" : "cl-due"}
+              type="button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                skipClickRef.current = true;
+                onSetDeadline();
+              }}
+            >
+              <Icon name="calendar" size={12} />
+              {dueLabel}
+            </button>
+          ) : (
+            <span className={overdue ? "cl-due overdue" : "cl-due"}>
+              <Icon name="calendar" size={12} />
+              {dueLabel}
+            </span>
+          )
         ) : null}
       </div>
       {showActions ? (
@@ -266,7 +294,8 @@ export function ChecklistItemRow({
             trigger={menuBtnRef.current}
             onClose={() => setMenuOpen(false)}
             onDelete={onDelete!}
-            onEdit={onEdit}
+            onEdit={onEdit!}
+            onSetDeadline={onSetDeadline!}
           />
         </>
       ) : null}

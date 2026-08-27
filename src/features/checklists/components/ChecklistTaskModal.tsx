@@ -125,7 +125,7 @@ export function ChecklistTaskModal({
             </label>
 
             <footer className="cl-modal-actions">
-              {mode === "edit" && onDelete ? (
+              {/* {mode === "edit" && onDelete ? (
                 <button
                   className="button danger"
                   type="button"
@@ -141,7 +141,7 @@ export function ChecklistTaskModal({
                     "Supprimer"
                   )}
                 </button>
-              ) : null}
+              ) : null} */}
               <span className="cl-modal-actions-spacer" />
               <button
                 className="button ghost"

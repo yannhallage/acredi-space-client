@@ -67,6 +67,7 @@ export interface UpdateChecklistItemRequest {
   title?: string;
   description?: string;
   dueDate?: string | null;
+  clearDueDate?: boolean;
   position?: number;
 }
 

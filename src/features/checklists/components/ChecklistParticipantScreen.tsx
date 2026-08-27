@@ -28,8 +28,10 @@ type ChecklistParticipantScreenProps = {
   ) => void;
   onOpenMembers: (list: Checklist) => void;
   onRename: (list: Checklist) => void;
+  onSetDeadline: (list: Checklist, item: ChecklistItem) => void;
   onToggleItem: (listId: string, itemId: string) => Promise<void>;
   onToggleMenu: (listId: string) => void;
+  onViewTask: (list: Checklist, item: ChecklistItem) => void;
 };
 
 const slide = {
@@ -56,8 +58,10 @@ export function ChecklistParticipantScreen({
   onItemPointerDown,
   onOpenMembers,
   onRename,
+  onSetDeadline,
   onToggleItem,
   onToggleMenu,
+  onViewTask,
 }: ChecklistParticipantScreenProps) {
   return (
     <AnimatePresence>
@@ -111,8 +115,10 @@ export function ChecklistParticipantScreen({
               onItemPointerDown={onItemPointerDown}
               onOpenMembers={onOpenMembers}
               onRename={onRename}
+              onSetDeadline={onSetDeadline}
               onToggleItem={onToggleItem}
               onToggleMenu={onToggleMenu}
+              onViewTask={onViewTask}
             />
           )}
         </motion.section>
